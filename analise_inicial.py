@@ -5,8 +5,9 @@ import pandas as pd
 from datetime import date, datetime
 import pyodbc
 import xlsxwriter
+from carrega_nfs import main as carrega_nfs
 
-def busca_nfs_fora_da_margem(
+def busca_nfs_mes_anterior(
     data_inicio: date = None, 
     data_fim: date = None, 
     margem_parceiros: float = 0.15, 
@@ -49,8 +50,9 @@ def busca_nfs_fora_da_margem(
                 port     = MYSQL_DB_PORT
             ) as con:
                 with con.cursor() as cursor:
-                    with open('querys/busca_nfs_fora_da_margem.sql', 'r', encoding='utf-8') as query:
-                        values = (data_inicio, data_fim, str(margem_parceiros), str(margem), str(margem_maxima))
+                    with open('querys/busca_nfs_mes_anterior.sql', 'r', encoding='utf-8') as query:
+                        # values = (data_inicio, data_fim, str(margem_parceiros), str(margem), str(margem_maxima))
+                        values = (data_inicio, data_fim)
                         consulta = query.read()
                         cursor.execute(consulta, values)
                         rows = cursor.fetchall()
@@ -60,43 +62,88 @@ def busca_nfs_fora_da_margem(
                         else:
                             return pd.DataFrame()
     except Exception as e:
-        print("Erro em busca_nfs_fora_da_margem:", e)
-        return None
+        print("Erro em busca_nfs_mes_anterior:", e)
+        raise e
 
+def busca_clientes_parceiros():
+    try:
+        with pymysql.connect(
+                host     = MYSQL_DB_HOST,
+                user     = MYSQL_DB_USER,
+                password = MYSQL_DB_PASSWORD,
+                database = MYSQL_DB_DATABASE,
+                port     = MYSQL_DB_PORT
+            ) as con:
+                with con.cursor() as cursor:
+                    with open('querys/busca_clientes_parceiros.sql', 'r', encoding='utf-8') as query:
+                        consulta = query.read()
+                        cursor.execute(consulta)
+                        rows = cursor.fetchall()
+                        if rows:
+                            columns = [desc[0] for desc in cursor.description]
+                            return pd.DataFrame(rows, columns=columns)
+                        else:
+                            return pd.DataFrame()
+    except Exception as e:
+        print("Erro em busca_clientes_parceiros:", e)
+        raise e
+    
 def formatar_aba(writer, df, sheet_name):
-    """Função auxiliar para aplicar formatação padrão nas abas do Excel"""
     if df.empty:
         return
 
-    df.to_excel(writer, sheet_name=sheet_name, index=False)
+    # Limpar os tipos antes de escrever impedindo que o número vá como "texto"
+    df_clean = df.copy()
+    for col in df_clean.columns:
+        if pd.api.types.is_numeric_dtype(df_clean[col]):
+            df_clean[col] = df_clean[col].astype(float)
+
+    df_clean.to_excel(writer, sheet_name=sheet_name, index=False)
     
     workbook = writer.book
     worksheet = writer.sheets[sheet_name]
     
-    # Formatos
     fmt_header = workbook.add_format({'bold': True, 'bg_color': '#D9E1F2', 'border': 1})
-    fmt_currency = workbook.add_format({'num_format': 'R$ #,##0.00'})
+    
+    fmt_currency = workbook.add_format({'num_format': 'R$ #,##0.00'}) 
+    
     fmt_percent = workbook.add_format({'num_format': '0.00%'})
     
-    # Ajuste de colunas e aplicação de formatos
-    for idx, col in enumerate(df.columns):
-        series = df[col]
+    for idx, col in enumerate(df_clean.columns):
+        series = df_clean[col]
+        # Calcula largura da coluna
         max_len = max((series.astype(str).map(len).max(), len(str(col)))) + 2
         
-        # Define formato baseado no nome da coluna (heurística simples)
         col_name_lower = col.lower()
         cell_format = None
         
-        if any(x in col_name_lower for x in ['custo', 'preco', 'valor', 'total', 'liq']):
+        # Aplica formatos
+        if any(x in col_name_lower for x in ['valor_contabil', 'custo', 'valor_bruto', 'valor_ipi', 'valor_imp5', 'valor_imp6', 'vlr_icms_difal', 'valor_icms', 'margem', 'margem_bruta']):
             cell_format = fmt_currency
-        elif any(x in col_name_lower for x in ['percent', 'margem', 'aliquota']):
+            
+        elif any(x in col_name_lower for x in ['percent', 'margem', 'aliquota', 'diff_percentual']):
             cell_format = fmt_percent
             
         worksheet.set_column(idx, idx, max_len, cell_format)
         worksheet.write(0, idx, col, fmt_header)
     
-    # Adicionar AutoFiltro
-    worksheet.autofilter(0, 0, len(df), len(df.columns) - 1)
+    worksheet.autofilter(0, 0, len(df_clean), len(df_clean.columns) - 1)
+
+
+# def limpar_dados_para_excel(df):
+#     """Converte colunas numéricas para float e strings para string limpa"""
+#     if df.empty:
+#         return df
+        
+#     for col in df.columns:
+#         # Se parecer número (custo, preco, margem, diff), força conversão
+#         col_lower = col.lower()
+#         if any(x in col_lower for x in ['custo', 'preco', 'valor', 'total', 'margem', 'diff', 'percent']):
+#             # Converte para numérico, transformando erros em NaN
+#             df[col] = pd.to_numeric(df[col], errors='coerce').fillna(0.0)
+            
+#     return df
+
 
 if __name__ == '__main__':
     
@@ -110,26 +157,33 @@ if __name__ == '__main__':
     
     connectionString = f"DRIVER={getenv('PROTHEUS_ODBC_DRIVER')};SERVER={getenv('PROTHEUS_DB_HOST')};DATABASE={getenv('PROTHEUS_DB_DATABASE')};UID={getenv('PROTHEUS_DB_USER')};PWD={getenv('PROTHEUS_DB_PASSWORD')};TrustServerCertificate=yes"
 
+    carrega_nfs()
+    
     try:
-        nfs_fora_margem = busca_nfs_fora_da_margem()
         
-        if nfs_fora_margem is None or nfs_fora_margem.empty:
-            print("Nenhuma NF fora da margem encontrada no período.")
+        # nfs_mes_anterior = busca_nfs_mes_anterior(data_inicio=date(year=2025, month=9, day=1), data_fim=date(year=2025, month=9, day=30))
+        
+        nfs_mes_anterior = busca_nfs_mes_anterior()
+        
+        
+        if nfs_mes_anterior is None or nfs_mes_anterior.empty:
+            print("Nenhuma NF encontrada no período.")
         else:
-            print(f"{len(nfs_fora_margem)} NFs fora da margem encontradas. Iniciando processamento...")
+            print(f"{len(nfs_mes_anterior)} NFs encontradas. Iniciando processamento...")
             
             df_revendas_final = pd.DataFrame()
             df_vendas_final = pd.DataFrame()
 
             # Conversão de tipos gerais
-            cols_to_float = ['custo', 'valor_total', 'margem_bruta_percentual']
+            cols_to_float = ['valor_contabil', 'custo', 'valor_bruto', 'valor_ipi', 'valor_imp5', 'valor_imp6', 'vlr_icms_difal', 'valor_icms', 'margem', 'margem_bruta']
             for col in cols_to_float:
-                if col in nfs_fora_margem.columns:
-                     nfs_fora_margem[col] = pd.to_numeric(nfs_fora_margem[col], errors='coerce')
+                if col in nfs_mes_anterior.columns:
+                     nfs_mes_anterior[col] = pd.to_numeric(nfs_mes_anterior[col], errors='coerce')
 
             # Separação
-            vendas = nfs_fora_margem[nfs_fora_margem['tipo_produto'].str.contains('PA|PI', na=False)].copy()
-            revendas = nfs_fora_margem[~nfs_fora_margem['tipo_produto'].str.contains('PA|PI', na=False)].copy()
+            vendas = nfs_mes_anterior[nfs_mes_anterior['cfop'].str.contains('5101|6101|5116|6116|6107', na=False)].copy()
+            
+            revendas = nfs_mes_anterior[~nfs_mes_anterior['cfop'].str.contains('5101|6101|5116|6116|6107', na=False)].copy()
             
             # ========================================================
             #                 Análise das Revendas
@@ -190,7 +244,7 @@ if __name__ == '__main__':
                 )
 
                 # Seleção de colunas
-                cols_venda = ['nota', 'emissao', 'cliente', 'cod_produto', 'produto', 'tabela', 'custo', 'preco_base', 'diff_valor', 'diff_percentual', 'margem_bruta_percentual']
+                cols_venda = ['nota', 'emissao', 'cliente', 'cod_produto', 'produto', 'tabela', 'custo', 'preco_base', 'diff_valor', 'diff_percentual']
                 cols_finais_venda = [c for c in cols_venda if c in vendas_analise.columns]
                 df_vendas_final = vendas_analise[cols_finais_venda]
 
@@ -202,55 +256,305 @@ if __name__ == '__main__':
             
             print(f"Gerando arquivo Excel: {nome_arquivo}...")
             
-            with pd.ExcelWriter(nome_arquivo, engine='xlsxwriter') as writer:
-                # Aba 1: Resumo Geral (Dados Brutos do MySQL)
-                formatar_aba(writer, nfs_fora_margem, "Todas NFs Fora Margem")
-                
-                # Aba 2: Análise Revenda (Comparativo com Compra)
-                if not df_revendas_final.empty:
-                    formatar_aba(writer, df_revendas_final, "Analise Revenda")
-                    
-                    # Formatação Condicional Extra para Revenda (Alerta se Custo < Compra)
-                    workbook = writer.book
-                    worksheet = writer.sheets["Analise Revenda"]
-                    red_format = workbook.add_format({'bg_color': '#FFC7CE', 'font_color': '#9C0006'})
-                    
-                    # Localiza colunas para aplicar regra (Custo e Ultimo Preco)
-                    # Exemplo: Pintar linha se Diferença Valor < 0 (Prejuízo sobre reposição)
-                    col_diff_idx = df_revendas_final.columns.get_loc('diff_valor')
-                    col_letter = xlsxwriter.utility.xl_col_to_name(col_diff_idx)
-                    
-                    worksheet.conditional_format(f'{col_letter}2:{col_letter}{len(df_revendas_final)+1}', {
-                        'type': 'cell',
-                        'criteria': '<',
-                        'value': 0,
-                        'format': red_format
-                    })
+            # Preparação (Busca parceiros e cria chave match)
+            set_parceiros = busca_clientes_parceiros()
+            
+            nfs_mes_anterior['chave_match'] = (
+                nfs_mes_anterior['cod_cliente'].astype(str).str.strip() + 
+                nfs_mes_anterior['loja'].astype(str).str.strip()
+            )
 
-                # Aba 3: Análise Produção (Comparativo com Tabela)
-                if not df_vendas_final.empty:
-                    formatar_aba(writer, df_vendas_final, "Analise Producao")
-                    
-                    # Formatação Condicional para Produção (Divergência > 10%)
-                    workbook = writer.book
-                    worksheet = writer.sheets["Analise Producao"]
-                    yellow_format = workbook.add_format({'bg_color': '#FFEB9C', 'font_color': '#9C6500'})
-                    
-                    if 'diff_percentual' in df_vendas_final.columns:
-                        col_pct_idx = df_vendas_final.columns.get_loc('diff_percentual')
-                        col_letter = xlsxwriter.utility.xl_col_to_name(col_pct_idx)
+            with pd.ExcelWriter(nome_arquivo, engine='xlsxwriter') as writer:
+                sheet_name = "Todas NFs"
+                
+                # Separa dados para exportar (sem a coluna auxiliar)
+                cols_export = [c for c in nfs_mes_anterior.columns if c != 'chave_match']
+                df_export = nfs_mes_anterior[cols_export]
+                
+                # 1. Escreve os dados base
+                formatar_aba(writer, df_export, sheet_name)
+                
+                workbook = writer.book
+                worksheet = writer.sheets[sheet_name]
+                
+                # 2. Definição de Cores
+                cor_ruim = '#FFC7CE'   # Vermelho claro
+                texto_ruim = '#9C0006' # Vermelho escuro
+                cor_alta = '#FFEB9C'   # Amarelo claro
+                texto_alta = '#9C6500' # Amarelo escuro
+
+                # 3. Definição dos Formatos Combinados (Fundo + Tipo de Dado)
+                # Precisamos criar variações para manter a formatação de R$ e %
+                
+                formats = {
+                    'red': {
+                        'geral': workbook.add_format({'bg_color': cor_ruim, 'font_color': texto_ruim}),
+
+                        'money': workbook.add_format({'bg_color': cor_ruim, 'font_color': texto_ruim, 'num_format': 'R$ #,##0.00'}),
+                        'percent': workbook.add_format({'bg_color': cor_ruim, 'font_color': texto_ruim, 'num_format': '0.00%'}),
+                        'date': workbook.add_format({'bg_color': cor_ruim, 'font_color': texto_ruim, 'num_format': 'dd/mm/yyyy'})
+                    },
+                    'yellow': {
+                        'geral': workbook.add_format({'bg_color': cor_alta, 'font_color': texto_alta}),
+                        'money': workbook.add_format({'bg_color': cor_alta, 'font_color': texto_alta, 'num_format': 'R$ #,##0.00'}),
+                        'percent': workbook.add_format({'bg_color': cor_alta, 'font_color': texto_alta, 'num_format': '0.00%'}),
+                        'date': workbook.add_format({'bg_color': cor_alta, 'font_color': texto_alta, 'num_format': 'dd/mm/yyyy'})
+                    },
+                    'blank': {
+                        'geral': workbook.add_format({}),
+                        'money': workbook.add_format({'num_format': 'R$ #,##0.00'}),
+                        'percent': workbook.add_format({'num_format': '0.00%'}),
+                        'date': workbook.add_format({'num_format': 'dd/mm/yyyy'})
+                    }
+                }
+
+                # 4. Iteração Linha a Linha
+                try:
+                    # Precisamos dos nomes das colunas para saber qual formato aplicar em cada célula
+                    colunas = df_export.columns.tolist()
+                    lotes_geradores_vendidos = []
+                    # Itera sobre o DataFrame ORIGINAL (que tem a chave_match e dados completos)
+                    for row_idx, row in enumerate(nfs_mes_anterior.itertuples(index=False), start=1):
                         
-                        # Alerta se diferença for maior que 10% (negativo ou positivo)
-                        worksheet.conditional_format(f'{col_letter}2:{col_letter}{len(df_vendas_final)+1}', {
+                        margem = row.margem_bruta_percentual
+                        parceiro = row.chave_match in set_parceiros
+                        meta_minima = 0.17 if parceiro else 0.27
+                        
+                        # Decide a cor da linha
+                        tipo_destaque = 'blank' # 'red' ou 'yellow' ou None
+                        
+                        if margem < meta_minima:
+                            tipo_destaque = 'red'
+                            lotes_geradores_vendidos.append(row.lote)
+                        elif margem > 0.70:
+                            tipo_destaque = 'yellow'
+                            lotes_geradores_vendidos.append(row.lote)
+                        
+                        # Se precisar pintar a linha, percorre todas as colunas
+                        if tipo_destaque:
+                            dict_formatos = formats[tipo_destaque]
+                            
+                            for col_idx, col_name in enumerate(colunas):
+                                # Pega o valor da célula atual usando o índice
+                                valor_celula = row[col_idx] 
+                                
+                                # Decide qual formato usar baseado no NOME da coluna (mesma lógica do formatar_aba)
+                                col_lower = col_name.lower()
+                                formato_final = dict_formatos['geral'] # Padrão
+                                
+                                if any(x in col_lower for x in ['margem_percentual', 'margem_bruta_percentual']):
+                                    formato_final = dict_formatos['percent']
+                                elif any(x in col_lower for x in ['valor_contabil', 'custo', 'valor_bruto', 'valor_ipi', 'valor_imp5', 'valor_imp6', 'vlr_icms_difal', 'valor_icms', 'margem', 'margem_bruta']):
+                                    formato_final = dict_formatos['money']
+                                elif any(x in col_lower for x in ['data_emissao']):
+                                    formato_final = dict_formatos['date']
+                                
+                                # Sobrescreve a célula com o valor e o formato colorido
+                                worksheet.write(row_idx, col_idx, valor_celula, formato_final)
+                        
+                        
+                    # Aba 2: Análise Revenda (Comparativo com Compra)
+                    if not df_revendas_final.empty:
+                        formatar_aba(writer, df_revendas_final, "Analise Revenda")
+                        
+                        # Formatação Condicional Extra para Revenda (Alerta se Custo < Compra)
+                        workbook = writer.book
+                        worksheet = writer.sheets["Analise Revenda"]
+                        red_format = workbook.add_format({'bg_color': '#FFC7CE', 'font_color': '#9C0006'})
+                        
+                        # Localiza colunas para aplicar regra (Custo e Ultimo Preco)
+                        # Exemplo: Pintar linha se Diferença Valor < 0 (Prejuízo sobre reposição)
+                        col_diff_idx = df_revendas_final.columns.get_loc('diff_valor')
+                        col_letter = xlsxwriter.utility.xl_col_to_name(col_diff_idx)
+                        
+                        worksheet.conditional_format(f'{col_letter}2:{col_letter}{len(df_revendas_final)+1}', {
                             'type': 'cell',
-                            'criteria': 'not between',
-                            'minimum': -0.10,
-                            'maximum': 0.10,
-                            'format': yellow_format
+                            'criteria': '<',
+                            'value': 0,
+                            'format': red_format
                         })
 
+                    # # Aba 3: Análise Produção (Comparativo com Tabela)
+                    # if not df_vendas_final.empty:
+                    #     formatar_aba(writer, df_vendas_final, "Analise Producao")
+                        
+                    #     # Formatação Condicional para Produção (Divergência > 10%)
+                    #     workbook = writer.book
+                    #     worksheet = writer.sheets["Analise Producao"]
+                    #     yellow_format = workbook.add_format({'bg_color': '#FFEB9C', 'font_color': '#9C6500'})
+                        
+                    #     if 'diff_percentual' in df_vendas_final.columns:
+                    #         col_pct_idx = df_vendas_final.columns.get_loc('diff_percentual')
+                    #         col_letter = xlsxwriter.utility.xl_col_to_name(col_pct_idx)
+                            
+                    #         # Alerta se diferença for maior que 10% (negativo ou positivo)
+                    #         worksheet.conditional_format(f'{col_letter}2:{col_letter}{len(df_vendas_final)+1}', {
+                    #             'type': 'cell',
+                    #             'criteria': 'not between',
+                    #             'minimum': -0.10,
+                    #             'maximum': 0.10,
+                    #             'format': yellow_format
+                    #         })
+                        
+                except Exception as e:
+                    print(f"Erro ao aplicar formatação condicional nas linhas: {e}")
+                
+                # Iterar sobre as vendas de geradores e emitir os detalhamentos das OPS do período
+                
+                geradores_vendidos_fora_margem = [f'{lote}' for lote in lotes_geradores_vendidos if lote.strip() != '']
+                
+                query_op = "SELECT DISTINCT TRIM(D3_OP) AS D3_OP FROM SD3010 WHERE D_E_L_E_T_ <> '*' AND D3_ESTORNO <> 'S' AND TRIM(D3_LOTECTL) = ?"
+                # (
+                #     SELECT DISTINCT 
+                #         TRIM(D3_OP) AS D3_OP 
+                #     FROM SD3010
+                #     WHERE 
+                #         D_E_L_E_T_ <> '*'  
+                #         AND D3_ESTORNO <> 'S' 
+                #         AND D3_LOTECTL LIKE '7030'
+                # )
+
+                lista_final_ops = []
+                
+                COLUNAS_DETALHAMENTO = [
+                    "filial",
+                    "produto",
+                    "armazem",
+                    "tp_movimento",
+                    "descricao_tm",
+                    "descr_prod",
+                    "unidade",
+                    "quantidade",
+                    "quant_2",
+                    "custo",
+                    "custo_2",
+                    "ord_producao",
+                    "lote",
+                    "os_ass_tecn.",
+                    "grupo",
+                    "descricao_grupo",
+                    "tipo_re_de",
+                    "ext_texto",
+                    "documento",
+                    "dt_emissao",
+                    "c_contabil",
+                    "descricao_da_conta",
+                    "centro_custo",
+                    "desc_centro_de_custo",
+                    "parc_total",
+                    "estornado",
+                    "sequencial",
+                    "tipo",
+                    "usuario",
+                    "nr_s_a",
+                    "item_s_a",
+                    "observacao"
+                ]
+                
+                with pyodbc.connect(connectionString) as con:
+                    with con.cursor() as cursor:
+                        for lote in geradores_vendidos_fora_margem:
+                            lote_limpo = str(lote).strip() 
+                            cursor.execute(query_op, (lote_limpo,))
+                            
+                            ops = cursor.fetchall()
+                            print(f"Buscando OPs para o lote {lote}...")
+                            if ops:
+                                lista_ops = []
+                                for op in ops:
+                                    if op.D3_OP.strip() != '':
+                                        lista_ops.append(op.D3_OP.strip())
+                                        
+                                
+                                if lista_ops:
+                                    placeholders = ','.join('?' for _ in lista_ops)
+                                    query_detalhamento = f"""
+                                    SELECT
+                                        TRIM(D3_FILIAL) AS [Filial],
+                                        TRIM(D3_COD) AS [Produto],
+                                        TRIM(D3_LOCAL) AS [Armazem],
+                                        TRIM(D3_TM) AS [TP Movimento],
+                                        TRIM(F5_TEXTO) AS [Descrição TM],
+                                        TRIM(B1_DESC) AS [Descr. Prod],
+                                        TRIM(D3_UM) AS [Unidade],
+                                        D3_QUANT AS [Quantidade],
+                                        CASE WHEN SUBSTRING(D3_CF, 1, 2) = 'RE' THEN D3_QUANT ELSE D3_QUANT * -1 END [Quant. 2],
+                                        D3_CUSTO1 AS [Custo],
+                                        CASE WHEN SUBSTRING(D3_CF, 1, 2) = 'RE' THEN D3_CUSTO1 ELSE D3_CUSTO1 * -1 END [Custo 2],
+                                        TRIM(D3_OP) AS [Ord Producao],
+                                        TRIM(D3_LOTECTL) AS [Lote],
+                                        TRIM(D3_OSTEC) AS [OS Ass. Tecn.],
+                                        TRIM(D3_GRUPO) AS [Grupo],
+                                        TRIM(BM_DESC) AS [Descrição Grupo],
+                                        TRIM(D3_CF) AS [Tipo RE/DE], 
+                                        SUBSTRING(D3_CF, 1, 2) AS [Ext.texto],
+                                        TRIM(D3_DOC) AS [Documento],
+                                        CAST(D3_EMISSAO AS DATE) AS [DT Emissao],
+                                        TRIM(D3_CONTA) AS [C Contabil],
+                                        TRIM(D3_CONTA) + ' - ' + TRIM(CT1_DESC01) AS [Descrição da Conta],      --CT1 X 
+                                        TRIM(D3_CC) AS [Centro Custo],
+                                        TRIM(D3_CC) + ' - ' + TRIM(CTT_DESC01) AS [Desc Centro de Custo],    --CTT X 
+                                        TRIM(D3_PARCTOT) AS [Parc/Total],
+                                        TRIM(D3_ESTORNO) AS [Estornado],
+                                        TRIM(D3_NUMSEQ) AS [Sequencial],
+                                        TRIM(D3_TIPO) AS [Tipo],
+                                        TRIM(D3_USUARIO) AS [Usuario], 
+                                        TRIM(D3_NUMSA) AS [Nr.S.A.],
+                                        TRIM(D3_ITEMSA) AS [Item S.A.],
+                                        TRIM(D3_OBSERVA) AS [Observacao]
+                                    FROM SD3010
+
+                                    LEFT JOIN SB1010
+                                        ON SB1010.D_E_L_E_T_ <> '*'
+                                        AND B1_FILIAL = SUBSTRING(D3_FILIAL, 1, 2)
+                                        AND B1_COD = D3_COD
+
+                                    LEFT JOIN SBM010
+                                        ON SBM010.D_E_L_E_T_ <> '*'
+                                        AND BM_GRUPO = D3_GRUPO
+
+                                    LEFT JOIN CT1010 Contabil ON Contabil.CT1_CONTA = B1_CONTA
+                                        AND Contabil.D_E_L_E_T_ <> '*' 
+
+                                    LEFT JOIN NNR010
+                                        ON NNR010.D_E_L_E_T_ <> '*'
+                                        AND D3_FILIAL = NNR_FILIAL
+                                        AND NNR_CODIGO = D3_LOCAL
+
+                                    LEFT JOIN SF5010
+                                        ON SF5010.D_E_L_E_T_ <> '*'
+                                        AND F5_FILIAL = D3_FILIAL
+                                        AND F5_CODIGO = D3_TM
+
+                                    LEFT JOIN CTT010 
+                                        ON CTT010.D_E_L_E_T_ <> '*'
+                                        AND CTT_CUSTO = D3_CC
+                                        AND CTT_FILIAL = D3_FILIAL
+
+                                    WHERE 
+                                        SD3010.D_E_L_E_T_ <> '*'
+
+                                        AND D3_OP IN ({placeholders})
+
+                                        AND D3_ESTORNO <> 'S'
+
+                                    ORDER BY
+                                        D3_OP, D3_TM, D3_CUSTO1 DESC, TRIM(B1_DESC)"""
+                            
+                                cursor.execute(query_detalhamento, tuple(lista_ops))
+                                                            
+                                detalhamento = cursor.fetchall()
+                                
+                                if detalhamento:
+                                    dados_convertidos = [tuple(row) for row in detalhamento]
+        
+                                    op_detalhada = pd.DataFrame(dados_convertidos, columns=COLUNAS_DETALHAMENTO)
+                                    
+                                    formatar_aba(writer, op_detalhada, f"OP {op_detalhada.iloc[0]['ord_producao'][:6].lstrip('0')}")
+                            else:
+                                print(f"Nenhuma OP encontrada para o lote {lote}")            
             print(f"Arquivo {nome_arquivo} gerado com sucesso!")
 
     except Exception as e:
         print(f"Erro fatal na execução: {e}")
-        # raise e # Descomente para debug completo
+        raise e # Descomente para debug completo

@@ -3,18 +3,18 @@
 -- =========================================================
 
 SELECT
-    TRIM(D2_FILIAL) + TRIM(D2_DOC) + TRIM(D2_SERIE) + TRIM(D2_CLIENTE) + TRIM(D2_LOJA) + TRIM(D2_ITEM) AS chave,
+    TRIM(D2_FILIAL) + TRIM(D2_DOC) + TRIM(D2_SERIE) + TRIM(D2_CLIENTE) + TRIM(D2_LOJA) + TRIM(D2_ITEM) AS [chave],
     LTRIM(D2_DOC, 0) AS [nota], 
     D2_PEDIDO AS [no_pedido],
     TRIM(A3_NOME) AS [vendedor],
     CAST(F2_EMISSAO AS DATE) AS [data_emissao],
     TRIM(D2_LOTECTL) AS [lote],
-    TRIM(F4_CODIGO) AS [tes],
-    TRIM(F4_TEXTO) AS [desc_tes],
+    TRIM(D2_CF) AS [cfop],
+    TRIM(X5_DESCRI) AS [cfop_descri],
     TRIM(F4_ESTOQUE) AS [atualiza_estoque],
     TRIM(F4_DUPLIC) AS [gera_duplicata],
     TRIM(B1_COD) AS [cod_produto],
-    TRIM(B1_DESC) AS [prod_descricao],
+    TRIM(B1_DESC) AS [produto],
     TRIM(B1_TIPO) AS [tipo_produto],
     TRIM(F2_CLIENTE) AS [cod_cliente],
     F2_LOJA AS [loja],
@@ -27,8 +27,8 @@ SELECT
     D2_VALIPI AS [valor_ipi],
     D2_VALIMP5 AS [valor_imp5],
     D2_VALIMP6 AS [valor_imp6],
-    D2_ICMSDIF AS [vlr_icms_difal],
-    COALESCE(CASE WHEN B1_TIPO = 'PA' THEN D2_VALICM ELSE 0 END,0) AS [valor_icms]
+    D2_DIFAL AS [vlr_icms_difal],
+    D2_VALICM AS [valor_icms]
 
 FROM SD2010 AS D2 -- Itens de Venda da NF
 
@@ -67,6 +67,13 @@ FROM SD2010 AS D2 -- Itens de Venda da NF
         ZC2.D_E_L_E_T_ <> '*'
         AND ZC2_GRP = B1_XGRPCTB
         AND ZC2_FILIAL = B1_FILIAL
+
+    -- SX5 (Tabelas)	SD2 (Itens de Venda da NF)	X5_TABELA + X5_CHAVE	'13' + D2_CF
+    LEFT JOIN SX5010 ON
+        SX5010.D_E_L_E_T_ <> '*'
+        AND X5_TABELA = '13'
+        AND X5_FILIAL = D2_FILIAL
+        AND X5_CHAVE = D2_CF
 
 WHERE
     D2.D_E_L_E_T_ <> '*'

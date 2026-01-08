@@ -55,13 +55,13 @@ def aplicar_formula(valor_extraido, cnpj, cliente_parceiro, filial_entrada):
 
     elif grupo == "BRG MATRIZ":
         # BRG MATRIZ
-        if cliente_parceiro == "Sim" and cnpj is None:# venda_estado == "Dentro":
+        if cliente_parceiro == "Sim" and cnpj is None: # venda_estado == "Dentro":
             margem = 15
             icms = 19
             pis = 1.65
             cofins = 7.60
             outras = 7
-        elif cliente_parceiro == "Sim" and cnpj is not None:# and venda_estado == "Fora":
+        elif cliente_parceiro == "Sim" and cnpj is not None: # and venda_estado == "Fora":
             margem = 15
             icms = 12
             pis = 1.65

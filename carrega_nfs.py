@@ -11,8 +11,8 @@ INSERT_COLUMNS = [
     "vendedor",
     "data_emissao",
     "lote",
-    "tes",
-    "desc_tes",
+    "cfop",
+    "cfop_descri",
     "atualiza_estoque",
     "gera_duplicata",
     "cod_produto",
@@ -41,11 +41,11 @@ def busca_ultima_nf() -> int:
     """Conecta no banco da aplicação (VPS) e busca a última NF carregada para usar de filtro na busca de atualizações"""
     
     with pymysql.connect(
-        host     = MYSQL_DB_HOST,
-        user     = MYSQL_DB_USER,
-        password = MYSQL_DB_PASSWORD,
-        database = MYSQL_DB_DATABASE,
-        port     = MYSQL_DB_PORT
+        host     = getenv('MYSQL_DB_HOST'),
+        user     = getenv('MYSQL_DB_USER'),
+        password = getenv('MYSQL_DB_PASSWORD'),
+        database = getenv('MYSQL_DB_DATABASE'),
+        port     = int(getenv('MYSQL_DB_PORT'))
     ) as con:
         with con.cursor() as cursor:
             cursor.execute("""SELECT MAX(nota) FROM analise""")
@@ -93,11 +93,11 @@ def insere_nfs(nfs: pd.DataFrame) -> bool:
     
     try:
         con = pymysql.connect(
-            host     = MYSQL_DB_HOST,
-            user     = MYSQL_DB_USER,
-            password = MYSQL_DB_PASSWORD,
-            database = MYSQL_DB_DATABASE,
-            port     = MYSQL_DB_PORT
+            host     = getenv('MYSQL_DB_HOST'),
+            user     = getenv('MYSQL_DB_USER'),
+            password = getenv('MYSQL_DB_PASSWORD'),
+            database = getenv('MYSQL_DB_DATABASE'),
+            port     = int(getenv('MYSQL_DB_PORT'))
         )
         
         rows = list(nfs[INSERT_COLUMNS].itertuples(index=False, name=None))
@@ -116,15 +116,8 @@ def insere_nfs(nfs: pd.DataFrame) -> bool:
         if con:
             con.close()
                     
-if __name__ == '__main__':
+def main():
     
-    load_dotenv(override=True)
-    
-    MYSQL_DB_HOST = getenv('MYSQL_DB_HOST')
-    MYSQL_DB_USER = getenv('MYSQL_DB_USER')
-    MYSQL_DB_PASSWORD = getenv('MYSQL_DB_PASSWORD')
-    MYSQL_DB_DATABASE = getenv('MYSQL_DB_DATABASE')
-    MYSQL_DB_PORT = int(getenv('MYSQL_DB_PORT'))
 
     nfs = busca_nfs()
     
@@ -135,8 +128,39 @@ if __name__ == '__main__':
     nfs = pd.DataFrame(nfs, columns=INSERT_COLUMNS[:-4])  # Exclui as colunas de margem inicialmente
     
     nfs['margem'] = nfs['valor_contabil'] - nfs['custo']
+    
     nfs['margem_percentual'] = nfs['margem'] / nfs['valor_contabil']
-    nfs['margem_bruta'] = nfs['valor_contabil']-nfs['custo']-nfs['valor_ipi']-(0.02*nfs['valor_icms'])-nfs['valor_imp5']-nfs['valor_imp6']-nfs['vlr_icms_difal']
+    
+    # nfs['margem_bruta'] = nfs['valor_contabil']-nfs['custo']-nfs['valor_ipi']-(0.02*nfs['valor_icms'])-nfs['valor_imp5']-nfs['valor_imp6']-nfs['vlr_icms_difal']
+     # Filtra vendas por CFOPs específicos (apenas vendas de produção/saída que usamos para cálculo diverso)
+    cfop_values = {'5101', '6101', '5116', '6116', '6107'}
+    # Normaliza cfop para string e verifica se está na lista solicitada
+    mask = nfs['cfop'].fillna('').astype(str).str.strip().isin(cfop_values)
+
+    # Calcula margem bruta de forma vetorizada (evita apply que por algum motivo estava retornando múltiplas colunas)
+    # Algumas linhas podem ter desc_tes como NaN, então usamos fillna('') antes de startswith
+    # mask = nfs['desc_tes'].fillna('').str.startswith('VENDA DE PRODUCAO')
+
+    nfs.loc[mask, 'margem_bruta'] = (
+        nfs.loc[mask, 'valor_contabil']
+        - nfs.loc[mask, 'custo']
+        - nfs.loc[mask, 'valor_ipi']
+        - (0.02 * nfs.loc[mask, 'valor_icms'])
+        - nfs.loc[mask, 'valor_imp5']
+        - nfs.loc[mask, 'valor_imp6']
+        - nfs.loc[mask, 'vlr_icms_difal']
+    )
+
+    nfs.loc[~mask, 'margem_bruta'] = (
+        nfs.loc[~mask, 'valor_contabil']
+        - nfs.loc[~mask, 'custo']
+        - nfs.loc[~mask, 'valor_ipi']
+        - nfs.loc[~mask, 'valor_icms']
+        - nfs.loc[~mask, 'valor_imp5']
+        - nfs.loc[~mask, 'valor_imp6']
+        - nfs.loc[~mask, 'vlr_icms_difal']
+    )
+    
     nfs['margem_bruta_percentual'] = nfs['margem_bruta'] / nfs['valor_contabil']
     
     # ========================================================
@@ -152,3 +176,8 @@ if __name__ == '__main__':
             print("Falha ao inserir NFs.")
     else:
         print("Nenhuma NF nova encontrada para inserir.")
+
+if __name__ == '__main__':
+    load_dotenv(override=True)
+
+    main()
