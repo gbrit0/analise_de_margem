@@ -1,0 +1,12 @@
+SELECT TOP 1000
+    *
+FROM
+    SD3010 D3
+WHERE
+    D3.D_E_L_E_T_ <> '*'
+    AND D3.D3_FILIAL = '0101'
+    AND D3.D3_OP IN ('01002701001   ','01002701002   ','01002701003  ')
+
+
+
+select B1_TIPO, * from SB1010 WHERE B1_COD = 'K0990022       '
