@@ -1,0 +1,477 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <title>Gerenciamento de Notas</title>
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    
+    <link rel="stylesheet" href="https://cdn.datatables.net/1.13.6/css/jquery.dataTables.min.css" />
+    <link rel="stylesheet" href="https://cdn.datatables.net/responsive/2.5.0/css/responsive.dataTables.min.css" />
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+
+    <style>
+        /* ESTILO PARA ALTA DENSIDADE DE DADOS */
+        
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            font-size: 12px; /* Fonte base menor */
+            background-color: #f4f6f9;
+            padding: 20px;
+        }
+
+        /* Compactar células */
+        table.dataTable tbody th, table.dataTable tbody td {
+            padding: 4px 8px !important; /* Reduz espaçamento interno */
+            white-space: nowrap; /* Tenta manter em uma linha */
+            vertical-align: middle;
+        }
+
+        /* Cabeçalho mais elegante */
+        table.dataTable thead th {
+            background-color: #2c3e50;
+            color: white;
+            font-weight: 600;
+            padding: 8px !important;
+            font-size: 11px;
+            text-transform: uppercase;
+        }
+
+        /* Limitar largura de colunas de texto longo e adicionar reticências (...) */
+        .text-truncate {
+            max-width: 150px;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+            display: block;
+        }
+
+        /* Alinhamento de números */
+        .text-right { text-align: right; font-family: 'Consolas', monospace; }
+        .text-center { text-align: center; }
+
+        /* Estilo para ícones de status */
+        .icon-true { color: green; }
+        .icon-false { color: #ccc; }
+        
+        /* Destaque ao passar o mouse */
+        table.dataTable tbody tr:hover {
+            background-color: #eab676 !important; /* Cor de destaque amarela suave */
+        }
+    </style>
+</head>
+
+<body>
+    {% csrf_token %}
+
+    {# Painel de filtros - envia via GET e integra com django-filter (NotaFilter) #}
+    <div style="margin-bottom:12px; padding:10px; background:#fff; border:1px solid #e0e0e0;">
+        <form method="get" class="form-inline" style="display:flex; gap:8px; flex-wrap:wrap; align-items:center;">
+            <label style="font-weight:600; margin-right:6px;">Filtros:</label>
+
+            <div style="display:flex; flex-direction:column;">
+                <label for="data_emissao_month">Mês</label>
+                <div style="display:flex; gap:6px; align-items:center;">
+                    <button type="button" id="prevMonth" title="Mês anterior" style="padding:4px 6px;">◀</button>
+                    <select id="data_emissao_month" name="data_emissao_month">
+                        <option value="">Todos</option>
+                        {% for m in meses_disponiveis %}
+                            <option value="{{ m.value }}" {% if m.value == selected_month %}selected{% endif %}>{{ m.label }}</option>
+                        {% endfor %}
+                    </select>
+                    <button type="button" id="nextMonth" title="Próximo mês" style="padding:4px 6px;">▶</button>
+                </div>
+            </div>
+            
+            <div>
+                {{ filter.form.margem_minima.label_tag }}<br>
+                {{ filter.form.margem_minima }}
+            </div>
+            
+            <div>
+                {{ filter.form.margem_maxima.label_tag }}<br>
+                {{ filter.form.margem_maxima }}
+            </div>
+
+            <div>
+                {{ filter.form.lote.label_tag }}<br>
+                {{ filter.form.lote }}
+            </div>
+
+            <div>
+                {{ filter.form.cfop.label_tag }}<br>
+                {{ filter.form.cfop }}
+            </div>
+
+            <div>
+                {{ filter.form.produto.label_tag }}<br>
+                {{ filter.form.produto }}
+            </div>
+
+            <div>
+                {{ filter.form.tipo_produto.label_tag }}<br>
+                {{ filter.form.tipo_produto }}
+            </div>
+
+
+            <div style="display:flex; gap:6px; align-items:center;">
+                <button type="submit" style="padding:6px 10px;">Aplicar</button>
+                <a href="{% url 'lista_notas' %}" style="padding:6px 10px; background:#f8f9fa; border:1px solid #ddd; text-decoration:none; color:#333;">Limpar</a>
+            </div>
+        </form>
+    </div>
+    
+    <table id="tabelaNotas" class="display nowrap" style="width:100%">
+        <thead>
+            <tr>
+                <th>Filial</th>
+                <th>Nota</th>
+                <th>Emissão</th>
+                <th>Nº Pedido</th>
+                <th>Vendedor</th>
+                <th>Cliente</th>
+                <th>CFOP</th>
+                <th>Tipo</th>
+                <th>Produto</th>
+                <th>Lote</th>
+                <th>Qtd</th>
+                <th>Vl. Contábil</th>
+                <th>Custo</th>
+                <th>Margem Bruta</th>
+                <th>Margem Bruta %</th>
+                <th>Estoque?</th>
+                <th>Duplicata?</th>
+                <th>Armazém</th>
+                <th>Gp. Amar. CTB</th>
+                <th>UF</th>
+                <th>Vl. Unit</th>
+                <th>IPI</th>
+                <th>Imp5</th>
+                <th>Imp6</th>
+                <th>Difal</th>
+                <th>ICMS</th>
+                <th>Aliq %</th>
+                <th>Justificativa</th>
+            </tr>
+        </thead>
+        <tbody> 
+            {% comment %}
+            <!-- {% for nota in filter.qs %} -->
+            {% endcomment %}
+            
+            {% for nota in object_list %}
+            <tr>
+                <td>{{ nota.filial }}</td>
+                <td><strong>{{ nota.nota }}</strong></td>
+                <td>{{ nota.data_emissao|date:"d/m/Y" }}</td>
+                <td>{{ nota.no_pedido }}</td>
+                <td>{{ nota.vendedor|default:"-" }}</td>
+
+                <td>
+                    <span class="text-truncate" title="{{ nota.cod_cliente }} - {{ nota.cliente }}">
+                        {{ nota.cliente|default:"-" }}
+                    </span>
+                </td>
+                <td>
+                    <span class="text-truncate" title="{{ nota.cfop }} - {{ nota.cfop_descri }}">{{ nota.cfop }} - {{ nota.cfop_descri }}</span>
+                </td>
+                <td>{{ nota.tipo_produto }}</td>
+                
+                <td>
+                    <span class="text-truncate" title="{{ nota.cod_produto }} - {{ nota.produto }}">
+                        {{ nota.cod_produto }} - {{ nota.produto }}
+                    </span>
+                </td>
+                <td>{{ nota.lote|default:"-" }}</td>
+
+                <td class="text-right">{{ nota.quantidade }}</td>
+                <td class="text-right" style="font-weight:bold;">{{ nota.valor_contabil }}</td>
+                
+                {% comment %}
+                    <!-- {% if nota.ultimo_custo_valor %} contenteditable="true"
+                    {{ nota.ultimo_custo_valor }}
+                    {% else %}
+                    -
+                    {% endif %} -->
+                {% endcomment %}
+
+                <td class="text-right" style="font-weight:bold;">
+                    <input type="number" 
+                        step="0.01" 
+                        class="form-control custo-input" 
+                        value="{{ nota.ultimo_custo_valor|default_if_none:'0'|stringformat:'.2f' }}" 
+                        data-original="{{ nota.ultimo_custo_valor|default_if_none:'0'|stringformat:'.2f' }}"
+                        data-chave="{{ nota.chave }}"
+                        onfocus="mostrarValorAntigo(this)"
+                        onchange="atualizarCusto(this)">
+                </td>
+                
+                <td class="text-right celula-margem-bruta" style="font-weight:bold;">
+                    {% if nota.margem_bruta %}
+                        {{ nota.margem_bruta|floatformat:2 }}
+                    {% else %} 
+                        - 
+                    {% endif %}
+                </td>
+                
+                <td class="text-right celula-margem-pct" style="font-weight:bold;">
+                    {% if nota.margem_percentual %}
+                        {{ nota.margem_percentual|floatformat:2 }}%
+                    {% else %} 
+                        - 
+                    {% endif %}
+                </td>
+                
+                <td class="text-center">
+                    {% if nota.atualiza_estoque %}
+                    <i class="fa fa-check-circle icon-true"></i>
+                    {% else %}
+                    <i class="fa fa-times-circle icon-false"></i>
+                    {% endif %}
+                </td>
+                <td class="text-center">
+                    {% if nota.gera_duplicata == 'S' or nota.gera_duplicata == True %} 
+                    <i class="fa fa-check-circle icon-true"></i>
+                    {% else %}
+                    <i class="fa fa-times-circle icon-false"></i>
+                    {% endif %}
+                </td>
+                
+                <td>{{ nota.armazem }}</td>
+                <td>{{ nota.grp_amar_ctb }}</td>
+                <td class="text-center">{{ nota.estado_destino }}</td>
+                
+                <td class="text-right">{{ nota.valor_unitario }}</td>
+                <td class="text-right">{{ nota.valor_ipi }}</td>
+                <td class="text-right">{{ nota.valor_imp5 }}</td>
+                <td class="text-right">{{ nota.valor_imp6 }}</td>
+                <td class="text-right">{{ nota.valor_icms_difal }}</td>
+                <td class="text-right">{{ nota.valor_icms }}</td>
+                <td class="text-right">{{ nota.aliq_icms }}</td>
+                
+                <td class="text-right celula-justificativa">
+                    <select id="justificativa_{{ nota.id }}" 
+                    name="justificativa_nota_{{ nota.id }}" 
+                    data-chave="{{ nota.chave }}"
+                    onchange="atualizarJustificativa(this)"
+                    class="form-select">
+                    
+                    {# Só exibe o "Selecione..." se a nota NÃO tiver justificativa #}
+                    {% if not nota.justificativa_atual %}
+                    <option value="" {% if nota.justificativa_atual %} style="display:none;" {% endif %} disabled selected>
+                        Selecione...
+                    </option>
+                    {% endif %}
+                    
+                    {% for justificativa in lista_justificativas %}
+                    <option value="{{ justificativa.id }}" 
+                    {% if nota.justificativa_atual.id == justificativa.id %} selected {% endif %}>
+                    {{ justificativa.texto }}
+                    </option>
+                    {% endfor %}
+                </select>
+            </td>
+            
+            </tr>
+        {% empty %}
+            {% endfor %}
+        </tbody>
+    </table>
+
+    <div class="pagination" >
+        <span class="step-links">
+            {% if page_obj.has_previous %}
+                <a href="?page=1"><i class="fa fa-angle-double-left" aria-hidden="true"></i></a>
+                <a href="?page={{ page_obj.previous_page_number }}"><i class="fa fa-angle-left" aria-hidden="true"></i></a>
+            {% endif %}
+
+            <span class="current">
+                Página {{ page_obj.number }} de {{ page_obj.paginator.num_pages }}
+            </span>
+
+            {% if page_obj.has_next %}
+                <a href="?page={{ page_obj.next_page_number }}"><i class="fa fa-angle-right" aria-hidden="true"></i></a>
+                <a href="?page={{ page_obj.paginator.num_pages }}"><i class="fa fa-angle-double-right" aria-hidden="true"></i></a>
+            {% endif %}
+        </span>
+    </div>
+
+    <script src="https://cdn.datatables.net/1.13.6/js/jquery.dataTables.min.js"></script>
+    <script src="https://cdn.datatables.net/responsive/2.5.0/js/dataTables.responsive.min.js"></script>
+
+    <script>
+        $(document).ready( function () {
+            var table = $('#tabelaNotas').DataTable({
+                language: {
+                    url: '//cdn.datatables.net/plug-ins/1.13.6/i18n/pt-BR.json' // Tradução para PT-BR
+                },
+                responsive: true,
+                paging: false,    // Habilita paginação do DataTables
+                info: false,
+                searching: false,
+                columnDefs: [
+                    { targets: [0, 1, 8, 12, 13, 14, 27], responsivePriority: 1 },
+                    { targets: '_all', className: 'dt-head-nowrap' }
+                ]
+            });
+
+            // Ajusta pageLength para exibir todas as linhas carregadas (um mês) em uma página
+            var rowsCount = table.rows().count();
+            if (rowsCount > 0) {
+                table.page.len(rowsCount).draw(false);
+            }
+
+            // Funções para navegar mês a mês
+            function adjustMonth(current, delta) {
+                if (!current) return null;
+                var parts = current.split('-');
+                var y = parseInt(parts[0], 10);
+                var m = parseInt(parts[1], 10) - 1; // JS months 0-11
+                var d = new Date(y, m + delta, 1);
+                var newY = d.getFullYear();
+                var newM = (d.getMonth() + 1).toString().padStart(2, '0');
+                return newY + '-' + newM;
+            }
+
+            $('#prevMonth').on('click', function() {
+                var sel = $('#data_emissao_month');
+                var options = sel.find('option').not('[value=""]');
+                if (options.length === 0) return;
+                var currentVal = sel.val();
+                var idx = options.index(options.filter('[value="' + currentVal + '"]'));
+                if (idx === -1) idx = 0; // se não encontrado, aponta para o primeiro
+                var newIdx = Math.max(0, idx - 1);
+                var newVal = $(options.get(newIdx)).val();
+                sel.val(newVal);
+                sel.closest('form').submit();
+            });
+
+            $('#nextMonth').on('click', function() {
+                var sel = $('#data_emissao_month');
+                var options = sel.find('option').not('[value=""]');
+                if (options.length === 0) return;
+                var currentVal = sel.val();
+                var idx = options.index(options.filter('[value="' + currentVal + '"]'));
+                if (idx === -1) idx = 0;
+                var newIdx = Math.min(options.length - 1, idx + 1);
+                var newVal = $(options.get(newIdx)).val();
+                sel.val(newVal);
+                sel.closest('form').submit();
+            });
+        });
+    </script>
+    <script>
+        function atualizarCusto(inputElement) {
+            const chave = inputElement.getAttribute('data-chave');
+            const novoValor = inputElement.value;
+            const csrfToken = document.querySelector('[name=csrfmiddlewaretoken]').value;
+
+            // 1. Encontra a linha (TR) onde o input está
+            const linha = inputElement.closest('tr');
+            
+            // 2. Dentro dessa linha, busca as células pelas classes que definimos
+            const celulaBruta = linha.querySelector('.celula-margem-bruta');
+            const celulaPct = linha.querySelector('.celula-margem-pct');
+
+            // Feedback visual
+            inputElement.style.backgroundColor = "#f0f0f0";
+
+            fetch('/api/atualizar-custo/', { // Certifique-se que a URL está correta
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': csrfToken
+                },
+                body: JSON.stringify({
+                    'chave': chave,
+                    'valor': novoValor
+                })
+            })
+            .then(response => response.json())
+            .then(data => {
+                inputElement.style.backgroundColor = "white";
+                
+                if (data.success) {
+                    // 3. Atualiza o texto das células encontradas
+                    if (celulaBruta) celulaBruta.innerText = data.margem_bruta;
+                    if (celulaPct) celulaPct.innerText = data.margem_percentual;
+                    
+                    // Opcional: Cor
+                    if (celulaBruta) {
+                        celulaBruta.style.color = parseFloat(data.margem_bruta) < 0 ? 'red' : 'green';
+                    }
+                } else {
+                    alert('Erro: ' + data.error);
+                }
+            })
+            .catch(error => {
+                console.error('Erro:', error);
+                inputElement.style.backgroundColor = "#ffcccc";
+            });
+        }
+    </script>
+    <script>
+        function atualizarJustificativa(inputElement) {
+            const chave = inputElement.getAttribute('data-chave');
+            const novaJustificativaId = inputElement.value;
+            const csrfToken = document.querySelector('[name=csrfmiddlewaretoken]').value;
+
+            // Feedback visual de "processando"
+            inputElement.disabled = true; 
+
+            fetch('/api/atualizar-justificativa/', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': csrfToken
+                },
+                body: JSON.stringify({
+                    'chave': chave,
+                    'justificativa': novaJustificativaId
+                })
+            })
+            .then(response => response.json())
+            .then(data => {
+                inputElement.disabled = false;
+
+                if (data.success) {
+                    // REMOVE O "SELECIONE..." SEM PRECISAR DE F5
+                    const optionVazia = inputElement.querySelector('option[value=""]');
+                    if (optionVazia) {
+                        optionVazia.remove();
+                    }
+
+                    // Feedback visual de sucesso
+                    inputElement.style.border = "2px solid #28a745";
+                    setTimeout(() => { inputElement.style.border = "1px solid #ced4da"; }, 2000);
+                } else {
+                    alert('Erro: ' + data.error);
+                }
+            })
+            .catch(error => {
+                inputElement.disabled = false;
+                console.error('Erro:', error);
+            });
+        }
+    </script>
+    <script>
+        function mostrarValorAntigo(input) {
+            const tdPai = input.closest('td');
+            const valorAntigo = input.getAttribute('data-original');
+
+            // Verifica se a coluna de "Valor Anterior" já existe para não duplicar
+            if (!tdPai.querySelector('.valor-historico')) {
+                const novaColuna = document.createElement('span');
+                novaColuna.className = 'valor-historico';
+                novaColuna.style.display = 'block';
+                novaColuna.style.fontSize = '0.8em';
+                novaColuna.style.color = '#888';
+                novaColuna.innerText = "Anterior: " + valorAntigo;
+                
+                // Insere o texto informativo acima ou abaixo do input
+                tdPai.appendChild(novaColuna);
+            }
+        }
+    </script>
+</body>
+
+</html>
