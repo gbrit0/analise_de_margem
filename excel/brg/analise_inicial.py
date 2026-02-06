@@ -221,7 +221,7 @@ if __name__ == '__main__':
                 
                 with pyodbc.connect(connectionString) as con:
                     with con.cursor() as cursor:
-                        with open('querys/preco_base.sql','r', encoding='utf-8') as query:
+                        with open('brg/querys/preco_base.sql','r', encoding='utf-8') as query:
                             sql_query = query.read()
                         precos_base = pd.read_sql(sql_query, con)
                 
@@ -489,9 +489,9 @@ if __name__ == '__main__':
                             # =B2 - C2 - D2 - F2 - G2 - H2 - SE(OU(F{row_idx}="5101"; F{row_idx}="6101"; F{row_idx}="5116"; F{row_idx}="6116"; F{row_idx}="6107"); AC{row_idx}*0,02; AC{row_idx})
                                                         
                         formula_margem = (
-                            f'=U{row_idx+1}-V{row_idx+1}-X{row_idx+1}-Y{row_idx+1}-Z{row_idx+1}-AA{row_idx+1}-'
-                            f'IF(OR(F{row_idx+1}="5101", F{row_idx+1}="6101", F{row_idx+1}="5116", F{row_idx+1}="6116", F{row_idx+1}="6107"), '
-                            f'AB{row_idx+1}*0.02, AB{row_idx+1})'
+                            f'=V{row_idx+1}-W{row_idx+1}-Y{row_idx+1}-Z{row_idx+1}-AA{row_idx+1}-AB{row_idx+1}-'
+                            f'IF(OR(G{row_idx+1}="5101", G{row_idx+1}="6101", G{row_idx+1}="5116", G{row_idx+1}="6116", G{row_idx+1}="6107"), '
+                            f'AC{row_idx+1}*0.02, AC{row_idx+1})'
                         )
 
                         # Escreve a fórmula da Margem (Coluna AE / Índice 30)
