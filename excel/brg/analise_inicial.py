@@ -486,7 +486,7 @@ if __name__ == '__main__':
                                 # Sobrescreve a célula com o valor e o formato colorido
                                 worksheet.write(row_idx, col_idx, valor_celula, formato_final)
                                 
-                            # =B2 - C2 - D2 - F2 - G2 - H2 - SE(OU(F{row_idx}="5101"; F{row_idx}="6101"; F{row_idx}="5116"; F{row_idx}="6116"; F{row_idx}="6107"); AC{row_idx}*0,02; AC{row_idx})
+                            # =B2 - C2 - D2 - F2 - G2 - H2 - SE(OU(G{row_idx}="5101"; G{row_idx}="6101"; G{row_idx}="5116"; G{row_idx}="6116"; G{row_idx}="6107"); AC{row_idx}*0,02; AC{row_idx})
                                                         
                         formula_margem = (
                             f'=V{row_idx+1}-W{row_idx+1}-Y{row_idx+1}-Z{row_idx+1}-AA{row_idx+1}-AB{row_idx+1}-'

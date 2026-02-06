@@ -54,4 +54,11 @@ class NotaFilter(django_filters.FilterSet):
             Q(cfop__icontains=value) | Q(cfop_descri__icontains=value)
         )
         
+    def filter_filial(self, queryset, name, value):
+        """Filtra notas por filial"""
+        if not value:
+            return queryset
+        return queryset.filter(
+            Q(filial__icontains=value) | Q(filial_descri__icontains=value)
+        )
 
