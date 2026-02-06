@@ -67,7 +67,7 @@ def busca_nfs() -> list[tuple]:
     
     with pyodbc.connect(connectionString) as con:
         with con.cursor() as cursor:
-            with open("querys/analise.sql", "r", encoding="utf-8") as query:
+            with open("brg/querys/analise.sql", "r", encoding="utf-8") as query:
                 
                 values = (int(ultima_nf),)
                 cursor.execute(query.read(), values)
