@@ -4,6 +4,7 @@ from users.models import CustomUser
 class Nota(models.Model):
     chave = models.CharField(primary_key=True, max_length=50)
     filial = models.CharField(default=None, blank=False, max_length=50)
+    nome_filial = models.CharField(default=None, blank=False, max_length=80)
     nota = models.CharField(default=None, blank=False, max_length=20)
     no_pedido = models.CharField(default=None, blank=False, max_length=15)
     vendedor = models.CharField(default=None, blank=False, null=True, max_length=60)

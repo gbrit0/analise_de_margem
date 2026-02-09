@@ -8,6 +8,7 @@ class NotaFilter(django_filters.FilterSet):
     # Filtro por mês/ano no formato YYYY-MM (renderizamos um <input type="month"> no template)
     data_emissao_month = CharFilter(method='filter_by_month', label='Mês')
 
+    filial = CharFilter(method='filter_filial', label='Filial (código ou nome)')
     lote = CharFilter(field_name='lote', lookup_expr='icontains', label='Lote')
     cfop = CharFilter(method='filter_cfop', label='CFOP (código ou descrição)')
     # Permite busca por nome do produto OU código do produto
@@ -59,6 +60,6 @@ class NotaFilter(django_filters.FilterSet):
         if not value:
             return queryset
         return queryset.filter(
-            Q(filial__icontains=value) | Q(filial_descri__icontains=value)
+            Q(filial__icontains=value) | Q(nome_filial__icontains=value)
         )
 

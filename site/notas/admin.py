@@ -10,6 +10,40 @@ class CustomNotasAdmin(admin.ModelAdmin):
     list_display = ['filial', 'nota', 'no_pedido', 'produto',]
     list_display_links = ['filial', 'nota', 'no_pedido', 'produto',]
     search_fields = ['filial', 'nota', 'no_pedido', 'produto',]
+    readonly_fields = [
+        'chave',
+        'filial',
+        'nome_filial',
+        'nota',
+        'no_pedido',
+        'vendedor',
+        'data_emissao',
+        'lote',
+        'cfop',
+        'cfop_descri',
+        'atualiza_estoque',
+        'gera_duplicata',
+        'cod_produto',
+        'produto',
+        'tipo_produto',
+        'armazem',
+        'cod_cliente',
+        'loja',
+        'cliente',
+        'grp_amar_ctb',
+        'classificacao_produto',
+        'estado_destino',
+        'quantidade',
+        'valor_contabil',
+        'valor_unitario',
+        'valor_ipi',
+        'valor_imp5',
+        'valor_imp6',
+        'valor_icms_difal',
+        'valor_icms',
+        'aliq_icms',
+        'delete',
+    ]
     
 class CustomCustoAdmin(admin.ModelAdmin):
     list_display = ['id', 'chave', 'valor', 'data_cadastro', 'usuario']
