@@ -21,5 +21,6 @@ import notas
 
 urlpatterns = [
     path('admin/', admin.site.urls),
-    path('', include('notas.urls'))
+    path('', include('notas.urls')),
+    path('', include('users.urls'))
 ]

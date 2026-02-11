@@ -1,0 +1,63 @@
+{% extends 'base.html' %}
+
+{% block page_title %}Estatíticas  - Análise de Margem{% endblock %}
+
+{% block content %}
+
+    <div style="width: 60%; margin: auto;">
+        <h2>Relatório de Faturamento por Categoria</h2>
+        <div style="margin-bottom: 20px; text-align: center;">
+            <label for="data_inicio">Data Início:</label>
+            <input type="date" id="data_inicio">
+            <label for="data_fim">Data Fim:</label>
+            <input type="date" id="data_fim">
+            <label for="filial">Filial:</label>
+            <input type="text" id="filial">
+            <button onclick="atualizarDashboard()">Filtrar Relatório</button>
+        </div>
+        <canvas id="meuGrafico"></canvas>
+    </div>
+
+    
+
+    <script>
+        let meuGrafico; // Variável global para podermos destruir e recriar o gráfico
+
+        function atualizarDashboard() {
+            const inicio = document.getElementById('data_inicio').value;
+            const fim = document.getElementById('data_fim').value;
+            const filial = document.getElementById('filial').value;
+
+            // Monta a URL com os filtros
+            const url = `/api/estatisticas/?inicio=${inicio}&fim=${fim}&filial=${filial}`;
+
+            fetch(url)
+                .then(response => response.json())
+                .then(dados => {
+                    const ctx = document.getElementById('meuGrafico').getContext('2d');
+
+                    // Se o gráfico já existe, precisamos destruí-lo antes de criar um novo
+                    if (meuGrafico) {
+                        meuGrafico.destroy();
+                    }
+
+                    meuGrafico = new Chart(ctx, {
+                        type: 'bar',
+                        data: {
+                            labels: dados.labels,
+                            datasets: [{
+                                label: 'Faturamento por Período',
+                                data: dados.total_vendas,
+                                backgroundColor: '#4e73df'
+                            }]
+                        }
+                    });
+                });
+        }
+
+        // Carrega o gráfico pela primeira vez sem filtros
+        atualizarDashboard();
+    </script>
+    
+
+{% endblock %}

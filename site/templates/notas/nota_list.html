@@ -1,66 +1,6 @@
-<!DOCTYPE html>
-<html lang="pt-br">
-<head>
-    <meta charset="UTF-8">
-    <title>Gerenciamento de Notas</title>
-    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
-    
-    <link rel="stylesheet" href="https://cdn.datatables.net/1.13.6/css/jquery.dataTables.min.css" />
-    <link rel="stylesheet" href="https://cdn.datatables.net/responsive/2.5.0/css/responsive.dataTables.min.css" />
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-
-    <style>
-        /* ESTILO PARA ALTA DENSIDADE DE DADOS */
-        
-        body {
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            font-size: 12px; /* Fonte base menor */
-            background-color: #f4f6f9;
-            padding: 20px;
-        }
-
-        /* Compactar células */
-        table.dataTable tbody th, table.dataTable tbody td {
-            padding: 4px 8px !important; /* Reduz espaçamento interno */
-            white-space: nowrap; /* Tenta manter em uma linha */
-            vertical-align: middle;
-        }
-
-        /* Cabeçalho mais elegante */
-        table.dataTable thead th {
-            background-color: #2c3e50;
-            color: white;
-            font-weight: 600;
-            padding: 8px !important;
-            font-size: 11px;
-            text-transform: uppercase;
-        }
-
-        /* Limitar largura de colunas de texto longo e adicionar reticências (...) */
-        .text-truncate {
-            max-width: 150px;
-            overflow: hidden;
-            text-overflow: ellipsis;
-            white-space: nowrap;
-            display: block;
-        }
-
-        /* Alinhamento de números */
-        .text-right { text-align: right; font-family: 'Consolas', monospace; }
-        .text-center { text-align: center; }
-
-        /* Estilo para ícones de status */
-        .icon-true { color: green; }
-        .icon-false { color: #ccc; }
-        
-        /* Destaque ao passar o mouse */
-        table.dataTable tbody tr:hover {
-            background-color: #eab676 !important; /* Cor de destaque amarela suave */
-        }
-    </style>
-</head>
-
-<body>
+{% extends 'base.html' %}
+{% block page_title %}Notas Fiscais  - Análise de Margem{% endblock %}
+{% block content %}
     {% csrf_token %}
 
     {# Painel de filtros - envia via GET e integra com django-filter (NotaFilter) #}
@@ -71,14 +11,14 @@
             <div style="display:flex; flex-direction:column;">
                 <label for="data_emissao_month">Mês</label>
                 <div style="display:flex; gap:6px; align-items:center;">
-                    <button type="button" id="prevMonth" title="Mês anterior" style="padding:4px 6px;">◀</button>
+                    <button type="button" id="nextMonth" title="Próximo mês" style="padding:4px 6px;">◀</button>
                     <select id="data_emissao_month" name="data_emissao_month">
                         <option value="">Todos</option>
                         {% for m in meses_disponiveis %}
                             <option value="{{ m.value }}" {% if m.value == selected_month %}selected{% endif %}>{{ m.label }}</option>
                         {% endfor %}
                     </select>
-                    <button type="button" id="nextMonth" title="Próximo mês" style="padding:4px 6px;">▶</button>
+                    <button type="button" id="prevMonth" title="Mês anterior" style="padding:4px 6px;">▶</button>
                 </div>
             </div>
 
@@ -164,141 +104,144 @@
             {% endcomment %}
             
             {% for nota in object_list %}
-            <tr>
-                <td>{{ nota.filial }}</td>
-                <td><strong>{{ nota.nota }}</strong></td>
-                <td>{{ nota.data_emissao|date:"d/m/Y" }}</td>
-                <td>{{ nota.no_pedido }}</td>
-                <td>{{ nota.vendedor|default:"-" }}</td>
-
-                <td>
-                    <span class="text-truncate" title="{{ nota.cod_cliente }} - {{ nota.cliente }}">
-                        {{ nota.cliente|default:"-" }}
-                    </span>
-                </td>
-                <td>
-                    <span class="text-truncate" title="{{ nota.cfop }} - {{ nota.cfop_descri }}">{{ nota.cfop }} - {{ nota.cfop_descri }}</span>
-                </td>
-                <td>{{ nota.tipo_produto }}</td>
-                
-                <td>
-                    <span class="text-truncate" title="{{ nota.cod_produto }} - {{ nota.produto }}">
-                        {{ nota.cod_produto }} - {{ nota.produto }}
-                    </span>
-                </td>
-                <td>{{ nota.lote|default:"-" }}</td>
-
-                <td class="text-right">{{ nota.quantidade }}</td>
-                <td class="text-right" style="font-weight:bold;">{{ nota.valor_contabil }}</td>
-                
-                {% comment %}
-                    <!-- {% if nota.ultimo_custo_valor %} contenteditable="true"
-                    {{ nota.ultimo_custo_valor }}
-                    {% else %}
-                    -
-                    {% endif %} -->
-                {% endcomment %}
-
-                <td class="text-right" style="font-weight:bold;">
-                    <input type="number" 
-                        step="0.01" 
-                        class="form-control custo-input" 
-                        value="{{ nota.ultimo_custo_valor|default_if_none:'0'|stringformat:'.2f' }}" 
-                        data-original="{{ nota.ultimo_custo_valor|default_if_none:'0'|stringformat:'.2f' }}"
-                        data-chave="{{ nota.chave }}"
-                        onfocus="mostrarValorAntigo(this)"
-                        onchange="atualizarCusto(this)">
-                </td>
-                
-                <td class="text-right celula-margem-bruta" style="font-weight:bold;">
-                    {% if nota.margem_bruta %}
-                        {{ nota.margem_bruta|floatformat:2 }}
-                    {% else %} 
-                        - 
-                    {% endif %}
-                </td>
-                
-                <td class="text-right celula-margem-pct" style="font-weight:bold;">
-                    {% if nota.margem_percentual %}
-                        {{ nota.margem_percentual|floatformat:2 }}%
-                    {% else %} 
-                        - 
-                    {% endif %}
-                </td>
-                
-                <td class="text-center">
-                    {% if nota.atualiza_estoque %}
-                    <i class="fa fa-check-circle icon-true"></i>
-                    {% else %}
-                    <i class="fa fa-times-circle icon-false"></i>
-                    {% endif %}
-                </td>
-                <td class="text-center">
-                    {% if nota.gera_duplicata == 'S' or nota.gera_duplicata == True %} 
-                    <i class="fa fa-check-circle icon-true"></i>
-                    {% else %}
-                    <i class="fa fa-times-circle icon-false"></i>
-                    {% endif %}
-                </td>
-                
-                <td>{{ nota.armazem }}</td>
-                <td>{{ nota.grp_amar_ctb }}</td>
-                <td class="text-center">{{ nota.estado_destino }}</td>
-                
-                <td class="text-right">{{ nota.valor_unitario }}</td>
-                <td class="text-right">{{ nota.valor_ipi }}</td>
-                <td class="text-right">{{ nota.valor_imp5 }}</td>
-                <td class="text-right">{{ nota.valor_imp6 }}</td>
-                <td class="text-right">{{ nota.valor_icms_difal }}</td>
-                <td class="text-right">{{ nota.valor_icms }}</td>
-                <td class="text-right">{{ nota.aliq_icms }}</td>
-                
-                <td class="text-right celula-justificativa">
-                    <select id="justificativa_{{ nota.id }}" 
-                    name="justificativa_nota_{{ nota.id }}" 
-                    data-chave="{{ nota.chave }}"
-                    onchange="atualizarJustificativa(this)"
-                    class="form-select">
-                    
-                    {# Só exibe o "Selecione..." se a nota NÃO tiver justificativa #}
-                    {% if not nota.justificativa_atual %}
-                    <option value="" {% if nota.justificativa_atual %} style="display:none;" {% endif %} disabled selected>
-                        Selecione...
-                    </option>
-                    {% endif %}
-                    
-                    {% for justificativa in lista_justificativas %}
-                    <option value="{{ justificativa.id }}" 
-                    {% if nota.justificativa_atual.id == justificativa.id %} selected {% endif %}>
-                    {{ justificativa.texto }}
-                    </option>
-                    {% endfor %}
-                </select>
-            </td>
             
-            </tr>
-        {% empty %}
+                {% if nota.cod_produto != 'E000H2P8' and nota.cod_produto != 'B0010046' %}
+                    <tr>
+                        <td>{{ nota.filial }}</td>
+                        <td><strong>{{ nota.nota }}</strong></td>
+                        <td>{{ nota.data_emissao|date:"d/m/Y" }}</td>
+                        <td>{{ nota.no_pedido }}</td>
+                        <td>{{ nota.vendedor|default:"-" }}</td>
+
+                        <td>
+                            <span class="text-truncate" title="{{ nota.cod_cliente }} - {{ nota.cliente }}">
+                                {{ nota.cliente|default:"-" }}
+                            </span>
+                        </td>
+                        <td>
+                            <span class="text-truncate" title="{{ nota.cfop }} - {{ nota.cfop_descri }}">{{ nota.cfop }} - {{ nota.cfop_descri }}</span>
+                        </td>
+                        <td>{{ nota.tipo_produto }}</td>
+                        
+                        <td>
+                            <span class="text-truncate" title="{{ nota.cod_produto }} - {{ nota.produto }}">
+                                {{ nota.cod_produto }} - {{ nota.produto }}
+                            </span>
+                        </td>
+                        <td>{{ nota.lote|default:"-" }}</td>
+
+                        <td class="text-right">{{ nota.quantidade }}</td>
+                        <td class="text-right" style="font-weight:bold;">{{ nota.valor_contabil }}</td>
+                        
+                        {% comment %}
+                            <!-- {% if nota.ultimo_custo_valor %} contenteditable="true"
+                            {{ nota.ultimo_custo_valor }}
+                            {% else %}
+                            -
+                            {% endif %} -->
+                        {% endcomment %}
+
+                        <td class="text-right" style="font-weight:bold;">
+                            <input type="number" 
+                                step="0.01" 
+                                class="form-control custo-input" 
+                                value="{{ nota.ultimo_custo_valor|default_if_none:'0'|stringformat:'.2f' }}" 
+                                data-original="{{ nota.ultimo_custo_valor|default_if_none:'0'|stringformat:'.2f' }}"
+                                data-chave="{{ nota.chave }}"
+                                onfocus="mostrarValorAntigo(this)"
+                                onchange="atualizarCusto(this)">
+                        </td>
+                        
+                        <td class="text-right celula-margem-bruta" style="font-weight:bold;">
+                            {% if nota.margem_bruta %}
+                                {{ nota.margem_bruta|floatformat:2 }}
+                            {% else %} 
+                                - 
+                            {% endif %}
+                        </td>
+                        
+                        <td class="text-right celula-margem-pct" style="font-weight:bold;">
+                            {% if nota.margem_percentual %}
+                                {{ nota.margem_percentual|floatformat:2 }}%
+                            {% else %} 
+                                - 
+                            {% endif %}
+                        </td>
+                        
+                        <td class="text-center">
+                            {% if nota.atualiza_estoque %}
+                            <i class="fa fa-check-circle icon-true"></i>
+                            {% else %}
+                            <i class="fa fa-times-circle icon-false"></i>
+                            {% endif %}
+                        </td>
+                        <td class="text-center">
+                            {% if nota.gera_duplicata == 'S' or nota.gera_duplicata == True %} 
+                            <i class="fa fa-check-circle icon-true"></i>
+                            {% else %}
+                            <i class="fa fa-times-circle icon-false"></i>
+                            {% endif %}
+                        </td>
+                        
+                        <td>{{ nota.armazem }}</td>
+                        <td>{{ nota.grp_amar_ctb }}</td>
+                        <td class="text-center">{{ nota.estado_destino }}</td>
+                        
+                        <td class="text-right">{{ nota.valor_unitario }}</td>
+                        <td class="text-right">{{ nota.valor_ipi }}</td>
+                        <td class="text-right">{{ nota.valor_imp5 }}</td>
+                        <td class="text-right">{{ nota.valor_imp6 }}</td>
+                        <td class="text-right">{{ nota.valor_icms_difal }}</td>
+                        <td class="text-right">{{ nota.valor_icms }}</td>
+                        <td class="text-right">{{ nota.aliq_icms }}</td>
+                        
+                        <td class="text-right celula-justificativa">
+                            <select id="justificativa_{{ nota.id }}" 
+                                name="justificativa_nota_{{ nota.id }}" 
+                                data-chave="{{ nota.chave }}"
+                                onchange="atualizarJustificativa(this)"
+                                class="form-select">
+                                
+                                {# Só exibe o "Selecione..." se a nota NÃO tiver justificativa #}
+                                {% if not nota.justificativa_atual %}
+                                <option value="" {% if nota.justificativa_atual %} style="display:none;" {% endif %} disabled selected>
+                                    Selecione...
+                                </option>
+                                {% endif %}
+                                
+                                {% for justificativa in lista_justificativas %}
+                                <option value="{{ justificativa.id }}" 
+                                {% if nota.justificativa_atual.id == justificativa.id %} selected {% endif %}>
+                                {{ justificativa.texto }}
+                                </option>
+                                {% endfor %}
+                            </select>
+                        </td>
+                    </tr>
+                {% endif %}
             {% endfor %}
         </tbody>
     </table>
 
+    {% comment %}
     <div class="pagination" >
         <span class="step-links">
             {% if page_obj.has_previous %}
-                <a href="?page=1"><i class="fa fa-angle-double-left" aria-hidden="true"></i></a>
-                <a href="?page={{ page_obj.previous_page_number }}"><i class="fa fa-angle-left" aria-hidden="true"></i></a>
+            <a href="?page=1"><i class="fa fa-angle-double-left" aria-hidden="true"></i></a>
+            <a href="?page={{ page_obj.previous_page_number }}"><i class="fa fa-angle-left" aria-hidden="true"></i></a>
             {% endif %}
-
+            
             <span class="current">
                 Página {{ page_obj.number }} de {{ page_obj.paginator.num_pages }}
             </span>
-
+            
             {% if page_obj.has_next %}
-                <a href="?page={{ page_obj.next_page_number }}"><i class="fa fa-angle-right" aria-hidden="true"></i></a>
-                <a href="?page={{ page_obj.paginator.num_pages }}"><i class="fa fa-angle-double-right" aria-hidden="true"></i></a>
+            <a href="?page={{ page_obj.next_page_number }}"><i class="fa fa-angle-right" aria-hidden="true"></i></a>
+            <a href="?page={{ page_obj.paginator.num_pages }}"><i class="fa fa-angle-double-right" aria-hidden="true"></i></a>
             {% endif %}
         </span>
     </div>
+    {% endcomment %}
 
     <script src="https://cdn.datatables.net/1.13.6/js/jquery.dataTables.min.js"></script>
     <script src="https://cdn.datatables.net/responsive/2.5.0/js/dataTables.responsive.min.js"></script>
@@ -478,6 +421,4 @@
             }
         }
     </script>
-</body>
-
-</html>
+    {% endblock %}

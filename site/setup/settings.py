@@ -10,9 +10,10 @@ For the full list of settings and their values, see
 https://docs.djangoproject.com/en/5.2/ref/settings/
 """
 
-from pathlib import Path
-from dotenv import load_dotenv
 import os 
+from pathlib import Path
+from datetime import date
+from dotenv import load_dotenv
 
 load_dotenv(override=True)
 
@@ -157,3 +158,9 @@ PASS_SYSTEM = os.getenv("PASS_SYSTEM")
 
 USER_ADMIN=os.getenv("USER_ADMIN")
 PASS_ADMIN=os.getenv("PASS_ADMIN")
+
+
+hoje = date.today().strftime("%Y-%m")
+
+LOGIN_REDIRECT_URL = f'/notas/?data_emissao_month={hoje}'
+LOGOUT_REDIRECT_URL = ''

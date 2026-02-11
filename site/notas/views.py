@@ -1,28 +1,40 @@
-from django.shortcuts import render, get_object_or_404
-from django.http import HttpResponse, JsonResponse
 from django.utils import timezone
+from django.shortcuts import render
+from django.http import JsonResponse
 from django.views.generic import ListView
+from django.db.models import Sum, Count, Q
+from django_filters.views import FilterView
+from django.utils.dateparse import parse_date
+from django.db.models.functions import TruncMonth
+from django.http import HttpResponse, JsonResponse
+from django.shortcuts import render, get_object_or_404
+from django.contrib.auth.decorators import login_required
+from django.contrib.auth.mixins import LoginRequiredMixin
+from django.db.models.functions import Coalesce, ExtractYear, ExtractMonth
 from django.views.decorators.http import require_http_methods, require_POST
 from django.db.models import OuterRef, Subquery, DecimalField, Case, When, F, Value, ExpressionWrapper
-from django.db.models.functions import Coalesce, ExtractYear, ExtractMonth
-from django_filters.views import FilterView
-from decimal import Decimal
+
 
 import json
 import datetime
-
+from decimal import Decimal
+from .filters import NotaFilter
+from dateutil.relativedelta import relativedelta
 from .models import Justificativa, Nota, Custo, Margem, Nf_Has_Justificativa
 
-from .filters import NotaFilter
+mes_anterior = datetime.date.today() - relativedelta(month=1)
+mes_anterior = mes_anterior.strftime("%Y-%m")
 
-class NotasListView(FilterView, ListView):
+class NotasListView(LoginRequiredMixin, FilterView, ListView):
     model = Nota
-    filterset_class = NotaFilter
     # paginate_by = 25
-    ordering = ['-data_emissao'] 
+    filterset_class = NotaFilter
+    ordering = ['-data_emissao']
+    login_url = 'login/' 
     context_object_name = 'nota_list'
     template_name = 'notas/nota_list.html'
-    
+    redirect_field_name = f'/?data_emissao_month={mes_anterior}' # Filtrar as notas do mes anterior depois do login
+        
     def get_queryset(self):
         cfops_especiais = ['5101', '6101', '5116', '6116', '6107']
         # 1. Definimos a subquery para buscar o Custo relacionado
@@ -110,7 +122,7 @@ class NotasListView(FilterView, ListView):
 
         return context
     
-    
+@login_required
 @require_POST
 def atualizar_custo_api(request):
     try:
@@ -175,7 +187,7 @@ def atualizar_custo_api(request):
     except Exception as e:
         return JsonResponse({'error': str(e)}, status=500)
     
-
+@login_required
 @require_POST
 def atualizar_justificativa_api(request):
     try:
@@ -204,3 +216,60 @@ def atualizar_justificativa_api(request):
 
     except Exception as e:
         return JsonResponse({'success': False, 'error': str(e)}, status=500)
+
+# def estatisticas(request):
+#     try:
+#         # Exemplo de estatística: Margem Bruta Média por Mês
+#         estatistica_margem = Nota.objects.annotate(
+#             year=ExtractYear('data_emissao'),
+#             month=ExtractMonth('data_emissao')
+#         ).values('year', 'month').annotate(
+#             margem_media=Coalesce(Subquery(
+#                 Margem.objects.filter(chave=OuterRef('pk')).values('margem_bruta')[:1]
+#             ), 0)
+#         ).order_by('-year', '-month')
+
+#         return render(request, 'notas/estatisticas.html', {
+#             'estatistica_margem': estatistica_margem
+#         })
+#     except Exception as e:
+#         return render(request, 'notas/estatisticas.html', {
+#             'error': str(e)
+#         })
+        
+@login_required
+def dashboard_view(request):
+    return render(request, 'notas/estatisticas.html')
+
+@login_required
+def dados_vendas_api(request):
+    
+    data_inicio = request.GET.get('inicio')
+    data_fim = request.GET.get('fim')
+    filial = request.GET.get('filial')
+        
+    queryset = Nota.objects.all()
+    
+    if data_inicio:
+        queryset = queryset.filter(data_emissao__gte=parse_date(data_inicio))
+    if data_fim:
+        queryset = queryset.filter(data_emissao__lte=parse_date(data_fim))
+    if filial:
+        queryset = queryset.filter(
+            Q(filial__icontains=filial) | Q(nome_filial__icontains=filial)
+        )
+    
+        
+    queryset = queryset.annotate(
+        mes=TruncMonth('data_emissao')
+    ).values('mes').annotate(
+        total_vendas=Sum('valor_contabil')
+    ).order_by('mes')
+    
+    labels = [item['mes'].strftime('%b/%Y') for item in queryset]
+    tota_vendas = [float(item['total_vendas']) for item in queryset]
+    
+    return JsonResponse({
+        'labels': labels,
+        'total_vendas': tota_vendas,
+    })

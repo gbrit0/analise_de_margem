@@ -1,0 +1,180 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+    <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+        <title>{% block page_title %}{% endblock %}</title>
+        <!-- jQuery (usado pelo DataTables e alguns scripts existentes) -->
+        <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+
+        <!-- DataTables e Font Awesome -->
+        <link rel="stylesheet" href="https://cdn.datatables.net/1.13.6/css/jquery.dataTables.min.css" />
+        <link rel="stylesheet" href="https://cdn.datatables.net/responsive/2.5.0/css/responsive.dataTables.min.css" />
+        <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+        
+        <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+        
+        <!-- Vue.js -->
+        <script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
+
+        <style>
+            /* ESTILO PARA ALTA DENSIDADE DE DADOS */
+            body {
+                font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+                font-size: 12px; /* Fonte base menor */
+                background-color: #f4f6f9;
+                padding: 20px;
+            }
+
+            /* Compactar células */
+            table.dataTable tbody th, table.dataTable tbody td {
+                padding: 4px 8px !important; /* Reduz espaçamento interno */
+                white-space: nowrap; /* Tenta manter em uma linha */
+                vertical-align: middle;
+            }
+
+            /* Cabeçalho mais elegante */
+            table.dataTable thead th {
+                background-color: #2c3e50;
+                color: white;
+                font-weight: 600;
+                padding: 8px !important;
+                font-size: 11px;
+                text-transform: uppercase;
+            }
+
+            .text-truncate {
+                max-width: 150px;
+                overflow: hidden;
+                text-overflow: ellipsis;
+                white-space: nowrap;
+                display: block;
+            }
+
+            /* Alinhamento de números */
+            .text-right { text-align: right; font-family: 'Consolas', monospace; }
+            .text-center { text-align: center; }
+
+            /* Estilo para ícones de status */
+            .icon-true { color: green; }
+            .icon-false { color: #ccc; }
+
+            /* Destaque ao passar o mouse */
+            table.dataTable tbody tr:hover {
+                background-color: #eab676 !important; /* Cor de destaque amarela suave */
+            }
+
+            /* Navbar sem Bootstrap */
+            .app-header {
+                margin-bottom: 12px;
+            }
+
+            .app-nav {
+                display: flex;
+                align-items: center;
+                gap: 12px;
+                padding: 10px 14px;
+                background: #ffffff;
+                border: 1px solid #d7dde5;
+                border-radius: 8px;
+            }
+
+            .app-nav__brand {
+                font-weight: 700;
+                color: #1b2635;
+                text-decoration: none;
+                margin-right: 8px;
+            }
+
+            .app-nav__links {
+                display: flex;
+                gap: 10px;
+                flex-wrap: wrap;
+                list-style: none;
+                padding: 0;
+                margin: 0;
+            }
+
+            .app-nav__link {
+                color: #1f2d3d;
+                text-decoration: none;
+                padding: 6px 10px;
+                border-radius: 6px;
+            }
+
+            .app-nav__link:hover {
+                background: #eef2f7;
+            }
+
+            .app-nav__spacer {
+                flex: 1 1 auto;
+            }
+
+            .app-nav__logout {
+                border: 1px solid #c0392b;
+                color: #c0392b;
+                text-decoration: none;
+                padding: 6px 10px;
+                border-radius: 6px;
+                font-weight: 600;
+            }
+            .bg-green {
+                background: #1BC98E;
+            }
+
+            .bg-red {
+                background: #E64759;
+            }
+
+            .bg-purple {
+                background: #9F86FF;
+            }
+
+            .bg-blue {
+                background: #244bda;
+            }
+
+            .app-nav__logout:hover {
+                background: #c0392b;
+                color: #ffffff;
+            }
+
+            @media (max-width: 720px) {
+                .app-nav {
+                    flex-wrap: wrap;
+                }
+
+                .app-nav__spacer {
+                    display: none;
+                }
+            }
+        </style>
+        {% block scripts_head %}
+        {% endblock %}
+    </head>
+    <body>
+        <header class="app-header">
+            <nav class="app-nav">
+                <a class="app-nav__brand" href="{% url 'lista_notas' %}">Análise de Margem</a>
+                <ul class="app-nav__links">
+                    <li>
+                        <a class="app-nav__link" href="{% url 'lista_notas' %}">Análise</a>
+                    </li>
+                    <li>
+                        <a class="app-nav__link" href="{% url 'estatisticas' %}">Estatísticas</a>
+                    </li>
+                </ul>
+                <span class="app-nav__spacer" aria-hidden="true"></span>
+                <form class="app-nav__logout" action="{% url 'logout' %}" method="'post">
+                    {%csrf_token %}
+                    <button type='submit'>Sair</button>
+                </form>
+            </nav>
+        </header>
+
+        {% block content %}
+        {% endblock %}
+
+    
+    </body>
+</html>
