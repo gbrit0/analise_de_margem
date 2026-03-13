@@ -2,7 +2,7 @@ from django.utils import timezone
 from django.shortcuts import render
 from django.http import JsonResponse
 from django.views.generic import ListView
-from django.db.models import Sum, Count, Q
+from django.db.models import Sum, Count, Q, Avg
 from django_filters.views import FilterView
 from django.utils.dateparse import parse_date
 from django.db.models.functions import TruncMonth
@@ -43,6 +43,10 @@ class NotasListView(LoginRequiredMixin, FilterView, ListView):
             chave=OuterRef('pk')
         ).order_by('-data_cadastro').values('valor')[:1]
         
+        ultimo_custo = Custo.objects.filter(
+            chave=OuterRef('pk')
+        ).order_by('data_cadastro').values('valor')[:1]
+        
         justificativa_mais_recente = Nf_Has_Justificativa.objects.filter(
             nf=OuterRef('pk')
         ).order_by('-data_cadastro').values('justificativa')[:1]
@@ -50,8 +54,13 @@ class NotasListView(LoginRequiredMixin, FilterView, ListView):
         
         # 2. Anotamos o queryset principal da Nota com esse valor
         queryset = Nota.objects.annotate(
-            ultimo_custo_valor=Coalesce(
+            custo_mais_recente=Coalesce(
                 Subquery(custo_mais_recente), 
+                0, 
+                output_field=DecimalField()
+            ),
+            ultimo_custo_valor=Coalesce(
+                Subquery(ultimo_custo), 
                 0, 
                 output_field=DecimalField()
             ),
@@ -62,7 +71,7 @@ class NotasListView(LoginRequiredMixin, FilterView, ListView):
             ),
             margem_bruta=ExpressionWrapper(
                 F('valor_contabil') 
-                - F('ultimo_custo_valor') 
+                - F('custo_mais_recente') 
                 - F('valor_ipi') 
                 - F('valor_imp5') 
                 - F('valor_imp6') 
@@ -105,11 +114,13 @@ class NotasListView(LoginRequiredMixin, FilterView, ListView):
         # Valor selecionado atualmente (vindo dos GET params)
         selected = self.request.GET.get('data_emissao_month', '')
 
+        filial = self.request.GET.get('filial', '')
+        context['filial_selecionada'] = filial
+        
         # Se não veio valor no GET, tenta preencher com mês atual (se houver dados),
         # caso contrário preenche com o mês mais recente disponível.
         if not selected:
-            from datetime import datetime
-            hoje = datetime.today()
+            hoje = datetime.datetime.today()
             atual = f"{hoje.year}-{hoje.month:02d}"
             # se atual estiver na lista de meses disponiveis, usa; senão usa o primeiro disponível
             valores = [m['value'] for m in meses]
@@ -119,7 +130,11 @@ class NotasListView(LoginRequiredMixin, FilterView, ListView):
                 selected = valores[0]
 
         context['selected_month'] = selected
-
+        
+        # context['mes_anterior'] = (datetime.date.today() - relativedelta(month=1)).strftime("%Y-%m")
+        filiais = Nota.objects.values('filial', 'nome_filial').distinct()
+        context['filiais'] = filiais
+                
         return context
     
 @login_required
@@ -217,28 +232,14 @@ def atualizar_justificativa_api(request):
     except Exception as e:
         return JsonResponse({'success': False, 'error': str(e)}, status=500)
 
-# def estatisticas(request):
-#     try:
-#         # Exemplo de estatística: Margem Bruta Média por Mês
-#         estatistica_margem = Nota.objects.annotate(
-#             year=ExtractYear('data_emissao'),
-#             month=ExtractMonth('data_emissao')
-#         ).values('year', 'month').annotate(
-#             margem_media=Coalesce(Subquery(
-#                 Margem.objects.filter(chave=OuterRef('pk')).values('margem_bruta')[:1]
-#             ), 0)
-#         ).order_by('-year', '-month')
-
-#         return render(request, 'notas/estatisticas.html', {
-#             'estatistica_margem': estatistica_margem
-#         })
-#     except Exception as e:
-#         return render(request, 'notas/estatisticas.html', {
-#             'error': str(e)
-#         })
-        
 @login_required
 def dashboard_view(request):
+    
+    filiais = Nota.objects.values('filial', 'nome_filial').distinct()
+    
+    if filiais:
+        return render(request, 'notas/estatisticas.html', {'filiais': filiais})
+    
     return render(request, 'notas/estatisticas.html')
 
 @login_required
@@ -259,17 +260,25 @@ def dados_vendas_api(request):
             Q(filial__icontains=filial) | Q(nome_filial__icontains=filial)
         )
     
+    subquery_margem = Margem.objects.filter(
+        chave=OuterRef('chave')
+    ).values('margem_bruta_percentual').order_by('-custo__data_cadastro')[:1] # O Gemini disse: Para ordenar pelo atributo cadastro da tabela Custo (que possui a Foreign Key para Margem), você precisa utilizar a sintaxe de "follow relationship" do Django, que utiliza o duplo sublinhado (__).
         
     queryset = queryset.annotate(
         mes=TruncMonth('data_emissao')
     ).values('mes').annotate(
-        total_vendas=Sum('valor_contabil')
+        total_vendas=Sum('valor_contabil'),
+        margem=Avg(subquery_margem)*100
     ).order_by('mes')
     
     labels = [item['mes'].strftime('%b/%Y') for item in queryset]
-    tota_vendas = [float(item['total_vendas']) for item in queryset]
+    
+    total_vendas = [float(item['total_vendas']) for item in queryset]
+    margem_por_mes = [float(item['margem']) for item in queryset] 
     
     return JsonResponse({
+        # 'margem': queryset['margem_total'],
         'labels': labels,
-        'total_vendas': tota_vendas,
+        'total_vendas': total_vendas,
+        'margens_por_mes': margem_por_mes
     })

@@ -155,13 +155,13 @@
     <body>
         <header class="app-header">
             <nav class="app-nav">
-                <a class="app-nav__brand" href="{% url 'lista_notas' %}">Análise de Margem</a>
+                <a class="app-nav__brand" href="{% url 'lista_notas' %}?data_emissao_month={{selected_month}}">Análise de Margem</a>
                 <ul class="app-nav__links">
                     <li>
-                        <a class="app-nav__link" href="{% url 'lista_notas' %}">Análise</a>
+                        <a class="app-nav__brand" href="{% url 'lista_notas' %}?data_emissao_month={{selected_month}}">Análise</a>
                     </li>
                     <li>
-                        <a class="app-nav__link" href="{% url 'estatisticas' %}">Estatísticas</a>
+                        <a class="app-nav__link" href="{% url 'estatisticas' %}?data_emissao_month={{selected_month}}">Estatísticas</a>
                     </li>
                 </ul>
                 <span class="app-nav__spacer" aria-hidden="true"></span>

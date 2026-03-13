@@ -23,8 +23,24 @@
             </div>
 
             <div>
-                {{ filter.form.filial.label_tag }}<br>
-                {{ filter.form.filial }}
+                {% if filiais %}
+                <div style="display:flex; flex-direction:column;">
+                    <label for="filial">Filial</label>
+                    <div style="display:flex; gap:6px; align-items:center;">
+                        <select id="filial" name="filial">
+                            <option value="">Todas</option>
+                            {% for f in filiais %}
+                                <option value="{{ f.filial }}" {% if f.filial == filial_selecionada %}selected{% endif %}>
+                                    {{ f.filial }}{% if f.nome_filial %} - {{ f.nome_filial }}{% endif %}
+                                </option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                </div>
+                {% else %}
+                    {{ filter.form.filial.label_tag }}<br>
+                    {{ filter.form.filial }}
+                {% endif %}
             </div>
             
             <div>
@@ -145,7 +161,7 @@
                             <input type="number" 
                                 step="0.01" 
                                 class="form-control custo-input" 
-                                value="{{ nota.ultimo_custo_valor|default_if_none:'0'|stringformat:'.2f' }}" 
+                                value="{{ nota.custo_mais_recente|default_if_none:'0'|stringformat:'.2f' }}" 
                                 data-original="{{ nota.ultimo_custo_valor|default_if_none:'0'|stringformat:'.2f' }}"
                                 data-chave="{{ nota.chave }}"
                                 onfocus="mostrarValorAntigo(this)"
@@ -253,7 +269,7 @@
                     url: '//cdn.datatables.net/plug-ins/1.13.6/i18n/pt-BR.json' // Tradução para PT-BR
                 },
                 responsive: true,
-                paging: false,    // Habilita paginação do DataTables
+                paging: false,    // Desabilita paginação do DataTables
                 info: false,
                 searching: false,
                 columnDefs: [
@@ -414,7 +430,7 @@
                 novaColuna.style.fontSize = '0.8em';
                 novaColuna.style.padding = '1em 0.5em 0.5em 0.5em';
                 novaColuna.style.color = '#888';
-                novaColuna.innerText = "Anterior: " + valorAntigo;
+                novaColuna.innerText = "Custo no Protheus: " + valorAntigo;
                 
                 // Insere o texto informativo acima ou abaixo do input
                 tdPai.appendChild(novaColuna);

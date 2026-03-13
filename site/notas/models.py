@@ -57,6 +57,9 @@ class Custo(models.Model):
     class Meta():
         verbose_name = "Custo"
         verbose_name_plural = "Custos"
+        
+    def __str__(self):
+        return str(self.valor)
 
 class Justificativa(models.Model):
     texto = models.CharField(max_length=150)
@@ -85,6 +88,7 @@ class Margem(models.Model):
     custo = models.ForeignKey(to=Custo, on_delete=models.PROTECT)
     margem_bruta = models.DecimalField(max_digits=18, decimal_places=2)
     margem_bruta_percentual = models.DecimalField(max_digits=18, decimal_places=4)
+    # cadastro = models.DateTimeField(auto_created=True, auto_now=True)
     
     class Meta():
         verbose_name = "Margem"

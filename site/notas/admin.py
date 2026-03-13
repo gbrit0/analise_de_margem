@@ -56,7 +56,7 @@ class CustomNf_Has_JustificativaAdmin(admin.ModelAdmin):
     search_fields = ['nf', 'justificativa', 'data_cadastro', 'usuario']
 
 class CustomMargemAdmin(admin.ModelAdmin):
-    list_display = ["chave", "custo", "margem_bruta", "margem_bruta_percentual", ]
+    list_display = ["chave", "custo", "margem_bruta", "margem_bruta_percentual", ] # "cadastro"
     list_display_links = ["chave", "custo", "margem_bruta", "margem_bruta_percentual", ]
     search_fields = ["chave", "custo", "margem_bruta", "margem_bruta_percentual", ]
     

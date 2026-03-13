@@ -1,9 +1,10 @@
-from django.core.management.base import BaseCommand
-from django.db import transaction
-from notas.models import Nota, Custo, Margem
+import os
 import pyodbc
 from dotenv import load_dotenv
-import os
+from django.db import transaction
+from django.db.utils import IntegrityError
+from notas.models import Nota, Custo, Margem
+from django.core.management.base import BaseCommand
 
 class Command(BaseCommand):
     help = 'Sincroniza dados do Django com o Protheus'
@@ -111,6 +112,7 @@ class Command(BaseCommand):
                         D2.D_E_L_E_T_ <> '*'
                         AND D2_EMISSAO >= 20250901 -- AND 20250930
                         AND D2_FILIAL IN ('0101', '0501', '0502', '0503')
+                        AND TRIM(B1.B1_COD) NOT IN ('B0010046', 'E000H2P8')
                 """
                 
                 cursor.execute(query)
@@ -120,43 +122,48 @@ class Command(BaseCommand):
                 
                 with transaction.atomic():
                     for row in rows:
-                        obj, created = Nota.objects.update_or_create(
-                            chave=row[1], # chave - campo único
-                            defaults={
-                                'chave': row[0],
-                                'filial': row[1],
-                                'nome_filial': row[2],
-                                'nota': row[3],
-                                'no_pedido': row[4],
-                                'vendedor': row[5],
-                                'data_emissao': row[6],
-                                'lote': row[7],
-                                'cfop': row[8],
-                                'cfop_descri': row[9],
-                                'atualiza_estoque': row[10],
-                                'gera_duplicata': row[11],
-                                'cod_produto': row[12],
-                                'produto': row[13],
-                                'tipo_produto': row[14],
-                                'armazem': row[15],
-                                'cod_cliente': row[16],
-                                'loja': row[17],
-                                'cliente': row[18],
-                                'grp_amar_ctb': row[19],
-                                'classificacao_produto': row[20],
-                                'estado_destino': row[21],
-                                'quantidade': row[22],
-                                'valor_contabil': row[23],
-                                # 'custo': row[23],
-                                'valor_unitario': row[25],
-                                'valor_ipi': row[26],
-                                'valor_imp5': row[27],
-                                'valor_imp6': row[28],
-                                'valor_icms_difal': row[29],
-                                'valor_icms': row[30],
-                                'aliq_icms': row[31],
-                            }
-                        )
+                        try:
+                            obj, created = Nota.objects.update_or_create(
+                                chave=row[1], # chave - campo único
+                                defaults={
+                                    'chave': row[0],
+                                    'filial': row[1],
+                                    'nome_filial': row[2],
+                                    'nota': row[3],
+                                    'no_pedido': row[4],
+                                    'vendedor': row[5],
+                                    'data_emissao': row[6],
+                                    'lote': row[7],
+                                    'cfop': row[8],
+                                    'cfop_descri': row[9],
+                                    'atualiza_estoque': row[10],
+                                    'gera_duplicata': row[11],
+                                    'cod_produto': row[12],
+                                    'produto': row[13],
+                                    'tipo_produto': row[14],
+                                    'armazem': row[15],
+                                    'cod_cliente': row[16],
+                                    'loja': row[17],
+                                    'cliente': row[18],
+                                    'grp_amar_ctb': row[19],
+                                    'classificacao_produto': row[20],
+                                    'estado_destino': row[21],
+                                    'quantidade': row[22],
+                                    'valor_contabil': row[23],
+                                    # 'custo': row[23],
+                                    'valor_unitario': row[25],
+                                    'valor_ipi': row[26],
+                                    'valor_imp5': row[27],
+                                    'valor_imp6': row[28],
+                                    'valor_icms_difal': row[29],
+                                    'valor_icms': row[30],
+                                    'aliq_icms': row[31],
+                                },
+                            )
+                        except IntegrityError:
+                            # self.stdout.write(self.style.ERROR(f"Erro de integridade para a chave {row[0]}. Verifique os dados.")) # Não é erro porquê a consulta não pode filtrar mais a última nota inserida por conta da necessidade de pagar notas de várias filiais.
+                            continue
+                            
                         if created:
                             # calcular custo e margem somente se for uma nova Nota
                             
@@ -165,18 +172,21 @@ class Command(BaseCommand):
                                 valor=row[24]
                             )
                             
+                            # print(f'custo: {custo}')                            
+                            # print(f'custo[0]: {custo[0]}')                            
+                            # print(f'custo[1]: {custo[1]}')                            
                             
                             cfops_especiais = ['5101', '6101', '5116', '6116', '6107']
                             
                             icms_calculado = row[30] * 0.02 if row[8] in cfops_especiais else row[30]
                             
-                            margem_bruta = row[23] - row[24] - row[25] - row[26] - row[27] - row[29] - icms_calculado
+                            margem_bruta = row[23] - row[24] - row[26] - row[27] - row[28] - row[29] - icms_calculado
                             
                             margem = Margem.objects.update_or_create(
                                 chave=obj,
                                 custo=custo[0],
                                 margem_bruta=margem_bruta,
-                                margem_bruta_percentual=margem_bruta/row[22]
+                                margem_bruta_percentual=margem_bruta/row[23]
                             )
                     
                     # REGRA PARA VALIDAR EXCLUSÕES
@@ -186,4 +196,5 @@ class Command(BaseCommand):
                      
             self.stdout.write(self.style.SUCCESS('Sincronização concluída com sucesso!'))
         except Exception as e:
+            raise e
             self.stdout.write(self.style.ERROR(f'Erro na sincronização: {e}'))

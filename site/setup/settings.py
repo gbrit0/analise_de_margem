@@ -31,16 +31,11 @@ SECRET_KEY = 'django-insecure-ch!@ntcoyc$y3(d4mt_pf=8h_=u7z%_bcld+8jcu@!dzea%&%!
 DEBUG = True
 
 ALLOWED_HOSTS = [
-    '0.0.0.0',
-    '127.0.0.1',
-    'localhost',
     'brg.datasetsolucoes.com.br',
 ]
 
 CORS_ALLOWED_ORIGINS = [
-    '0.0.0.0:43560',
-    'http://127.0.0.1:8000',
-    'brg.datasetsolucoes.com.br:25025',
+    'brg.datasetsolucoes.com.br:7040',
 ]
 # Application definition
 
@@ -163,4 +158,4 @@ PASS_ADMIN=os.getenv("PASS_ADMIN")
 hoje = date.today().strftime("%Y-%m")
 
 LOGIN_REDIRECT_URL = f'/notas/?data_emissao_month={hoje}'
-LOGOUT_REDIRECT_URL = ''
+LOGOUT_REDIRECT_URL = '/login'
