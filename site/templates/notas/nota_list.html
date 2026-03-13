@@ -127,7 +127,11 @@
                         <td><strong>{{ nota.nota }}</strong></td>
                         <td>{{ nota.data_emissao|date:"d/m/Y" }}</td>
                         <td>{{ nota.no_pedido }}</td>
-                        <td>{{ nota.vendedor|default:"-" }}</td>
+                        <td>{{ nota.nome_curto_vendedor | default:"-" }}</td>
+                        
+                        {% comment %}
+                            <td>{{ " ".join(nota.vendedor.split()[:2]) | default:"-" }}</td>
+                        {% endcomment %}
 
                         <td>
                             <span class="text-truncate" title="{{ nota.cod_cliente }} - {{ nota.cliente }}">
@@ -147,7 +151,8 @@
                         <td>{{ nota.lote|default:"-" }}</td>
 
                         <td class="text-right">{{ nota.quantidade }}</td>
-                        <td class="text-right" style="font-weight:bold;">{{ nota.valor_contabil }}</td>
+
+                        <td class="text-right" style="font-weight:bold;">{{ nota.valor_contabil_formatado }}</td>
                         
                         {% comment %}
                             <!-- {% if nota.ultimo_custo_valor %} contenteditable="true"
@@ -169,8 +174,8 @@
                         </td>
                         
                         <td class="text-right celula-margem-bruta" style="font-weight:bold;">
-                            {% if nota.margem_bruta %}
-                                {{ nota.margem_bruta|floatformat:2 }}
+                            {% if nota.margem_bruta_formatada %}
+                                {{ nota.margem_bruta_formatada }}
                             {% else %} 
                                 - 
                             {% endif %}
@@ -273,7 +278,7 @@
                 info: false,
                 searching: false,
                 columnDefs: [
-                    { targets: [0, 1, 8, 12, 13, 14, 27], responsivePriority: 1 },
+                    { targets: [0, 1, 8, 11, 13, 14, 27], responsivePriority: 1 },
                     { targets: '_all', className: 'dt-head-nowrap' }
                 ]
             });
@@ -438,3 +443,35 @@
         }
     </script>
     {% endblock %}
+
+
+
+
+00 - {{ nota.filial }}
+01 - {{ nota.nota }}
+02 - {{ nota.data_emissao }}
+03 - {{ nota.no_pedido }}
+04 - {{ nota.nome_curto_vendedor }}
+05 - {{ nota.cliente|default:"-" }}
+06 - {{ nota.cfop }} - {{ nota.cfop_descri }}
+07 - {{ nota.tipo_produto }}
+08 - {{ nota.cod_produto }} - {{ nota.produto }}
+09 - {{ nota.lote }}
+10 - {{ nota.quantidade }}
+11 - {{ nota.valor_contabil }}
+12 - {{ nota.custo_mais_recente }}
+13 - {{ nota.margem_bruta }}
+14 - {{ nota.margem_percentual }}
+15 - {{ nota.atualiza_estoque }}
+16 - {{ nota.gera_duplicata. }}
+17 - {{ nota.armazem }}
+18 - {{ nota.grp_amar_ctb }}
+19 - {{ nota.estado_destino }}
+20 - {{ nota.valor_unitario }}
+21 - {{ nota.valor_ipi }}
+22 - {{ nota.valor_imp5 }}
+23 - {{ nota.valor_imp6 }}
+24 - {{ nota.valor_icms_difal }}
+25 - {{ nota.valor_icms }}
+26 - {{ nota.aliq_icms }}
+27 - {{ nota.justificativa }}

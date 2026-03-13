@@ -1,6 +1,10 @@
 from django.db import models
 from users.models import CustomUser
 
+import locale
+
+locale.setlocale(locale.LC_ALL, 'pt_BR.UTF-8')
+
 class Nota(models.Model):
     chave = models.CharField(primary_key=True, max_length=50)
     filial = models.CharField(default=None, blank=False, max_length=50)
@@ -44,8 +48,23 @@ class Nota(models.Model):
         relacao = self.nf_has_justificativa_set.last()
         return relacao.justificativa if relacao else None
     
+    @property
+    def nome_curto_vendedor(self):
+        if self.vendedor:
+            return " ".join(self.vendedor.split()[:1])
+        return "-"
+    
+    @property
+    def valor_contabil_formatado(self):
+        return locale.currency(self.valor_contabil, grouping=True)
+    
+    @property
+    def margem_bruta_formatada(self):
+        return locale.currency(self.margem_bruta, grouping=True)
+    
     def __str__(self):
         return self.chave
+
 
 class Custo(models.Model):
     chave = models.ForeignKey(to=Nota, on_delete=models.PROTECT)
@@ -60,6 +79,7 @@ class Custo(models.Model):
         
     def __str__(self):
         return str(self.valor)
+
 
 class Justificativa(models.Model):
     texto = models.CharField(max_length=150)
@@ -76,12 +96,14 @@ class Justificativa(models.Model):
     def __str__(self):
         return self.texto
     
+    
 class Nf_Has_Justificativa(models.Model):
     nf = models.ForeignKey(to=Nota, on_delete=models.PROTECT)
     justificativa = models.ForeignKey(to=Justificativa, on_delete=models.PROTECT)
     data_cadastro = models.DateTimeField(auto_now=True)
     # usuario = models.ForeignKey(to=CustomUser, on_delete=models.PROTECT, null=True, blank=True)
     usuario = models.ForeignKey(to=CustomUser, on_delete=models.PROTECT, default=2)
+
 
 class Margem(models.Model):
     chave = models.ForeignKey(to=Nota, on_delete=models.PROTECT)
