@@ -1,5 +1,12 @@
 from django.contrib import admin
-from .models import Justificativa, Nota, Custo, Nf_Has_Justificativa, Margem
+from .models import (
+    Justificativa, 
+    Nota, 
+    Custo, 
+    Nf_Has_Justificativa, 
+    Margem, 
+    OP
+)
 
 class CustomJustificativasAdmin(admin.ModelAdmin):
     list_display = ('texto', 'data_cadastro', 'ativo', 'data_desativa')
@@ -60,8 +67,14 @@ class CustomMargemAdmin(admin.ModelAdmin):
     list_display_links = ["chave", "custo", "margem_bruta", "margem_bruta_percentual", ]
     search_fields = ["chave", "custo", "margem_bruta", "margem_bruta_percentual", ]
     
+class CustomOPAdmin(admin.ModelAdmin):
+    list_display = ['lote', 'documento', 'produto', 'ord_producao']
+    list_display_links = ['lote', 'documento', 'produto', 'ord_producao']
+    search_fields = ['lote', 'documento', 'produto', 'ord_producao']
+    
 admin.site.register(Justificativa, CustomJustificativasAdmin)
 admin.site.register(Nota, CustomNotasAdmin)
 admin.site.register(Custo, CustomCustoAdmin)
 admin.site.register(Nf_Has_Justificativa, CustomNf_Has_JustificativaAdmin)
 admin.site.register(Margem, CustomMargemAdmin)
+admin.site.register(OP, CustomOPAdmin)

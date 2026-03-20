@@ -7,10 +7,12 @@ from notas.views import (
     # estatisticas, 
     dashboard_view,
     dados_vendas_api,
+    # OPListView, 
+    op_list_view
 )
 
 from django.contrib.auth.decorators import login_required
-from .models import Nota
+from .models import Nota, OP
 
 urlpatterns = [
     path('notas/', login_required(NotasListView.as_view(model=Nota)), name='lista_notas'),
@@ -18,4 +20,5 @@ urlpatterns = [
     path('api/atualizar-justificativa/', atualizar_justificativa_api, name='api_atualizar_justificativa'),
     path('estatisticas/', dashboard_view, name='estatisticas'),
     path('api/estatisticas/', dados_vendas_api, name='dados_vendas_api'),
+    path('ops/<str:lote>', login_required(op_list_view), name='lista_ops'),
 ]

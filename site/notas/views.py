@@ -14,18 +14,19 @@ from django.db.models.functions import Coalesce, ExtractYear, ExtractMonth
 from django.views.decorators.http import require_http_methods, require_POST
 from django.db.models import OuterRef, Subquery, DecimalField, Case, When, F, Value, ExpressionWrapper
 
-
 import json
 import datetime
 from decimal import Decimal
 from .filters import NotaFilter
 from dateutil.relativedelta import relativedelta
-from .models import Justificativa, Nota, Custo, Margem, Nf_Has_Justificativa
+from .models import Justificativa, Nota, Custo, Margem, Nf_Has_Justificativa, OP
+import locale
 
-mes_anterior = datetime.date.today() - relativedelta(month=1)
-mes_anterior = mes_anterior.strftime("%Y-%m")
+locale.setlocale(locale.LC_ALL, 'pt_BR.UTF-8')
 
 class NotasListView(LoginRequiredMixin, FilterView, ListView):
+    mes_anterior = datetime.date.today() - relativedelta(month=1)
+    mes_anterior = mes_anterior.strftime("%Y-%m")
     model = Nota
     # paginate_by = 25
     filterset_class = NotaFilter
@@ -50,7 +51,6 @@ class NotasListView(LoginRequiredMixin, FilterView, ListView):
         justificativa_mais_recente = Nf_Has_Justificativa.objects.filter(
             nf=OuterRef('pk')
         ).order_by('-data_cadastro').values('justificativa')[:1]
-        
         
         # 2. Anotamos o queryset principal da Nota com esse valor
         queryset = Nota.objects.annotate(
@@ -195,12 +195,13 @@ def atualizar_custo_api(request):
         # 5. Retorna os dados formatados para o Frontend
         return JsonResponse({
             'success': True,
-            'margem_bruta': f'{margem_bruta:.2f}',
+            'margem_bruta': f'{locale.currency(margem_bruta, grouping=True)}',
             'margem_percentual': f'{margem_percentual*100:.2f}%'
         })
 
     except Exception as e:
-        return JsonResponse({'error': str(e)}, status=500)
+        raise e
+        # return JsonResponse({'error': str(e)}, status=500)
     
 @login_required
 @require_POST
@@ -210,24 +211,28 @@ def atualizar_justificativa_api(request):
         nota_chave = data.get('chave')
         nova_justificativa_id = data.get('justificativa')
 
-        if not nota_chave or not nova_justificativa_id:
-            return JsonResponse({'success': False, 'error': 'Dados incompletos'}, status=400)
-
         nota = get_object_or_404(Nota, pk=nota_chave)
+
+        # 1. Buscamos a justificativa que o usuário clicou
         justificativa = get_object_or_404(Justificativa, id=nova_justificativa_id)
 
-        # Salva o vínculo (Nf_Has_Justificativa)
-        # Usando update_or_create caso queira apenas uma justificativa por nota
+        # 2. VERIFICAÇÃO: Se o texto for 'Limpar / Sem Justificativa', 
+        # nós apenas deletamos e retornamos.
+        if 'Limpar' in justificativa.texto:
+            Nf_Has_Justificativa.objects.filter(nf=nota).delete()
+            return JsonResponse({'success': True, 'action': 'cleared'})
+
+        # 3. Se NÃO for limpar, primeiro limpamos o que tinha antes (para não duplicar)
+        # e depois criamos a nova relação
+        Nf_Has_Justificativa.objects.filter(nf=nota).delete()
+        
         Nf_Has_Justificativa.objects.create(
-            usuario=request.user if request.user.is_authenticated else None,
+            usuario=request.user,
             nf=nota,
             justificativa=justificativa
         )
 
-        return JsonResponse({
-            'success': True,
-            'justificativa_id': justificativa.id
-        })
+        return JsonResponse({'success': True, 'justificativa_id': justificativa.id})
 
     except Exception as e:
         return JsonResponse({'success': False, 'error': str(e)}, status=500)
@@ -282,3 +287,14 @@ def dados_vendas_api(request):
         'total_vendas': total_vendas,
         'margens_por_mes': margem_por_mes
     })
+    
+
+# class OPListView(LoginRequiredMixin, FilterView, ListView):
+#     model = OP
+#     ordering = ['-ord_producao', '-sequencial']
+#     context_object_name = 'op_list'
+#     template_name = 'notas/op_list.html'
+
+def op_list_view(request, lote):
+    itens_op = OP.objects.filter(lote=lote).order_by('-ord_producao', '-sequencial')
+    return render(request, 'notas/op_list.html', {'lote': lote, 'op_list': itens_op})
