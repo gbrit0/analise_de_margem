@@ -239,7 +239,15 @@ def atualizar_justificativa_api(request):
 
 @login_required
 def dashboard_view(request):
+    selected = request.GET.get('data_emissao_month', '')
     
+    # Se não veio valor no GET, tenta preencher com mês atual (se houver dados),
+    # caso contrário preenche com o mês mais recente disponível.
+    if not selected:
+        hoje = datetime.datetime.today()
+        atual = f"{hoje.year}-{hoje.month:02d}"
+        selected = atual
+        
     filiais = Nota.objects.values('filial', 'nome_filial').distinct()
     
     if filiais:
@@ -296,5 +304,19 @@ def dados_vendas_api(request):
 #     template_name = 'notas/op_list.html'
 
 def op_list_view(request, lote):
-    itens_op = OP.objects.filter(lote=lote).order_by('-ord_producao', '-sequencial')
-    return render(request, 'notas/op_list.html', {'lote': lote, 'op_list': itens_op})
+    # itens_op = OP.objects.filter(lote=lote).order_by('-ord_producao', '-sequencial')
+    # return render(request, 'notas/op_list.html', {'lote': lote, 'op_list': itens_op})
+    itens_op = OP.objects.filter(lote=lote)
+    
+    # Transforma o queryset em uma lista de dicionários para serialização JSON
+    data = list(itens_op.values())
+    
+    # Converte objetos Decimal e Date para string para que sejam serializáveis
+    for item in data:
+        for key, value in item.items():
+            if isinstance(value, Decimal):
+                item[key] = str(value)
+            elif isinstance(value, datetime.date):
+                item[key] = value.strftime('%d/%m/%Y')
+
+    return JsonResponse({'op_list': data})

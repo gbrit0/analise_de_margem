@@ -12,11 +12,13 @@ def criar_usuarios_padrao(apps, schema_editor):
             is_active=True,
             is_staff=True,
             username=settings.USER_ADMIN,
-            password=make_password(settings.PASS_ADMIN)
+            password=make_password(settings.PASS_ADMIN),
+            first_name='Sistema'
         ),
         User(
             username=settings.USER_SYSTEM,
-            password=make_password(settings.PASS_SYSTEM)
+            password=make_password(settings.PASS_SYSTEM),
+            first_name='Administrador'
         ),
     ])
     

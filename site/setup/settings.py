@@ -28,14 +28,16 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 SECRET_KEY = 'django-insecure-ch!@ntcoyc$y3(d4mt_pf=8h_=u7z%_bcld+8jcu@!dzea%&%!'
 
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = True
+DEBUG = False
 
 ALLOWED_HOSTS = [
     'brg.datasetsolucoes.com.br',
+    '172.49.49.6',
 ]
 
 CORS_ALLOWED_ORIGINS = [
     'brg.datasetsolucoes.com.br:7040',
+    '172.49.49.6:8000',
 ]
 # Application definition
 
