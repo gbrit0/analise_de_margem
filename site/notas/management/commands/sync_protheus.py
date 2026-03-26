@@ -162,7 +162,7 @@ class Command(BaseCommand):
                             
                             cfops_especiais = ['5101', '6101', '5116', '6116', '6107']
                             
-                            icms_calculado = row[29] * 0.02 if row[7] in cfops_especiais else row[29]
+                            icms_calculado = row[29] * 0.047 if row[7] in cfops_especiais else row[29]
                             
                             margem_bruta = row[22] - row[23] - row[25] - row[26] - row[27] - row[28] - icms_calculado
                             

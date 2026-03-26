@@ -44,7 +44,7 @@ class NotasListView(FilterView, ListView):
                 output_field=DecimalField()
             ),
             icms_calculado=Case(
-                When(cfop__in=cfops_especiais, then=F('valor_icms') * 0.02), # 2% do ICMS
+                When(cfop__in=cfops_especiais, then=F('valor_icms') * 0.047), # 4,7% do ICMS
                 default=F('valor_icms'),                                     # ICMS cheio
                 output_field=DecimalField()
             ),
@@ -138,7 +138,7 @@ def atualizar_custo_api(request):
         # Definição do ICMS baseada no CFOP
         cfops_especiais = ['5101', '6101', '5116', '6116', '6107']
         if nota.cfop in cfops_especiais:
-            val_icms = nota.valor_icms * Decimal('0.02')
+            val_icms = nota.valor_icms * Decimal('0.047')
         else:
             val_icms = nota.valor_icms
 

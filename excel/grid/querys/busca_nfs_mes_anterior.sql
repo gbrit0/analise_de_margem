@@ -41,6 +41,7 @@ FROM
 WHERE
     -- Comentado pois, por mais que não sejam analisados o conjunto de painéis e conjunto de reparo devem aparecer na lista de todas as nfs. cod_produto NOT IN ('B0010046','E000H2P8')  -- Ignora Conjunto de Reparo e Conjunto de Painéis
     cfop NOT IN ('5922', '6922') -- ignora vendas futuras
+    AND filial in ('0501', '0502', '0503')
     AND data_emissao BETWEEN %s AND %s
 
     -- =========================================================

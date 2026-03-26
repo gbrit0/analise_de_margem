@@ -198,7 +198,7 @@ if __name__ == '__main__':
             df_vendas_final = pd.DataFrame()
 
             # Conversão de tipos gerais
-            cols_to_float = ['valor_contabil', 'custo', 'valor_unitario', 'valor_ipi', 'valor_imp5', 'valor_imp6', 'vlr_icms_difal', 'valor_icms', 'margem', 'margem_bruta', 'aliq_icms']
+            cols_to_float = ['valor_contabil', 'custo', 'valor_unitario', 'valor_ipi', 'valor_imp5', 'valor_imp6', 'vlr_icms_difal', 'valor_icms', 'margem', 'margem_bruta', 'aliq_icms', 'preco_tabela']
             for col in cols_to_float:
                 if col in nfs_mes_anterior.columns:
                      nfs_mes_anterior[col] = pd.to_numeric(nfs_mes_anterior[col], errors='coerce')
@@ -490,7 +490,7 @@ if __name__ == '__main__':
                         formula_margem = (
                             f'=V{row_idx+1}-W{row_idx+1}-Y{row_idx+1}-Z{row_idx+1}-AA{row_idx+1}-AB{row_idx+1}-'
                             f'IF(OR(G{row_idx+1}="5101", G{row_idx+1}="6101", G{row_idx+1}="5116", G{row_idx+1}="6116", G{row_idx+1}="6107"), '
-                            f'AC{row_idx+1}*0.02, AC{row_idx+1})'
+                            f'AC{row_idx+1}*0.047, AC{row_idx+1})'
                         )
 
                         # Escreve a fórmula da Margem (Coluna AE / Índice 30)
