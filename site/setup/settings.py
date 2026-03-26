@@ -10,9 +10,10 @@ For the full list of settings and their values, see
 https://docs.djangoproject.com/en/5.2/ref/settings/
 """
 
-from pathlib import Path
-from dotenv import load_dotenv
 import os 
+from pathlib import Path
+from datetime import date
+from dotenv import load_dotenv
 
 load_dotenv(override=True)
 
@@ -30,16 +31,11 @@ SECRET_KEY = 'django-insecure-ch!@ntcoyc$y3(d4mt_pf=8h_=u7z%_bcld+8jcu@!dzea%&%!
 DEBUG = True
 
 ALLOWED_HOSTS = [
-    '0.0.0.0',
-    '127.0.0.1',
-    'localhost',
     'brg.datasetsolucoes.com.br',
 ]
 
 CORS_ALLOWED_ORIGINS = [
-    '0.0.0.0:43560',
-    'http://127.0.0.1:8000',
-    'brg.datasetsolucoes.com.br:25025',
+    'brg.datasetsolucoes.com.br:7040',
 ]
 # Application definition
 
@@ -144,6 +140,9 @@ USE_TZ = True
 # https://docs.djangoproject.com/en/5.2/howto/static-files/
 
 STATIC_URL = 'static/'
+STATICFILES_DIRS = [
+    BASE_DIR / "static",
+]
 
 # Default primary key field type
 # https://docs.djangoproject.com/en/5.2/ref/settings/#default-auto-field
@@ -157,3 +156,9 @@ PASS_SYSTEM = os.getenv("PASS_SYSTEM")
 
 USER_ADMIN=os.getenv("USER_ADMIN")
 PASS_ADMIN=os.getenv("PASS_ADMIN")
+
+
+hoje = date.today().strftime("%Y-%m")
+
+LOGIN_REDIRECT_URL = f'/notas/?data_emissao_month={hoje}'
+LOGOUT_REDIRECT_URL = '/login'

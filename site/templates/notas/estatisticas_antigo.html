@@ -1,0 +1,139 @@
+{% extends 'base.html' %}
+
+{% block page_title %}Estatíticas  - Análise de Margem{% endblock %}
+
+{% block content %}
+
+    <div style="width: 60%; margin: auto;">
+        <h2>Relatório de Faturamento por Categoria</h2>
+
+        <div style="margin-bottom: 20px; text-align: left;">
+
+            <div class="mb-2">
+                <label for="data_inicio" class="form-label">Data Início:</label>
+                <input type="date" id="data_inicio" class="form-control">
+            </div>
+
+            <div class="mb-2">
+                <label for="data_fim" class="form-label">Data Fim:</label>
+                <input type="date" id="data_fim" class="form-control">
+            </div>
+
+            <div class="mb-2">
+                <label for="filial" class="form-label">Filial:</label>
+                {% if filiais %}
+                    <select id="filial" class="form-select">
+                        <option value="">Todas</option>
+                        {% for f in filiais %}
+                            <option value="{{ f.filial }}">{{ f.nome_filial }}</option>
+                        {% endfor %}
+                    </select>
+                {% else %}
+                    <input type="text" id="filial" class="form-control" placeholder="Informe a filial (opcional)">
+                {% endif %}
+            </div>
+
+            <div class="mt-2">
+                <button onclick="atualizarDashboard()" class="btn btn-primary">Filtrar Relatório</button>
+            </div>
+        </div>
+        
+        <div>
+            <div>
+                {{dados.margem}}
+            </div>
+            <canvas id="graficoFatPeriodo"></canvas>
+            <canvas id="graficoMargem"></canvas>
+        </div>
+        
+    </div>
+
+    
+
+    <script>
+        let graficoFatPeriodo; // Variável global para podermos destruir e recriar o gráfico
+
+        function atualizarDashboard() {
+            const inicio = document.getElementById('data_inicio').value;
+            const fim = document.getElementById('data_fim').value;
+
+            const filial = document.getElementById('filial').value;
+
+            // Monta a URL com os filtros
+            const url = `/api/estatisticas/?inicio=${inicio}&fim=${fim}&filial=${filial}`;
+
+            fetch(url)
+                .then(response => response.json())
+                .then(dados => {
+                    const ctx = document.getElementById('graficoFatPeriodo').getContext('2d');
+
+                    // Se o gráfico já existe, precisamos destruí-lo antes de criar um novo
+                    if (graficoFatPeriodo) {
+                        graficoFatPeriodo.destroy();
+                    }
+
+                    
+                    graficoFatPeriodo = new Chart(ctx, {
+                        data: {
+                            labels: dados.labels,
+                            datasets: [
+                                {
+                                    type: 'line', // Define este dataset como linha
+                                    label: 'Margem Média (%)',
+                                    data: dados.margens_por_mes.map(m => m.toFixed(2)), // Certifique-se de que o Django envie este campo
+                                    borderColor: '#1cc88a',
+                                    backgroundColor: 'rgba(28, 200, 138, 0.1)',
+                                    fill: false,
+                                    tension: 0.3, // Deixa a linha levemente curva
+                                    yAxisID: 'y1', // Eixo secundário (direita)
+                                },
+                                {
+                                    type: 'bar',
+                                    label: 'Faturamento por Período',
+                                    data: dados.total_vendas,
+                                    backgroundColor: '#4e73df',
+                                    yAxisID: 'y', 
+                                }
+                             ]
+                        },
+                        options: {
+                            responsive: true,
+                            scales: {
+                                y: {
+                                    type: 'linear',
+                                    display: true,
+                                    position: 'left',
+                                    title: {
+                                        display: true,
+                                        text: 'Faturamento (R$)'
+                                    }
+                                },
+                                y1: {
+                                    type: 'linear',
+                                    display: true,
+                                    position: 'right',
+                                    title: {
+                                        display: true,
+                                        text: 'Margem (%)'
+                                    },
+                                    // Garante que o eixo da margem não polua o gráfico das barras
+                                    grid: {
+                                        drawOnChartArea: false, 
+                                    },
+                                    ticks: {
+                                        callback: function(value) {
+                                            return value + '%'; // Adiciona o símbolo de porcentagem
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    });
+                });
+        }
+
+        // Carrega o gráfico pela primeira vez sem filtros
+        atualizarDashboard();
+    </script>   
+
+{% endblock %}

@@ -8,16 +8,21 @@ class NotaFilter(django_filters.FilterSet):
     # Filtro por mês/ano no formato YYYY-MM (renderizamos um <input type="month"> no template)
     data_emissao_month = CharFilter(method='filter_by_month', label='Mês')
 
+    filial = CharFilter(method='filter_filial', label='Filial (código ou nome)')
     lote = CharFilter(field_name='lote', lookup_expr='icontains', label='Lote')
     cfop = CharFilter(method='filter_cfop', label='CFOP (código ou descrição)')
     # Permite busca por nome do produto OU código do produto
     produto = CharFilter(method='filter_produto', label='Produto (nome ou código)')
-    tipo_produto = CharFilter(field_name='tipo_produto', lookup_expr='icontains', label='Tipo do produto')
+    # tipo_produto = CharFilter(field_name='tipo_produto', lookup_expr='icontains', label='Tipo do produto')
+    tipo_produto = CharFilter(method='filter_tipo_produto', label='Tipo do produto')
+    # desc_tipo_produto =  CharFilter(field_name='desc_tipo_produto', lookup_expr='icontains', label='Nome do Tipo do produto')
     classificacao_produto = CharFilter(field_name='classificacao_produto', lookup_expr='icontains', label='Classificação')
 
     margem_minima = NumberFilter(field_name='margem_percentual', lookup_expr='gte', label='Margem % mínima')
     margem_maxima = NumberFilter(field_name='margem_percentual', lookup_expr='lte', label='Margem % máxima')
 
+    nota = CharFilter(field_name='nota', lookup_expr='icontains', label='Número da nota')
+    
     class Meta:
         model = Nota
         fields = [
@@ -54,4 +59,20 @@ class NotaFilter(django_filters.FilterSet):
             Q(cfop__icontains=value) | Q(cfop_descri__icontains=value)
         )
         
+    def filter_filial(self, queryset, name, value):
+        """Filtra notas por filial"""
+        if not value:
+            return queryset
+        return queryset.filter(
+            Q(filial__icontains=value) | Q(nome_filial__icontains=value)
+        )
 
+    def filter_tipo_produto(self, queryset, name, value):
+        """Filtra notas por tipo de produto"""
+        if not value:
+            return queryset
+
+        value = value.strip()
+        return queryset.filter(
+            Q(tipo_produto__icontains=value) | Q(desc_tipo_produto__icontains=value)
+        )

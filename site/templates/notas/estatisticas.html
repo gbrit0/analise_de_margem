@@ -1,0 +1,357 @@
+{% extends 'base.html' %}
+{% block page_title %}Estatísticas - Análise de Margem{% endblock %}
+
+{% block content %}
+<style>
+    /* Reutilizando os estilos de Card do seu padrão corporativo */
+    .filter-card {
+        background: var(--branco);
+        border-radius: 12px;
+        padding: 24px;
+        margin-bottom: 24px;
+        box-shadow: 0 4px 12px rgba(19, 22, 47, 0.05);
+        border: 1px solid var(--cinza-borda);
+    }
+
+    .filter-header {
+        display: flex;
+        align-items: center;
+        margin-bottom: 16px;
+        color: var(--azul-escuro);
+        font-weight: 600;
+        font-size: 1.1rem;
+    }
+
+    .filter-header i {
+        color: var(--verde-principal);
+        margin-right: 10px;
+    }
+
+    .filter-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+        gap: 16px;
+        align-items: end;
+    }
+
+    .form-group { display: flex; flex-direction: column; }
+    
+    .form-group label {
+        font-size: 0.85rem;
+        font-weight: 500;
+        color: var(--azul-escuro);
+        margin-bottom: 6px;
+    }
+
+    .form-control, .form-select {
+        font-family: 'Poppins', sans-serif;
+        padding: 8px 12px;
+        border: 1px solid var(--cinza-borda);
+        border-radius: 6px;
+        background-color: var(--branco);
+        color: var(--azul-escuro);
+        font-size: 0.9rem;
+        transition: all 0.3s ease;
+    }
+
+    .form-control:focus, .form-select:focus {
+        border-color: var(--verde-principal);
+        outline: none;
+        box-shadow: 0 0 0 3px rgba(0, 163, 79, 0.1);
+    }
+
+    .btn-custom {
+        font-family: 'Poppins', sans-serif;
+        padding: 8px 16px;
+        border-radius: 6px;
+        font-weight: 500;
+        cursor: pointer;
+        transition: all 0.2s;
+        border: none;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        gap: 8px;
+    }
+
+    .btn-primary-custom {
+        background-color: var(--verde-principal);
+        color: var(--branco);
+    }
+
+    .btn-primary-custom:hover {
+        background-color: #008a42;
+        transform: translateY(-1px);
+    }
+
+    /* Estilos Específicos do Dashboard */
+    .dashboard-grid {
+        display: grid;
+        grid-template-columns: 1fr;
+        gap: 24px;
+    }
+
+    .kpi-container {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+        gap: 16px;
+    }
+
+    .kpi-card {
+        background: var(--branco);
+        border-radius: 12px;
+        padding: 20px;
+        border-left: 5px solid var(--verde-principal);
+        box-shadow: 0 4px 12px rgba(19, 22, 47, 0.05);
+        display: flex;
+        flex-direction: column;
+    }
+
+    .kpi-title {
+        color: #6c757d;
+        font-size: 0.85rem;
+        font-weight: 600;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+        margin-bottom: 8px;
+    }
+
+    .kpi-value {
+        color: var(--azul-escuro);
+        font-size: 1.8rem;
+        font-weight: 700;
+    }
+
+    .chart-card {
+        background: var(--branco);
+        border-radius: 12px;
+        padding: 24px;
+        box-shadow: 0 4px 12px rgba(19, 22, 47, 0.05);
+        border: 1px solid var(--cinza-borda);
+        position: relative;
+        min-height: 400px; /* Garante altura em telas menores */
+    }
+
+    .chart-card-title {
+        color: var(--azul-escuro);
+        font-weight: 600;
+        font-size: 1.1rem;
+        margin-bottom: 20px;
+        display: flex;
+        align-items: center;
+        gap: 10px;
+    }
+
+    /* Responsividade */
+    @media (max-width: 768px) {
+        .chart-card {
+            padding: 15px;
+            min-height: 300px;
+        }
+    }
+</style>
+
+<div class="filter-card">
+    <div class="filter-header">
+        <i class="fa-solid fa-filter"></i> Parâmetros do Painel
+    </div>
+    
+    <div class="filter-grid">
+        <div class="form-group">
+            <label for="data_inicio"><i class="fa-regular fa-calendar-check"></i> Data Início</label>
+            <input type="date" id="data_inicio" class="form-control">
+        </div>
+
+        <div class="form-group">
+            <label for="data_fim"><i class="fa-regular fa-calendar-xmark"></i> Data Fim</label>
+            <input type="date" id="data_fim" class="form-control">
+        </div>
+
+        <div class="form-group">
+            <label for="filial"><i class="fa-solid fa-building"></i> Filial</label>
+            {% if filiais %}
+                <select id="filial" class="form-select">
+                    <option value="">Todas as Filiais</option>
+                    {% for f in filiais %}
+                        <option value="{{ f.filial }}">{{ f.nome_filial }}</option>
+                    {% endfor %}
+                </select>
+            {% else %}
+                <input type="text" id="filial" class="form-control" placeholder="Informe a filial (opcional)">
+            {% endif %}
+        </div>
+
+        <div class="form-group">
+            <button onclick="atualizarDashboard()" id="btnFiltrar" class="btn-custom btn-primary-custom" style="height: 38px;">
+                <i class="fa-solid fa-rotate"></i> Atualizar Gráficos
+            </button>
+        </div>
+    </div>
+</div>
+
+<div class="dashboard-grid">
+    
+    <div class="chart-card">
+        <div class="chart-card-title">
+            <i class="fa-solid fa-chart-column" style="color: var(--verde-principal);"></i> 
+            Faturamento x Margem por Período
+        </div>
+        
+        <div style="position: relative; height: 350px; width: 100%;">
+            <canvas id="graficoFatPeriodo"></canvas>
+        </div>
+    </div>
+
+</div>
+
+<script>
+    let graficoFatPeriodo;
+
+    // Seta as fontes globais do Chart.js para usar a fonte do seu painel
+    Chart.defaults.font.family = "'Poppins', sans-serif";
+    Chart.defaults.color = '#6c757d';
+
+    function atualizarDashboard() {
+        const btn = document.getElementById('btnFiltrar');
+        const iconOriginal = btn.innerHTML;
+        
+        // Efeito de carregamento no botão
+        btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Processando...';
+        btn.disabled = true;
+
+        const inicio = document.getElementById('data_inicio').value;
+        const fim = document.getElementById('data_fim').value;
+        const filial = document.getElementById('filial').value;
+
+        const url = `/api/estatisticas/?inicio=${inicio}&fim=${fim}&filial=${filial}`;
+
+        fetch(url)
+            .then(response => response.json())
+            .then(dados => {
+                const ctx = document.getElementById('graficoFatPeriodo').getContext('2d');
+
+                if (graficoFatPeriodo) {
+                    graficoFatPeriodo.destroy();
+                }
+                
+
+                graficoFatPeriodo = new Chart(ctx, {
+                    type: 'bar', // Tipo base do gráfico
+                    data: {
+                        labels: dados.labels,
+                        datasets: [
+                            {
+                                type: 'line', 
+                                label: 'Margem Média (%)',
+                                data: dados.margens_por_mes.map(m => m.toFixed(2)),
+                                borderColor: '#00A34F', // Verde Principal
+                                backgroundColor: '#00A34F',
+                                borderWidth: 3,
+                                pointBackgroundColor: '#FFFFFF',
+                                pointBorderColor: '#00A34F',
+                                pointBorderWidth: 2,
+                                pointRadius: 4,
+                                pointHoverRadius: 6,
+                                fill: false,
+                                tension: 0.4, // Curva mais suave
+                                yAxisID: 'y1', 
+                            },
+                            {
+                                type: 'bar',
+                                label: 'Faturamento (R$)',
+                                data: dados.total_vendas,
+                                backgroundColor: '#13162F', // Azul Escuro Tecnológico
+                                borderRadius: 6, // Arredonda o topo das colunas
+                                borderSkipped: false,
+                                maxBarThickness: 50, // Evita barras gigantes em telas largas
+                                yAxisID: 'y', 
+                            }
+                        ]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false, // Fundamental para não achatar no mobile
+                        interaction: {
+                            mode: 'index',
+                            intersect: false,
+                        },
+                        plugins: {
+                            legend: {
+                                position: 'top',
+                                labels: {
+                                    usePointStyle: true,
+                                    padding: 20,
+                                    font: { weight: '500' }
+                                }
+                            },
+                            tooltip: {
+                                backgroundColor: 'rgba(19, 22, 47, 0.9)', // Azul escuro no fundo do tooltip
+                                titleFont: { size: 13, family: "'Poppins', sans-serif" },
+                                bodyFont: { size: 13, family: "'Poppins', sans-serif" },
+                                padding: 12,
+                                cornerRadius: 8,
+                                callbacks: {
+                                    label: function(context) {
+                                        let label = context.dataset.label || '';
+                                        if (label) { label += ': '; }
+                                        if (context.dataset.type === 'line') {
+                                            label += context.parsed.y + '%';
+                                        } else {
+                                            // Formata o dinheiro bonitinho no tooltip
+                                            label += new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(context.parsed.y);
+                                        }
+                                        return label;
+                                    }
+                                }
+                            }
+                        },
+                        scales: {
+                            x: {
+                                grid: { display: false } // Tira linhas de grade verticais para visual limpo
+                            },
+                            y: {
+                                type: 'linear',
+                                display: true,
+                                position: 'left',
+                                title: {
+                                    display: true,
+                                    text: 'Faturamento (R$)',
+                                    font: { weight: '500' }
+                                },
+                                grid: { color: '#E0E5EC' } // Cinza borda
+                            },
+                            y1: {
+                                type: 'linear',
+                                display: true,
+                                position: 'right',
+                                title: {
+                                    display: true,
+                                    text: 'Margem (%)',
+                                    font: { weight: '500' }
+                                },
+                                grid: { drawOnChartArea: false },
+                                ticks: {
+                                    callback: function(value) { return value + '%'; }
+                                }
+                            }
+                        }
+                    }
+                });
+            })
+            .catch(error => {
+                console.error("Erro ao carregar dados do dashboard:", error);
+                alert("Ocorreu um erro ao atualizar os gráficos.");
+            })
+            .finally(() => {
+                // Restaura o botão
+                btn.innerHTML = iconOriginal;
+                btn.disabled = false;
+            });
+    }
+
+    // Inicia o gráfico ao carregar a página
+    window.onload = function() {
+        atualizarDashboard();
+    };
+</script> 
+{% endblock %}

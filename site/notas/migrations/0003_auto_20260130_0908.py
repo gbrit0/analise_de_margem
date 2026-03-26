@@ -5,13 +5,14 @@ from notas.models import Justificativa
 
 def criar_justificativas_padrao(apps, schema_editor):
     Justificativa.objects.bulk_create([
+        Justificativa(texto='Limpar / Sem Justificativa'),
         Justificativa(texto='OK. Margem Parceiro.'),
         Justificativa(texto='Tabela de Preço Errada'),
         Justificativa(texto='Refaturado com Valor Correto'),
         Justificativa(texto='Desconto aplicado para concluir a venda'),
         Justificativa(texto='Venda Cancelada'),
     ])
-
+    
 class Migration(migrations.Migration):
 
     dependencies = [

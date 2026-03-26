@@ -1,0 +1,235 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+    <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+        <title>Acesso ao Sistema - Gestão Comercial</title>
+        
+        <link rel="icon" type="image/png" href="/static/img/favicon.png"> 
+
+        <link rel="preconnect" href="https://fonts.googleapis.com">
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+        
+        <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+
+        <style>
+            /* PALETA DE CORES GLOBAL */
+            :root {
+                --verde-principal: #00A34F;
+                --branco: #FFFFFF;
+                --azul-escuro: #13162F;
+                --verde-claro: #B7C958;
+                --cinza-fundo: #F4F6F9;
+                --cinza-borda: #E0E5EC;
+                --vermelho-alerta: #E64759;
+            }
+
+            body {
+                font-family: 'Poppins', sans-serif;
+                background-color: var(--azul-escuro); /* Fundo escuro focado no login */
+                margin: 0;
+                min-height: 100vh;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+            }
+
+            .login-wrapper {
+                width: 100%;
+                max-width: 420px;
+                padding: 20px;
+            }
+
+            .login-card {
+                background: var(--branco);
+                border-radius: 12px;
+                padding: 40px 30px;
+                box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
+            }
+
+            /* Cabeçalho do Card (Logo/Marca) */
+            .login-brand {
+                text-align: center;
+                margin-bottom: 30px;
+            }
+
+            .login-brand i {
+                font-size: 2.5rem;
+                color: var(--verde-principal);
+                margin-bottom: 10px;
+            }
+
+            .login-brand h3 {
+                color: var(--azul-escuro);
+                margin: 0;
+                font-weight: 700;
+                font-size: 1.4rem;
+            }
+
+            .login-brand p {
+                color: #6c757d;
+                font-size: 0.9rem;
+                margin: 5px 0 0 0;
+            }
+
+            /* Estilo dos Inputs */
+            .form-group {
+                margin-bottom: 20px;
+            }
+
+            .form-group label {
+                display: block;
+                font-size: 0.85rem;
+                font-weight: 500;
+                color: var(--azul-escuro);
+                margin-bottom: 8px;
+            }
+
+            .input-icon-wrapper {
+                position: relative;
+            }
+
+            .input-icon-wrapper i {
+                position: absolute;
+                left: 14px;
+                top: 50%;
+                transform: translateY(-50%);
+                color: #a0a5b1;
+                font-size: 1rem;
+            }
+
+            .form-control {
+                font-family: 'Poppins', sans-serif;
+                width: 100%;
+                padding: 12px 12px 12px 40px; /* Espaço para o ícone */
+                border: 1px solid var(--cinza-borda);
+                border-radius: 6px;
+                background-color: var(--cinza-fundo);
+                color: var(--azul-escuro);
+                font-size: 0.95rem;
+                transition: all 0.3s ease;
+                box-sizing: border-box;
+            }
+
+            .form-control:focus {
+                border-color: var(--verde-principal);
+                background-color: var(--branco);
+                outline: none;
+                box-shadow: 0 0 0 3px rgba(0, 163, 79, 0.1);
+            }
+
+            /* Botão de Entrar */
+            .btn-login {
+                font-family: 'Poppins', sans-serif;
+                width: 100%;
+                padding: 12px;
+                background-color: var(--verde-principal);
+                color: var(--branco);
+                border: none;
+                border-radius: 6px;
+                font-weight: 600;
+                font-size: 1rem;
+                cursor: pointer;
+                transition: all 0.3s ease;
+                margin-top: 10px;
+            }
+
+            .btn-login:hover {
+                background-color: #008a42;
+                transform: translateY(-2px);
+                box-shadow: 0 4px 12px rgba(0, 163, 79, 0.2);
+            }
+
+            /* Alertas de Erro */
+            .alert-danger {
+                background-color: rgba(230, 71, 89, 0.1);
+                border-left: 4px solid var(--vermelho-alerta);
+                color: var(--vermelho-alerta);
+                padding: 12px 15px;
+                border-radius: 4px;
+                font-size: 0.85rem;
+                margin-bottom: 20px;
+                font-weight: 500;
+            }
+
+            .invalid-feedback {
+                color: var(--vermelho-alerta);
+                font-size: 0.8rem;
+                margin-top: 5px;
+                display: block;
+            }
+        </style>
+    </head>
+    
+    <body>
+        <div class="login-wrapper">
+            <div class="login-card">
+                
+                <div class="login-brand">
+                    <i class="fa-solid fa-bolt"></i>
+                    <h3>Análise de Margem - BRG</h3>
+                    <p>Faça login para acessar o painel</p>
+                </div>
+
+                {% if form.non_field_errors %}
+                    <div class="alert-danger">
+                        <i class="fa-solid fa-circle-exclamation"></i> {{ form.non_field_errors|striptags }}
+                    </div>
+                {% endif %}
+
+                <form method="post" novalidate>
+                    {% csrf_token %}
+                    
+                    <div class="form-group">
+                        <label for="{{ form.username.id_for_label }}">Usuário</label>
+                        <div class="input-icon-wrapper">
+                            <i class="fa-solid fa-user"></i>
+                            {{ form.username }}
+                        </div>
+                        {% if form.username.errors %}
+                            <div class="invalid-feedback">{{ form.username.errors|striptags }}</div>
+                        {% endif %}
+                    </div>
+
+                    <div class="form-group">
+                        <label for="{{ form.password.id_for_label }}">Senha</label>
+                        <div class="input-icon-wrapper">
+                            <i class="fa-solid fa-lock"></i>
+                            {{ form.password }}
+                        </div>
+                        {% if form.password.errors %}
+                            <div class="invalid-feedback">{{ form.password.errors|striptags }}</div>
+                        {% endif %}
+                    </div>
+
+                    {% if next %}
+                        <input type="hidden" name="next" value="{{ next }}">
+                    {% endif %}
+
+                    <button type="submit" class="btn-login">
+                        Entrar <i class="fa-solid fa-arrow-right-to-bracket" style="margin-left: 8px;"></i>
+                    </button>
+                </form>
+
+            </div>
+        </div>
+
+        <script>
+            document.addEventListener('DOMContentLoaded', function() {
+                // Seleciona os inputs gerados pelo Django e aplica a classe de estilo
+                const inputs = document.querySelectorAll('form input[type="text"], form input[type="password"], form input[type="email"]');
+                inputs.forEach(input => {
+                    input.classList.add('form-control');
+                    
+                    // Adiciona placeholders automáticos para ficar mais elegante
+                    if (input.type === 'text') {
+                        input.placeholder = 'Digite seu usuário';
+                    } else if (input.type === 'password') {
+                        input.placeholder = 'Digite sua senha';
+                    }
+                });
+            });
+        </script>
+    </body>
+</html>
