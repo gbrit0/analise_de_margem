@@ -144,12 +144,13 @@ class Margem(models.Model):
         verbose_name_plural = "Margens"
         
 class OP(models.Model):
-    filial               = models.CharField(default=None, blank=True, max_length=50)
-    produto              = models.CharField(default=None, blank=True, max_length=15)
+    id_op                = models.CharField(primary_key=True, max_length=50)
+    filial               = models.CharField(default=None, blank=False, max_length=50)
+    produto              = models.CharField(default=None, blank=False, max_length=15)
     armazem              = models.CharField(default=None, blank=True, max_length=60)
     tp_movimento         = models.CharField(default=None, blank=True, max_length=3)
-    descricao_tm         = models.CharField(default=None, blank=True, max_length=50)
-    descr_prod           = models.CharField(default=None, blank=True, max_length=50)
+    descricao_tm         = models.CharField(default=None, blank=True, null=True, max_length=80)
+    descr_prod           = models.CharField(default=None, blank=True, null=True, max_length=80)
     unidade              = models.CharField(default=None, blank=True, max_length=2)
     quantidade           = models.DecimalField(max_digits=12, decimal_places=2)
     quant_2              = models.DecimalField(max_digits=12, decimal_places=2)
@@ -159,24 +160,26 @@ class OP(models.Model):
     lote                 = models.CharField(default=None, blank=True, max_length=20)
     os_ass_tecn          = models.CharField(default=None, blank=True, max_length=8)
     grupo                = models.CharField(default=None, blank=True, max_length=4)
-    descricao_grupo      = models.CharField(default=None, blank=True, max_length=60)
-    tipo_re_de	         = models.CharField(default=None, blank=True, max_length=3)
-    ext_texto	         = models.CharField(default=None, blank=True, max_length=2)
-    documento	         = models.CharField(default=None, blank=True, max_length=12)
+    descricao_grupo      = models.CharField(default=None, blank=True, null=True, max_length=60)
+    tipo_re_de	         = models.CharField(default=None, blank=True, null=True, max_length=3)
+    ext_texto	         = models.CharField(default=None, blank=True, null=True, max_length=2)
+    documento	         = models.CharField(default=None, blank=True, null=True, max_length=12)
     dt_emissao	         = models.DateField()
     c_contabil	         = models.CharField(default=None, blank=True, max_length=10)
-    descricao_da_conta	 = models.CharField(default=None, blank=True, max_length=60)
+    descricao_da_conta	 = models.CharField(default=None, blank=True, null=True, max_length=60)
     centro_custo	     = models.CharField(default=None, blank=True, max_length=8)
-    desc_centro_de_custo = models.CharField(default=None, blank=True, max_length=60)
-    parc_total	         = models.CharField(default=None, blank=True, max_length=1)
-    estornado            = models.CharField(default=None, blank=True, max_length=1)
-    sequencial	         = models.CharField(default=None, blank=True, max_length=6)
-    tipo	             = models.CharField(default=None, blank=True, max_length=2)
-    usuario	             = models.CharField(default=None, blank=True, max_length=40)
-    nr_s_a	             = models.CharField(default=None, blank=True, max_length=6)
-    item_s_a	         = models.CharField(default=None, blank=True, max_length=2)
+    desc_centro_de_custo = models.CharField(default=None, blank=True, null=True, max_length=60)
+    parc_total	         = models.CharField(default=None, blank=True, null=True, max_length=1)
+    estornado            = models.CharField(default=None, blank=True, null=True, max_length=1)
+    sequencial	         = models.CharField(default=None, blank=True, null=True, max_length=6)
+    tipo	             = models.CharField(default=None, blank=True, null=True, max_length=2)
+    usuario	             = models.CharField(default=None, blank=True, null=True, max_length=40)
+    nr_s_a	             = models.CharField(default=None, blank=True, null=True, max_length=6)
+    item_s_a	         = models.CharField(default=None, blank=True, null=True, max_length=2)
     
     class Meta():
         verbose_name = "Op"
         verbose_name_plural = "Ops"
+        
+        
         

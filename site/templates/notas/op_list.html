@@ -46,7 +46,7 @@
                             </tr>
                         </thead>
                         <tbody>
-                            {% for op in op_list %}
+                            {% for op in object_list %}
                             <tr>
                                 <td>{{ op.filial }}</td>
                                 <td>{{ op.produto }}</td>
@@ -88,8 +88,6 @@
             </div>
             <div class="modal-footer">
                 <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Fechar</button>
-                <button type="button" class="btn btn-success">Exportar Excel</button>
-            </div>
         </div>
     </div>
 </div>
