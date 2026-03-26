@@ -251,7 +251,7 @@ def dashboard_view(request):
     filiais = Nota.objects.values('filial', 'nome_filial').distinct()
     
     if filiais:
-        return render(request, 'notas/estatisticas.html', {'filiais': filiais})
+        return render(request, 'notas/estatisticas.html', {'filiais': filiais, 'selected_month': selected})
     
     return render(request, 'notas/estatisticas.html')
 
@@ -288,7 +288,7 @@ def dados_vendas_api(request):
     
     total_vendas = [float(item['total_vendas']) for item in queryset]
     margem_por_mes = [float(item['margem']) for item in queryset] 
-    
+        
     return JsonResponse({
         # 'margem': queryset['margem_total'],
         'labels': labels,
