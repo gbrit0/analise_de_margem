@@ -65,7 +65,7 @@ class NotasListView(LoginRequiredMixin, FilterView, ListView):
                 output_field=DecimalField()
             ),
             icms_calculado=Case(
-                When(cfop__in=cfops_especiais, then=F('valor_icms') * 0.02), # 2% do ICMS
+                When(cfop__in=cfops_especiais, then=F('valor_icms') * 0.047), # 4,7% do ICMS
                 default=F('valor_icms'),                                     # ICMS cheio
                 output_field=DecimalField()
             ),
@@ -165,7 +165,7 @@ def atualizar_custo_api(request):
         # Definição do ICMS baseada no CFOP
         cfops_especiais = ['5101', '6101', '5116', '6116', '6107']
         if nota.cfop in cfops_especiais:
-            val_icms = nota.valor_icms * Decimal('0.02')
+            val_icms = nota.valor_icms * Decimal('0.047')
         else:
             val_icms = nota.valor_icms
 
@@ -239,11 +239,19 @@ def atualizar_justificativa_api(request):
 
 @login_required
 def dashboard_view(request):
+    selected = request.GET.get('data_emissao_month', '')
     
+    # Se não veio valor no GET, tenta preencher com mês atual (se houver dados),
+    # caso contrário preenche com o mês mais recente disponível.
+    if not selected:
+        hoje = datetime.datetime.today()
+        atual = f"{hoje.year}-{hoje.month:02d}"
+        selected = atual
+        
     filiais = Nota.objects.values('filial', 'nome_filial').distinct()
     
     if filiais:
-        return render(request, 'notas/estatisticas.html', {'filiais': filiais})
+        return render(request, 'notas/estatisticas.html', {'filiais': filiais, 'selected_month': selected})
     
     return render(request, 'notas/estatisticas.html')
 
@@ -280,7 +288,7 @@ def dados_vendas_api(request):
     
     total_vendas = [float(item['total_vendas']) for item in queryset]
     margem_por_mes = [float(item['margem']) for item in queryset] 
-    
+        
     return JsonResponse({
         # 'margem': queryset['margem_total'],
         'labels': labels,
@@ -296,5 +304,19 @@ def dados_vendas_api(request):
 #     template_name = 'notas/op_list.html'
 
 def op_list_view(request, lote):
-    itens_op = OP.objects.filter(lote=lote).order_by('-ord_producao', '-sequencial')
-    return render(request, 'notas/op_list.html', {'lote': lote, 'op_list': itens_op})
+    # itens_op = OP.objects.filter(lote=lote).order_by('-ord_producao', '-sequencial')
+    # return render(request, 'notas/op_list.html', {'lote': lote, 'op_list': itens_op})
+    itens_op = OP.objects.filter(lote=lote)
+    
+    # Transforma o queryset em uma lista de dicionários para serialização JSON
+    data = list(itens_op.values())
+    
+    # Converte objetos Decimal e Date para string para que sejam serializáveis
+    for item in data:
+        for key, value in item.items():
+            if isinstance(value, Decimal):
+                item[key] = str(value)
+            elif isinstance(value, datetime.date):
+                item[key] = value.strftime('%d/%m/%Y')
+
+    return JsonResponse({'op_list': data})

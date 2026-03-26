@@ -27,6 +27,8 @@ INSERT_COLUMNS = [
     "classificacao_produto",
     "estado_destino",
     "quantidade",
+    "preco_tabela",
+    "tabela_preco",
     "valor_contabil",
     "custo",
     "valor_unitario",
@@ -41,7 +43,7 @@ INSERT_COLUMNS = [
 ]
     
 def busca_nfs() -> list[tuple]:
-    """Realiza a busca das notas fiscais no banco do Protheus de acordo com a query padrão e retorna as linhas retornadas."""
+    """Realiza a busca das notas fiscais no banco do Protheus de acordo com a query padrão e retorna as linhas em um array."""
     
     print("Buscando NFs no Protheus...")
     
@@ -71,7 +73,7 @@ def insere_nfs(nfs: pd.DataFrame) -> bool:
     
     placeholders = ", ".join(["%s"] * len(INSERT_COLUMNS))
     formatted_columns = ", ".join(INSERT_COLUMNS)
-    sql = f"INSERT INTO analise ({formatted_columns}) VALUES ({placeholders})"
+    sql = f"INSERT IGNORE INTO analise ({formatted_columns}) VALUES ({placeholders})"
     
     con = None
     
@@ -111,7 +113,7 @@ def main():
     
     nfs = pd.DataFrame(nfs, columns=INSERT_COLUMNS[:-2])  # Exclui as colunas de margem inicialmente
     
-    # nfs['margem_bruta'] = nfs['valor_contabil']-nfs['custo']-nfs['valor_ipi']-(0.02*nfs['valor_icms'])-nfs['valor_imp5']-nfs['valor_imp6']-nfs['vlr_icms_difal']
+    # nfs['margem_bruta'] = nfs['valor_contabil']-nfs['custo']-nfs['valor_ipi']-(0.047*nfs['valor_icms'])-nfs['valor_imp5']-nfs['valor_imp6']-nfs['vlr_icms_difal']
      # Filtra vendas por CFOPs específicos (apenas vendas de produção/saída que usamos para cálculo diverso)
      
     cfop_values = {'5101', '6101', '5116', '6116', '6107'}
@@ -127,7 +129,7 @@ def main():
         nfs.loc[mask, 'valor_contabil']
         - nfs.loc[mask, 'custo']
         - nfs.loc[mask, 'valor_ipi']
-        - (0.02 * nfs.loc[mask, 'valor_icms'])
+        - (0.047 * nfs.loc[mask, 'valor_icms'])
         - nfs.loc[mask, 'valor_imp5']
         - nfs.loc[mask, 'valor_imp6']
         - nfs.loc[mask, 'vlr_icms_difal']

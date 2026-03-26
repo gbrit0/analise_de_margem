@@ -25,6 +25,8 @@ SELECT
     TRIM(ZC2_DESCR) AS [classificacao_produto],
     TRIM(D2_EST) AS [estado_destino],
     D2_QUANT AS [quantidade],
+    DA1.DA1_PRCVEN [preco_tabela],
+    A1_TABELA AS [tabela_preco],
     D2_VALBRUT AS [valor_contabil],
     D2_CUSTO1 AS [custo],
     D2_PRCVEN AS [valor_unitario],
@@ -61,6 +63,12 @@ FROM SD2010 AS D2 -- Itens de Venda da NF
         AND TRIM(A1_COD) = TRIM(F2_CLIENTE)
         AND TRIM(A1_LOJA) = TRIM(F2_LOJA)
         AND A1_FILIAL = SUBSTRING(F2_FILIAL, 1, 2)
+
+    LEFT JOIN DA1010 AS DA1 ON -- Itens da Tabela de preço
+        DA1.DA1_CODTAB  = A1_TABELA
+        AND DA1.DA1_CODPRO = B1.B1_COD
+        AND DA1.DA1_FILIAL = D2_FILIAL
+        AND DA1.D_E_L_E_T_ <> '*'
 
     LEFT JOIN SA3010 AS A3 ON -- Vendedores
         A3.D_E_L_E_T_ <> '*'
