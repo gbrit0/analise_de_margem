@@ -70,7 +70,7 @@ WHERE
         WHERE 
             D_E_L_E_T_ <> '*' 
             AND D3_ESTORNO <> 'S' 
-            AND TRIM(D3_LOTECTL) = ?
+            AND TRIM(D3_LOTECTL) IN ({in_clause})
     )
 
     AND D3_ESTORNO <> 'S'

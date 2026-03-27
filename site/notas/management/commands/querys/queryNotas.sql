@@ -40,7 +40,8 @@ SELECT DISTINCT
     D2_VALIMP6 AS [valor_imp6],
     D2_DIFAL AS [vlr_icms_difal],
     D2_VALICM AS [valor_icms],
-    D2_PICM AS [aliq_icms]
+    D2_PICM AS [aliq_icms],
+    D2.R_E_C_N_O_ as [recno]
 
 FROM SD2010 AS D2 -- Itens de Venda da NF
 
