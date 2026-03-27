@@ -10,6 +10,7 @@ class Nota(models.Model):
     filial = models.CharField(default=None, blank=False, max_length=50)
     nome_filial = models.CharField(default=None, blank=False, max_length=80)
     nota = models.CharField(default=None, blank=False, max_length=20)
+    item = models.CharField(default=None, blank=False, max_length=20)
     no_pedido = models.CharField(default=None, blank=False, max_length=15)
     vendedor = models.CharField(default=None, blank=False, null=True, max_length=60)
     data_emissao = models.DateField()
@@ -144,7 +145,7 @@ class Margem(models.Model):
         verbose_name_plural = "Margens"
         
 class OP(models.Model):
-    id_op                = models.CharField(primary_key=True, max_length=50)
+    id_op                = models.CharField(default=None, blank=True, max_length=80)
     filial               = models.CharField(default=None, blank=False, max_length=50)
     produto              = models.CharField(default=None, blank=False, max_length=15)
     armazem              = models.CharField(default=None, blank=True, max_length=60)
