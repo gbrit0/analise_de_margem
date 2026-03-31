@@ -279,8 +279,11 @@
 {% csrf_token %}
 
 <div class="filter-card">
-    <div class="filter-header">
-        <i class="fa-solid fa-sliders"></i> Filtros de Análise
+    <div class="filter-header" style="justify-content: space-between;">
+        <div>
+            <i class="fa-solid fa-sliders"></i> Filtros de Análise
+        </div>
+        
     </div>
     
     <form method="get" class="form-inline">
@@ -411,7 +414,7 @@
                         <td data-label="Vendedor">{{ nota.nome_curto_vendedor | default:"-" }}</td>
                         
                         <td data-label="Cliente" class="col-principal">
-                            <span class="text-truncate" title="{{ nota.cod_cliente }} - {{ nota.cliente }}">
+                            <span class="text-truncate" title="{{ nota.cod_cliente }}{{ nota.loja }} - {{ nota.cliente }}">
                                 {{ nota.cliente|default:"-" }}
                             </span>
                         </td>

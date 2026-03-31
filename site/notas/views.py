@@ -173,7 +173,7 @@ class NotasListView(LoginRequiredMixin, FilterView, ListView):
                 query = """SELECT cod_cliente, loja_cliente FROM analise_margem.cliente_parceiro;"""
                 cursor.execute(query)
                 clientes_parceiros_raw = cursor.fetchall()
-        
+        # 4459286002
         # 1. Cria um SET de tuplas para busca extremamente rápida.
         # Assumindo que o fetchall() retorna tuplas onde [0] é cod_cliente e [1] é loja.
         # (Se seu cursor retornar dicionários, use: c['cod_cliente'], c['loja'])
@@ -403,4 +403,61 @@ class JustificativaListView(LoginRequiredMixin, FilterView, ListView):
     login_url = 'login/'
     context_object_name = 'justificativas'
     template_name = 'notas/justificativas.html'
+
+@login_required
+def justificativa_admin_view(request):
+    if not request.user.is_superuser:
+        return render(request, '403.html', status=403) # Caso haja página de erro
     
+    selected = request.GET.get('data_emissao_month', '')
+    
+    # Se não veio valor no GET, tenta preencher com mês atual (se houver dados),
+    # caso contrário preenche com o mês mais recente disponível.
+    if not selected:
+        hoje = datetime.datetime.today()
+        atual = f"{hoje.year}-{hoje.month:02d}"
+        selected = atual
+        
+    justificativas = Justificativa.objects.all().order_by('-ativo', '-data_cadastro')
+    return render(request, 'notas/admin.html', {'justificativas': justificativas, 'selected_month': selected})
+
+@login_required
+@require_POST
+def justificativa_save(request):
+    if not request.user.is_superuser:
+        return JsonResponse({'success': False, 'error': 'Acesso negado'}, status=403)
+    
+    data = json.loads(request.body)
+    j_id = data.get('id')
+    texto = data.get('texto')
+    
+    if not texto:
+        return JsonResponse({'success': False, 'error': 'Texto obrigatório'}, status=400)
+        
+    try:
+        if j_id:
+            justificativa = Justificativa.objects.get(id=j_id)
+            justificativa.texto = texto
+            justificativa.save()
+        else:
+            Justificativa.objects.create(texto=texto, usuario=request.user)
+        return JsonResponse({'success': True})
+    except Exception as e:
+        return JsonResponse({'success': False, 'error': str(e)}, status=500)
+
+@login_required
+@require_POST
+def justificativa_toggle_status(request):
+    if not request.user.is_superuser:
+        return JsonResponse({'success': False, 'error': 'Acesso negado'}, status=403)
+        
+    data = json.loads(request.body)
+    j_id = data.get('id')
+    
+    try:
+        justificativa = Justificativa.objects.get(id=j_id)
+        justificativa.ativo = not justificativa.ativo
+        justificativa.save()
+        return JsonResponse({'success': True, 'ativo': justificativa.ativo})
+    except Exception as e:
+        return JsonResponse({'success': False, 'error': str(e)}, status=500)
