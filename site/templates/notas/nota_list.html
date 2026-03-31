@@ -304,20 +304,24 @@
             </div>
 
             <div class="form-group">
-                {% if filiais %}
-                    <label for="filial"><i class="fa-solid fa-building"></i> Filial</label>
-                    <select id="filial" name="filial" class="form-select">
-                        <option value="">Todas</option>
+                <label><i class="fa-solid fa-building"></i> Filial</label>
+                <div class="dropdown">
+                    <button class="btn btn-secondary dropdown-toggle dropdown-filial" type="button" data-bs-toggle="dropdown" aria-expanded="false" style="background-color: var(--branco); color: var(--azul-escuro); border-color: var(--cinza-borda); width: 100%; justify-content: space-between; display: flex; align-items: center; padding: 8px 12px; font-size: 0.9rem;">
+                        Selecionar Filiais
+                    </button>
+                    <ul class="dropdown-menu w-100 p-2" style="max-height: 250px; overflow-y: auto; box-shadow: 0 4px 12px rgba(0,0,0,0.1);">
                         {% for f in filiais %}
-                            <option value="{{ f.filial }}" {% if f.filial == filial_selecionada %}selected{% endif %}>
-                                {{ f.filial }}{% if f.nome_filial %} - {{ f.nome_filial }}{% endif %}
-                            </option>
+                        <li>
+                            <div class="form-check">
+                                <input class="form-check-input filial-checkbox" type="checkbox" name="filial" value="{{ f.filial }}" id="filial_{{ f.filial }}" {% if f.filial in filiais_selecionadas %}checked{% endif %}>
+                                <label class="form-check-label" for="filial_{{ f.filial }}" style="font-size: 0.85rem; cursor: pointer;">
+                                    {{ f.filial }}{% if f.nome_filial %} - {{ f.nome_filial }}{% endif %}
+                                </label>
+                            </div>
+                        </li>
                         {% endfor %}
-                    </select>
-                {% else %}
-                    {{ filter.form.filial.label_tag }}
-                    {{ filter.form.filial }}
-                {% endif %}
+                    </ul>
+                </div>
             </div>
             
             <div class="form-group">
@@ -626,6 +630,26 @@
             var newVal = $(options.get(newIdx)).val();
             sel.val(newVal);
             sel.closest('form').submit();
+        });
+
+        // Logica para exibição e controle do dropdown de filiais
+        function updateFilialButtonText() {
+            var checked = $('.filial-checkbox:checked').length;
+            var total = $('.filial-checkbox').length;
+            var btn = $('.dropdown-filial');
+            if (checked === 0 || checked === total) {
+                btn.html('Todas as Filiais');
+            } else {
+                btn.html(checked + ' filial(is) selecionada(s)');
+            }
+        }
+        $('.filial-checkbox').on('change', updateFilialButtonText);
+        updateFilialButtonText();
+        
+        $('.dropdown-menu').on('click', function(e) {
+            if ($(this).hasClass('dropdown-menu')) {
+                e.stopPropagation();
+            }
         });
     });
 

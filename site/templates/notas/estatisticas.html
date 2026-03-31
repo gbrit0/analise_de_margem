@@ -168,17 +168,24 @@
         </div>
 
         <div class="form-group">
-            <label for="filial"><i class="fa-solid fa-building"></i> Filial</label>
-            {% if filiais %}
-                <select id="filial" class="form-select">
-                    <option value="">Todas as Filiais</option>
+            <label><i class="fa-solid fa-building"></i> Filial</label>
+            <div class="dropdown">
+                <button class="btn btn-secondary dropdown-toggle dropdown-filial" type="button" data-bs-toggle="dropdown" aria-expanded="false" style="background-color: var(--branco); color: var(--azul-escuro); border-color: var(--cinza-borda); width: 100%; justify-content: space-between; display: flex; align-items: center; padding: 8px 12px; font-size: 0.9rem;">
+                    Todas as Filiais
+                </button>
+                <ul class="dropdown-menu w-100 p-2" id="filialDropdown" style="max-height: 250px; overflow-y: auto; box-shadow: 0 4px 12px rgba(0,0,0,0.1);">
                     {% for f in filiais %}
-                        <option value="{{ f.filial }}">{{ f.nome_filial }}</option>
+                    <li>
+                        <div class="form-check">
+                            <input class="form-check-input filial-checkbox" type="checkbox" value="{{ f.filial }}" id="filial_{{ f.filial }}">
+                            <label class="form-check-label" for="filial_{{ f.filial }}" style="font-size: 0.85rem; cursor: pointer;">
+                                {{ f.nome_filial }}
+                            </label>
+                        </div>
+                    </li>
                     {% endfor %}
-                </select>
-            {% else %}
-                <input type="text" id="filial" class="form-control" placeholder="Informe a filial (opcional)">
-            {% endif %}
+                </ul>
+            </div>
         </div>
 
         <div class="form-group">
@@ -221,9 +228,11 @@
 
         const inicio = document.getElementById('data_inicio').value;
         const fim = document.getElementById('data_fim').value;
-        const filial = document.getElementById('filial').value;
 
-        const url = `/api/estatisticas/?inicio=${inicio}&fim=${fim}&filial=${filial}`;
+        const filiaisChecadas = Array.from(document.querySelectorAll('.filial-checkbox:checked')).map(cb => cb.value);
+        const filiaisStr = filiaisChecadas.join(',');
+
+        const url = `/api/estatisticas/?inicio=${inicio}&fim=${fim}&filiais=${filiaisStr}`;
 
         fetch(url)
             .then(response => response.json())
@@ -349,9 +358,28 @@
             });
     }
 
-    // Inicia o gráfico ao carregar a página
-    window.onload = function() {
+    // Inicia o gráfico ao carregar a página e configura dropdown
+    document.addEventListener('DOMContentLoaded', function() {
+        const checkboxes = document.querySelectorAll('.filial-checkbox');
+        const btn = document.querySelector('.dropdown-filial');
+        
+        function updateFilialText() {
+            const checked = document.querySelectorAll('.filial-checkbox:checked').length;
+            const total = checkboxes.length;
+            if (checked === 0 || checked === total) {
+                btn.innerHTML = 'Todas as Filiais';
+            } else {
+                btn.innerHTML = checked + ' filial(is) selecionada(s)';
+            }
+        }
+        
+        checkboxes.forEach(cb => cb.addEventListener('change', updateFilialText));
+        
+        document.getElementById('filialDropdown').addEventListener('click', function(e) {
+            e.stopPropagation();
+        });
+        
         atualizarDashboard();
-    };
+    });
 </script> 
 {% endblock %}

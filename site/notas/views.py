@@ -116,8 +116,10 @@ class NotasListView(LoginRequiredMixin, FilterView, ListView):
             justificativa=justificativa_mais_recente
         )
         
-        
-        
+        filiais_selecionadas = self.request.GET.getlist('filial')
+        if filiais_selecionadas:
+            queryset = queryset.filter(filial__in=filiais_selecionadas)
+            
         return queryset.order_by('-data_emissao')
     
     def get_context_data(self, **kwargs):
@@ -146,8 +148,8 @@ class NotasListView(LoginRequiredMixin, FilterView, ListView):
         # Valor selecionado atualmente (vindo dos GET params)
         selected = self.request.GET.get('data_emissao_month', '')
 
-        filial = self.request.GET.get('filial', '')
-        context['filial_selecionada'] = filial
+        filiais_selecionadas = self.request.GET.getlist('filial')
+        context['filiais_selecionadas'] = filiais_selecionadas
         
         # Se não veio valor no GET, tenta preencher com mês atual (se houver dados),
         # caso contrário preenche com o mês mais recente disponível.
@@ -314,7 +316,7 @@ def dados_vendas_api(request):
     
     data_inicio = request.GET.get('inicio')
     data_fim = request.GET.get('fim')
-    filial = request.GET.get('filial')
+    filiais_str = request.GET.get('filiais')
         
     queryset = Nota.objects.all()
     
@@ -322,10 +324,9 @@ def dados_vendas_api(request):
         queryset = queryset.filter(data_emissao__gte=parse_date(data_inicio))
     if data_fim:
         queryset = queryset.filter(data_emissao__lte=parse_date(data_fim))
-    if filial:
-        queryset = queryset.filter(
-            Q(filial__icontains=filial) | Q(nome_filial__icontains=filial)
-        )
+    if filiais_str:
+        filiais_list = filiais_str.split(',')
+        queryset = queryset.filter(filial__in=filiais_list)
     
     subquery_margem = Margem.objects.filter(
         chave=OuterRef('chave')
