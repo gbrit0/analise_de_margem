@@ -1,31 +1,31 @@
+from setup import settings
+from .filters import NotaFilter
+from .models import Justificativa, Nota, Custo, Margem, Nf_Has_Justificativa, OP
+
+import os
+import json
+import locale
+import pyodbc
+import datetime
+from decimal import Decimal
+from dbutils.pooled_db import PooledDB
+from dateutil.relativedelta import relativedelta
+
 from django.utils import timezone
 from django.shortcuts import render
 from django.views.generic import ListView
-from django.db.models import Sum, Count, Q, Avg
 from django_filters.views import FilterView
 from django.utils.dateparse import parse_date
+from django.db.models import Sum, Count, Q, Avg
 from django.db.models.functions import TruncMonth
 from django.http import HttpResponse, JsonResponse
+from django.views.decorators.cache import cache_page
 from django.shortcuts import render, get_object_or_404
 from django.contrib.auth.decorators import login_required
 from django.contrib.auth.mixins import LoginRequiredMixin
 from django.db.models.functions import Coalesce, ExtractYear, ExtractMonth
 from django.views.decorators.http import require_http_methods, require_POST
 from django.db.models import OuterRef, Subquery, DecimalField, Case, When, F, Value, ExpressionWrapper
-
-import json
-import datetime
-from decimal import Decimal
-from .filters import NotaFilter
-from dateutil.relativedelta import relativedelta
-from .models import Justificativa, Nota, Custo, Margem, Nf_Has_Justificativa, OP
-import locale
-import pyodbc
-import os
-
-from dbutils.pooled_db import PooledDB
-
-from setup import settings
 
 locale.setlocale(locale.LC_ALL, 'pt_BR.UTF-8')
 
@@ -343,6 +343,7 @@ def dados_vendas_api(request):
 #         return context
 
 @login_required
+@cache_page(60 * 15)
 def op_list_view(request, lote):
     with open(f'{settings.BASE_DIR}/notas/management/commands/querys/buscaOPs.sql', 'r') as f:
         query_ops = f.read()

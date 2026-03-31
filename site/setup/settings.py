@@ -164,3 +164,10 @@ hoje = date.today().strftime("%Y-%m")
 
 LOGIN_REDIRECT_URL = f'/notas/?data_emissao_month={hoje}'
 LOGOUT_REDIRECT_URL = '/login'
+
+CACHES = {
+    "default": {
+        "BACKEND": "django.core.cache.backends.redis.RedisCache",
+        "LOCATION": "redis://172.49.49.6:6380",
+    }
+}
