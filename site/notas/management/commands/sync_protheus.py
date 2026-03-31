@@ -67,7 +67,7 @@ class Command(BaseCommand):
                 # Guarda o lote se existir para a busca das OPs
                 if lote and lote.strip():
                     lotes_unicos.add(lote.strip())
-                    relacao_lote_nota[lote.strip()] = f"{filial}{nota}{item}{recno}"
+                    relacao_lote_nota[lote.strip()] = lote.strip() # f"{filial}{nota}{item}{recno}"
 
                 nota_obj = Nota(
                     chave=chave, filial=filial, nome_filial=nome_filial, nota=nota, item=item,
@@ -80,7 +80,7 @@ class Command(BaseCommand):
                     quantidade=quantidade, tabela_preco=tabela_preco, preco_tabela=preco_tabela,
                     valor_contabil=valor_contabil, valor_unitario=valor_unitario, valor_ipi=valor_ipi,
                     valor_imp5=valor_imp5, valor_imp6=valor_imp6, valor_icms_difal=valor_icms_difal,
-                    valor_icms=valor_icms, aliq_icms=aliq_icms
+                    valor_icms=valor_icms, aliq_icms=aliq_icms, recno=recno
                 )
 
                 if chave not in chaves_existentes:
@@ -127,65 +127,66 @@ class Command(BaseCommand):
 
             todas_ops_dict = {}
             
-            with pool.connection() as conn:
-                with conn.cursor() as cursor:
-                    for pedaço_lotes in dividir_em_lotes(list(lotes_unicos), 500):
-                        if not pedaço_lotes:
-                            continue
+            # with pool.connection() as conn:
+            #     with conn.cursor() as cursor:
+            #         for pedaço_lotes in dividir_em_lotes(list(lotes_unicos), 500):
+            #             if not pedaço_lotes:
+            #                 continue
                         
-                        placeholders = ','.join(['?'] * len(pedaço_lotes))
-                        query_ops_ajustada = query_ops_base.replace('{in_clause}', placeholders)
+            #             placeholders = ','.join(['?'] * len(pedaço_lotes))
+            #             query_ops_ajustada = query_ops_base.replace('{in_clause}', placeholders)
                         
-                        cursor.execute(query_ops_ajustada, pedaço_lotes)
-                        rows_ops = cursor.fetchall()
+            #             cursor.execute(query_ops_ajustada, pedaço_lotes)
+            #             rows_ops = cursor.fetchall()
                         
-                        for op_row in rows_ops:
-                            filial, produto, armazem, tp_movimento, descricao_tm, descr_prod, unidade, quantidade, quant_2, custo, custo_2, ord_producao, lote_op, os_ass_tecn, grupo, descricao_grupo, tipo_re_de, ext_texto, documento, dt_emissao, c_contabil, descricao_da_conta, centro_custo, desc_centro_de_custo, parc_total, estornado, sequencial, tipo, usuario, nr_s_a, item_s_a = op_row
+            #             for op_row in rows_ops:
+            #                 filial, produto, armazem, tp_movimento, descricao_tm, descr_prod, unidade, quantidade, quant_2, custo, custo_2, ord_producao, lote_op, os_ass_tecn, grupo, descricao_grupo, tipo_re_de, ext_texto, documento, dt_emissao, c_contabil, descricao_da_conta, centro_custo, desc_centro_de_custo, parc_total, estornado, sequencial, tipo, usuario, nr_s_a, item_s_a = op_row
                             
-                            lote_limpo = lote_op.strip()
-                            base_chave_nota = relacao_lote_nota.get(lote_limpo, f"SEM_NOTA_{lote_limpo}")
+            #                 lote_limpo = lote_op.strip()
+            #                 # print(lote_limpo)
+            #                 base_chave_nota = relacao_lote_nota.get(lote_limpo)
                             
-                            # ID ÚNICO da OP
-                            id_op_unico = f"{base_chave_nota}_{ord_producao.strip()}_{sequencial.strip()}"
+            #                 # ID ÚNICO da OP
+            #                 id_op_unico = f"{base_chave_nota}_{ord_producao.strip()}_{sequencial.strip()}"
                             
-                            todas_ops_dict[id_op_unico] = OP(
-                                id_op=id_op_unico, filial=filial, produto=produto, armazem=armazem,
-                                tp_movimento=tp_movimento, descricao_tm=descricao_tm, descr_prod=descr_prod,
-                                unidade=unidade, quantidade=quantidade, quant_2=quant_2, custo=custo,
-                                custo_2=custo_2, ord_producao=ord_producao, lote=lote_op, os_ass_tecn=os_ass_tecn,
-                                grupo=grupo, descricao_grupo=descricao_grupo, tipo_re_de=tipo_re_de,
-                                ext_texto=ext_texto, documento=documento, dt_emissao=dt_emissao, c_contabil=c_contabil,
-                                descricao_da_conta=descricao_da_conta, centro_custo=centro_custo, desc_centro_de_custo=desc_centro_de_custo,
-                                parc_total=parc_total, estornado=estornado, sequencial=sequencial, tipo=tipo,
-                                usuario=usuario, nr_s_a=nr_s_a, item_s_a=item_s_a
-                            )
+            #                 todas_ops_dict[id_op_unico] = OP(
+            #                     id_op=id_op_unico, filial=filial, produto=produto, armazem=armazem,
+            #                     tp_movimento=tp_movimento, descricao_tm=descricao_tm, descr_prod=descr_prod,
+            #                     unidade=unidade, quantidade=quantidade, quant_2=quant_2, custo=custo,
+            #                     custo_2=custo_2, ord_producao=ord_producao, lote=lote_op, os_ass_tecn=os_ass_tecn,
+            #                     grupo=grupo, descricao_grupo=descricao_grupo, tipo_re_de=tipo_re_de,
+            #                     ext_texto=ext_texto, documento=documento, dt_emissao=dt_emissao, c_contabil=c_contabil,
+            #                     descricao_da_conta=descricao_da_conta, centro_custo=centro_custo, desc_centro_de_custo=desc_centro_de_custo,
+            #                     parc_total=parc_total, estornado=estornado, sequencial=sequencial, tipo=tipo,
+            #                     usuario=usuario, nr_s_a=nr_s_a, item_s_a=item_s_a
+            #                 )
 
-            # 2. Agora fazemos a separação (Create vs Update)
-            if todas_ops_dict:
-                self.stdout.write(f"Processando {len(todas_ops_dict)} OPs únicas...")
+            # # 2. Agora fazemos a separação (Create vs Update)
+            # if todas_ops_dict:
+            #     self.stdout.write(f"Processando {len(todas_ops_dict)} OPs únicas...")
                 
-                # Busca no Django quais desses IDs já existem
-                chaves_op_protheus = list(todas_ops_dict.keys())
-                ids_op_existentes = set(OP.objects.filter(id_op__in=chaves_op_protheus).values_list('id_op', flat=True))
+            #     # Busca no Django quais desses IDs já existem
+            #     chaves_op_protheus = list(todas_ops_dict.keys())
+            #     ids_op_existentes = set(OP.objects.filter(id_op__in=chaves_op_protheus).values_list('id_op', flat=True))
                 
-                ops_para_criar = []
-                ops_para_atualizar = []
+            #     ops_para_criar = []
+            #     ops_para_atualizar = []
                 
-                for id_op, op_obj in todas_ops_dict.items():
-                    if id_op in ids_op_existentes:
-                        ops_para_atualizar.append(op_obj)
-                    else:
-                        ops_para_criar.append(op_obj)
+            #     for id_op, op_obj in todas_ops_dict.items():
+            #         if id_op in ids_op_existentes:
+            #             ops_para_atualizar.append(op_obj)
+            #         else:
+            #             ops_para_criar.append(op_obj)
                 
-                # 3. Salva no banco de forma otimizada
-                with transaction.atomic():
-                    if ops_para_criar:
-                        OP.objects.bulk_create(ops_para_criar, batch_size=1000)
+            #     # 3. Salva no banco de forma otimizada
+            #     with transaction.atomic():
+            #         if ops_para_criar:
+            #             OP.objects.bulk_create(ops_para_criar, batch_size=1000)
                         
-                    if ops_para_atualizar:
-                        # IMPORTANTE: Coloque aqui os campos que podem mudar caso a OP sofra alteração no Protheus
-                        campos_update_op = ['quantidade', 'custo', 'custo_2', 'estornado'] 
-                        OP.objects.bulk_update(ops_para_atualizar, campos_update_op, batch_size=1000)
+            #         if ops_para_atualizar:
+            #             # IMPORTANTE: Coloque aqui os campos que podem mudar caso a OP sofra alteração no Protheus
+            #             campos_update_op = ['quantidade', 'custo', 'custo_2', 'estornado'] 
+            #             OP.objects.bulk_update(ops_para_atualizar, campos_update_op, batch_size=1000)
 
             # 6. REGRA PARA VALIDAR EXCLUSÕES
             Nota.objects.exclude(chave__in=chaves_protheus).update(delete=True)

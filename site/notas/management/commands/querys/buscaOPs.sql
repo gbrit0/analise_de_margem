@@ -4,7 +4,7 @@ SELECT
     TRIM(D3_LOCAL) armazem,
     TRIM(D3_TM) tp_movimento,
     TRIM(F5_TEXTO) descricao_tm,
-    TRIM(B1_DESC) descre_prod,
+    TRIM(B1_DESC) descr_prod,
     TRIM(D3_UM) unidade,
     D3_QUANT quantidade,
     CASE WHEN SUBSTRING(D3_CF, 1, 2) = 'RE' THEN D3_QUANT ELSE D3_QUANT * -1 END quant_2,
@@ -70,7 +70,7 @@ WHERE
         WHERE 
             D_E_L_E_T_ <> '*' 
             AND D3_ESTORNO <> 'S' 
-            AND TRIM(D3_LOTECTL) IN ({in_clause})
+            AND TRIM(D3_LOTECTL) = ?
     )
 
     AND D3_ESTORNO <> 'S'

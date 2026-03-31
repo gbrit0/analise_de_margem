@@ -41,6 +41,7 @@ class Nota(models.Model):
     valor_icms_difal = models.DecimalField(max_digits=18, decimal_places=2)
     valor_icms = models.DecimalField(max_digits=18, decimal_places=2)
     aliq_icms = models.DecimalField(max_digits=5, decimal_places=2)
+    recno = models.BigIntegerField()
     delete = models.BooleanField(default=False)
     
     class Meta():
@@ -89,6 +90,10 @@ class Nota(models.Model):
     @property
     def valor_icms_formatado(self):
         return locale.currency(self.valor_icms, grouping=True)
+    
+    @property
+    def relacao_lote_nota(self):
+        return f"{self.filial}{self.nota}{self.item}{self.recno}"
     
     def __str__(self):
         return self.chave
@@ -181,6 +186,13 @@ class OP(models.Model):
     class Meta():
         verbose_name = "Op"
         verbose_name_plural = "Ops"
-        
+    
+    @property
+    def custo1_fmt(self):
+        return locale.currency(self.custo, grouping=True)
+    
+    @property
+    def custo2_fmt(self):
+        return locale.currency(self.custo_2, grouping=True)
         
         

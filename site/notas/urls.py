@@ -20,5 +20,6 @@ urlpatterns = [
     path('api/atualizar-justificativa/', atualizar_justificativa_api, name='api_atualizar_justificativa'),
     path('estatisticas/', dashboard_view, name='estatisticas'),
     path('api/estatisticas/', dados_vendas_api, name='dados_vendas_api'),
-    path('ops/<str:lote>', login_required(op_list_view), name='lista_ops'),
+    # path('ops/<str:lote>/', login_required(OPListView.as_view(model=OP)), name='lista_ops'),
+    path('ops/<str:lote>/', op_list_view, name='lista_ops'),
 ]

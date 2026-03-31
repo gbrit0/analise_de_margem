@@ -1,6 +1,5 @@
 from django.utils import timezone
 from django.shortcuts import render
-from django.http import JsonResponse
 from django.views.generic import ListView
 from django.db.models import Sum, Count, Q, Avg
 from django_filters.views import FilterView
@@ -21,8 +20,26 @@ from .filters import NotaFilter
 from dateutil.relativedelta import relativedelta
 from .models import Justificativa, Nota, Custo, Margem, Nf_Has_Justificativa, OP
 import locale
+import pyodbc
+import os
+
+from dbutils.pooled_db import PooledDB
+
+from setup import settings
 
 locale.setlocale(locale.LC_ALL, 'pt_BR.UTF-8')
+
+pool = PooledDB(
+    creator=pyodbc,
+    maxconnections=10, # Como vamos usar lotes, não precisamos de tantas conexões simultâneas
+    mincached=2,
+    blocking=True,
+    driver='{ODBC Driver 17 for SQL Server}',
+    server=f'{os.getenv("PROTHEUS_DB_HOST")}',
+    database=f'{os.getenv("PROTHEUS_DB_DATABASE")}',
+    uid=f'{os.getenv("PROTHEUS_DB_USER")}',
+    pwd=f'{os.getenv("PROTHEUS_DB_PASSWORD")}'
+)
 
 class NotasListView(LoginRequiredMixin, FilterView, ListView):
     mes_anterior = datetime.date.today() - relativedelta(month=1)
@@ -299,24 +316,48 @@ def dados_vendas_api(request):
 
 # class OPListView(LoginRequiredMixin, FilterView, ListView):
 #     model = OP
-#     ordering = ['-ord_producao', '-sequencial']
+#        = ['-ord_producao', '-sequencial']
 #     context_object_name = 'op_list'
 #     template_name = 'notas/op_list.html'
+#     # filterset_class = SeuFiltroDeOPs # Descomente se for usar o FilterView real
 
+#     def get_queryset(self):
+#         # 1. Recupera o queryset original com a ordenação definida na classe
+#         qs = super().get_queryset()
+        
+#         # 2. Pega a 'chave' passada na URL
+#         lote = self.kwargs.get('lote')
+        
+#         # 3. Busca a Nota e monta o prefixo
+#         # nota = get_object_or_404(Nota, chave=chave)
+#         # prefixo_busca = f"{nota.filial}{nota.nota}{nota.item}{nota.recno}"
+        
+#         # 4. Retorna o queryset filtrado
+#         return qs.filter(id_op__startswith=lote)
+
+#     def get_context_data(self, **kwargs):
+#         # Adiciona o objeto 'nota' ao contexto para você usar no seu HTML (ex: {{ nota.lote }})
+#         context = super().get_context_data(**kwargs)
+#         chave = self.kwargs.get('chave')
+#         context['nota'] = get_object_or_404(Nota, chave=chave)
+#         return context
+
+@login_required
 def op_list_view(request, lote):
-    # itens_op = OP.objects.filter(lote=lote).order_by('-ord_producao', '-sequencial')
-    # return render(request, 'notas/op_list.html', {'lote': lote, 'op_list': itens_op})
-    itens_op = OP.objects.filter(lote=lote)
+    with open(f'{settings.BASE_DIR}/notas/management/commands/querys/buscaOPs.sql', 'r') as f:
+        query_ops = f.read()
+        
+    with pool.connection() as conn:
+        with conn.cursor() as cursor:
+            cursor.execute(query_ops, lote)
+            colunas = [coluna[0] for coluna in cursor.description]
+            linhas_op = [dict(zip(colunas, linha)) for linha in cursor.fetchall()]
     
-    # Transforma o queryset em uma lista de dicionários para serialização JSON
-    data = list(itens_op.values())
-    
-    # Converte objetos Decimal e Date para string para que sejam serializáveis
-    for item in data:
-        for key, value in item.items():
-            if isinstance(value, Decimal):
-                item[key] = str(value)
-            elif isinstance(value, datetime.date):
-                item[key] = value.strftime('%d/%m/%Y')
-
-    return JsonResponse({'op_list': data})
+    # Formata custo e custo_2 com locale.currency
+    for op in linhas_op:
+        if op.get('custo') is not None:
+            op['custo'] = locale.currency(op['custo'], grouping=True)
+        if op.get('custo_2') is not None:
+            op['custo_2'] = locale.currency(op['custo_2'], grouping=True)
+            
+    return render(request, 'notas/op_list.html', {'linhas_op': linhas_op})

@@ -1,95 +1,82 @@
-
-
-<div class="modal fade" id="modalOP" tabindex="-1" aria-labelledby="modalOPLabel" aria-hidden="false">
-    <div class="modal-dialog modal-xl">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h5 class="modal-title" id="modalOPLabel">Detalhes da Ordem de Produção</h5>
-                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-            </div>
-            <div class="modal-body">
-                <div class="table-responsive">
-                    <table class="table table-bordered table-striped table-hover">
-                        <thead>
-                            <tr>
-                                <th>Filial</th>
-                                <th>Produto</th>
-                                <th>Armazém</th>
-                                <th>Tp. Mov.</th>
-                                <th>Desc. TM</th>
-                                <th>Desc. Prod.</th>
-                                <th>Unidade</th>
-                                <th>Quantidade</th>
-                                <th>Quant. 2</th>
-                                <th>Custo</th>
-                                <th>Custo 2</th>
-                                <th>Ord. Produção</th>
-                                <th>Lote</th>
-                                <th>OS Ass. Tecn.</th>
-                                <th>Grupo</th>
-                                <th>Desc. Grupo</th>
-                                <th>Tipo RE/DE</th>
-                                <th>Ext. Texto</th>
-                                <th>Documento</th>
-                                <th>Dt. Emissão</th>
-                                <th>C. Contábil</th>
-                                <th>Desc. Conta</th>
-                                <th>Centro Custo</th>
-                                <th>Desc. C.Custo</th>
-                                <th>Parc./Total</th>
-                                <th>Estornado</th>
-                                <th>Sequencial</th>
-                                <th>Tipo</th>
-                                <th>Usuário</th>
-                                <th>Nr. S.A.</th>
-                                <th>Item S.A.</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            {% for op in object_list %}
-                            <tr>
-                                <td>{{ op.filial }}</td>
-                                <td>{{ op.produto }}</td>
-                                <td>{{ op.armazem }}</td>
-                                <td>{{ op.tp_movimento }}</td>
-                                <td>{{ op.descricao_tm }}</td>
-                                <td>{{ op.descr_prod }}</td>
-                                <td>{{ op.unidade }}</td>
-                                <td>{{ op.quantidade }}</td>
-                                <td>{{ op.quant_2 }}</td>
-                                <td>{{ op.custo }}</td>
-                                <td>{{ op.custo_2 }}</td>
-                                <td>{{ op.ord_producao }}</td>
-                                <td>{{ op.lote }}</td>
-                                <td>{{ op.os_ass_tecn }}</td>
-                                <td>{{ op.grupo }}</td>
-                                <td>{{ op.descricao_grupo }}</td>
-                                <td>{{ op.tipo_re_de }}</td>
-                                <td>{{ op.ext_texto }}</td>
-                                <td>{{ op.documento }}</td>
-                                <td>{{ op.dt_emissao }}</td>
-                                <td>{{ op.c_contabil }}</td>
-                                <td>{{ op.descricao_da_conta }}</td>
-                                <td>{{ op.centro_custo }}</td>
-                                <td>{{ op.desc_centro_de_custo }}</td>
-                                <td>{{ op.parc_total }}</td>
-                                <td>{{ op.estornado }}</td>
-                                <td>{{ op.sequencial }}</td>
-                                <td>{{ op.tipo }}</td>
-                                <td>{{ op.usuario }}</td>
-                                <td>{{ op.nr_s_a }}</td>
-                                <td>{{ op.item_s_a }}</td>
-                            </tr>
-                            {% endfor %}
-                        </tbody>
-                    </table>
-                </div>
-            </div>
-            <div class="modal-footer">
-                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Fechar</button>
-                <!-- <button type="button" class="btn btn-success">Exportar Excel</button> -->
-            </div>
-        </div>
-    </div>
+<div class="table-responsive">
+    <table class="table table-bordered table-striped table-hover">
+        <thead>
+            <tr>
+                <th>Filial</th>
+                <th>Produto</th>
+                <th>Descr. Produto</th>
+                <th>Armazém</th>
+                <th>Tp. Mov.</th>
+                <th>Desc. TM</th>
+                <th>Unidade</th>
+                <th>Quantidade</th>
+                <!-- <th>Quant. 2</th> -->
+                <th>Custo</th>
+                <!-- <th>Custo 2</th> -->
+                <th>Ord. Produção</th>
+                <th>Lote</th>
+                <th>OS Ass. Tecn.</th>
+                <th>Grupo</th>
+                <th>Desc. Grupo</th>
+                <th>Tipo RE/DE</th>
+                <th>Ext. Texto</th>
+                <th>Documento</th>
+                <th>Dt. Emissão</th>
+                <th>C. Contábil</th>
+                <th>Desc. Conta</th>
+                <th>Centro Custo</th>
+                <th>Desc. C.Custo</th>
+                <th>Parc./Total</th>
+                <th>Estornado</th>
+                <th>Sequencial</th>
+                <th>Tipo</th>
+                <th>Usuário</th>
+                <th>Nr. S.A.</th>
+                <th>Item S.A.</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for op in linhas_op %}
+            <tr {% if op.tp_movimento == '010' %}class="table-warning"{% endif %}>
+                <td>{{ op.filial }}</td>
+                <td>{{ op.produto }}</td>
+                <td>{{ op.descr_prod }}</td>
+                <td>{{ op.armazem }}</td>
+                <td>{{ op.tp_movimento }}</td>
+                <td>{{ op.descricao_tm }}</td>
+                <td>{{ op.unidade }}</td>
+                <td>{{ op.quantidade }}</td>
+                <!-- <td>{{ op.quant_2 }}</td> -->
+                <td>{{ op.custo }}</td>
+                <!-- <td>{{ op.custo_2 }}</td> -->
+                <td>{{ op.ord_producao }}</td>
+                <td>{{ op.lote }}</td>
+                <td>{{ op.os_ass_tecn }}</td>
+                <td>{{ op.grupo }}</td>
+                <td>{{ op.descricao_grupo }}</td>
+                <td>{{ op.tipo_re_de }}</td>
+                <td>{{ op.ext_texto }}</td>
+                <td>{{ op.documento }}</td>
+                <td>{{ op.dt_emissao }}</td>
+                <td>{{ op.c_contabil }}</td>
+                <td>{{ op.descricao_da_conta }}</td>
+                <td>{{ op.centro_custo }}</td>
+                <td>{{ op.desc_centro_de_custo }}</td>
+                <td>{{ op.parc_total }}</td>
+                <td>{{ op.estornado }}</td>
+                <td>{{ op.sequencial }}</td>
+                <td>{{ op.tipo }}</td>
+                <td>{{ op.usuario }}</td>
+                <td>{{ op.nr_s_a }}</td>
+                <td>{{ op.item_s_a }}</td>
+            </tr>
+            {% empty %}
+            <tr>
+                <td colspan="32">Nenhuma OP encontrada para este lote.</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
 </div>
+
 
