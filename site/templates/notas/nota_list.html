@@ -464,8 +464,20 @@
                             {% if nota.margem_bruta_formatada %}{{ nota.margem_bruta_formatada }}{% else %}-{% endif %}
                         </td>
                         
+                        
                         <td data-label="Margem %" class="text-right celula-margem-pct col-principal" 
-                            style="font-weight:bold; color: {% if nota.margem_percentual != None and nota.margem_percentual < 27 %}var(--vermelho-alerta){% else %}var(--verde-principal){% endif %};">
+                            style="font-weight:bold; color: 
+                                {% if nota.margem_percentual != None %}
+                                    {% if nota.is_parceiro and nota.margem_percentual < 15 %}
+                                        var(--vermelho-alerta)
+                                    {% elif not nota.is_parceiro and nota.margem_percentual < 27 %}
+                                        var(--vermelho-alerta)
+                                    {% else %}
+                                        var(--verde-principal)
+                                    {% endif %}
+                                {% else %}
+                                    var(--verde-principal)
+                                {% endif %};">
                             {% if nota.margem_percentual != None %}{{ nota.margem_percentual|floatformat:2 }}%{% else %}-{% endif %}
                         </td>
                         

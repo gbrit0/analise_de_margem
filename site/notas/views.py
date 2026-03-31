@@ -6,6 +6,7 @@ import os
 import json
 import locale
 import pyodbc
+import pymysql
 import datetime
 from decimal import Decimal
 from dbutils.pooled_db import PooledDB
@@ -39,6 +40,17 @@ pool = PooledDB(
     database=f'{os.getenv("PROTHEUS_DB_DATABASE")}',
     uid=f'{os.getenv("PROTHEUS_DB_USER")}',
     pwd=f'{os.getenv("PROTHEUS_DB_PASSWORD")}'
+)
+pool_mysql = PooledDB(
+    creator=pymysql,
+    maxconnections=10, # Como vamos usar lotes, não precisamos de tantas conexões simultâneas
+    mincached=2,
+    blocking=True,
+    host=f'{os.getenv("DB_HOST")}',
+    port=int(os.getenv("DB_PORT")),
+    user=f'{os.getenv("DB_USER")}',
+    password=f'{os.getenv("DB_PASSWORD")}',
+    database=f'{os.getenv("DB_NAME")}'
 )
 
 class NotasListView(LoginRequiredMixin, FilterView, ListView):
@@ -104,6 +116,8 @@ class NotasListView(LoginRequiredMixin, FilterView, ListView):
             justificativa=justificativa_mais_recente
         )
         
+        
+        
         return queryset.order_by('-data_emissao')
     
     def get_context_data(self, **kwargs):
@@ -112,6 +126,7 @@ class NotasListView(LoginRequiredMixin, FilterView, ListView):
         
         # Adicionamos a lista de justificativas ativas para popular os selects no HTML
         context['lista_justificativas'] = Justificativa.objects.filter(ativo=True)
+        
         # Monta lista de meses/anos disponíveis (format YYYY-MM)
         meses_qs = Nota.objects.annotate(
             year=ExtractYear('data_emissao'),
@@ -150,8 +165,30 @@ class NotasListView(LoginRequiredMixin, FilterView, ListView):
         
         # context['mes_anterior'] = (datetime.date.today() - relativedelta(month=1)).strftime("%Y-%m")
         filiais = Nota.objects.values('filial', 'nome_filial').distinct()
+        
         context['filiais'] = filiais
-                
+        
+        with pool_mysql.connection() as con:
+            with con.cursor() as cursor:
+                query = """SELECT cod_cliente, loja_cliente FROM analise_margem.cliente_parceiro;"""
+                cursor.execute(query)
+                clientes_parceiros_raw = cursor.fetchall()
+        
+        # 1. Cria um SET de tuplas para busca extremamente rápida.
+        # Assumindo que o fetchall() retorna tuplas onde [0] é cod_cliente e [1] é loja.
+        # (Se seu cursor retornar dicionários, use: c['cod_cliente'], c['loja'])
+        set_parceiros = {(c[0], c[1]) for c in clientes_parceiros_raw}
+
+        # 2. Verifica a lista de notas atual (object_list do ListView)
+        # Se você usa um context_object_name diferente, troque 'object_list' pelo seu nome
+        for nota in context['object_list']:
+            # Cria um atributo dinâmico "is_parceiro" na nota
+            # Se a tupla (cod_cliente, loja) da nota existir no SET, recebe True.
+            if (nota.cod_cliente, nota.loja) in set_parceiros:
+                nota.is_parceiro = True
+            else:
+                nota.is_parceiro = False
+
         return context
     
 @login_required
@@ -354,7 +391,6 @@ def op_list_view(request, lote):
             colunas = [coluna[0] for coluna in cursor.description]
             linhas_op = [dict(zip(colunas, linha)) for linha in cursor.fetchall()]
     
-    # Formata custo e custo_2 com locale.currency
     for op in linhas_op:
         if op.get('custo') is not None:
             op['custo'] = locale.currency(op['custo'], grouping=True)
@@ -362,3 +398,9 @@ def op_list_view(request, lote):
             op['custo_2'] = locale.currency(op['custo_2'], grouping=True)
             
     return render(request, 'notas/op_list.html', {'linhas_op': linhas_op})
+
+class JustificativaListView(LoginRequiredMixin, FilterView, ListView):
+    login_url = 'login/'
+    context_object_name = 'justificativas'
+    template_name = 'notas/justificativas.html'
+    

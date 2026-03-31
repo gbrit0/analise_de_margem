@@ -120,7 +120,7 @@ class Justificativa(models.Model):
     ativo = models.BooleanField(default=True)
     data_desativa = models.DateTimeField(blank=True, null=True)
     # usuario = models.ForeignKey(to=CustomUser, on_delete=models.PROTECT, null=True, blank=True)
-    usuario = models.ForeignKey(to=CustomUser, on_delete=models.PROTECT, default=2)
+    usuario = models.ForeignKey(to=CustomUser, on_delete=models.PROTECT, default=2, editable=False)
     
     class Meta():
         verbose_name = "Justificativa"
@@ -129,6 +129,14 @@ class Justificativa(models.Model):
     def __str__(self):
         return self.texto
     
+    def save(self, *args, **kwargs):
+        if not self.ativo:
+            if not self.data_desativa:
+                self.data_desativa = timezone.now()
+        else:
+            self.data_desativa = None
+            
+        super().save(*args, **kwargs)
     
 class Nf_Has_Justificativa(models.Model):
     nf = models.ForeignKey(to=Nota, on_delete=models.PROTECT)

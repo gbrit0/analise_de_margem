@@ -9,9 +9,9 @@ from .models import (
 )
 
 class CustomJustificativasAdmin(admin.ModelAdmin):
-    list_display = ('texto', 'data_cadastro', 'ativo', 'data_desativa')
-    list_display_links = ('texto', 'data_cadastro', 'ativo', 'data_desativa')
-    search_fields = ('texto', 'data_cadastro', 'ativo', 'data_desativa')
+    list_display = ('texto', 'data_cadastro', 'ativo', 'data_desativa', 'usuario')
+    list_display_links = ('texto', 'data_cadastro', 'ativo', 'data_desativa', 'usuario')
+    search_fields = ('texto', 'data_cadastro', 'ativo', 'data_desativa', 'usuario')
 
 class CustomNotasAdmin(admin.ModelAdmin):
     list_display = ['filial', 'nota', 'no_pedido', 'produto',]
