@@ -34,8 +34,11 @@
         align-items: end;
     }
 
-    .form-group { display: flex; flex-direction: column; }
-    
+    .form-group {
+        display: flex;
+        flex-direction: column;
+    }
+
     .form-group label {
         font-size: 0.85rem;
         font-weight: 500;
@@ -43,7 +46,8 @@
         margin-bottom: 6px;
     }
 
-    .form-control, .form-select {
+    .form-control,
+    .form-select {
         font-family: 'Poppins', sans-serif;
         padding: 8px 12px;
         border: 1px solid var(--cinza-borda);
@@ -54,7 +58,8 @@
         transition: all 0.3s ease;
     }
 
-    .form-control:focus, .form-select:focus {
+    .form-control:focus,
+    .form-select:focus {
         border-color: var(--verde-principal);
         outline: none;
         box-shadow: 0 0 0 3px rgba(0, 163, 79, 0.1);
@@ -129,7 +134,8 @@
         box-shadow: 0 4px 12px rgba(19, 22, 47, 0.05);
         border: 1px solid var(--cinza-borda);
         position: relative;
-        min-height: 400px; /* Garante altura em telas menores */
+        min-height: 400px;
+        /* Garante altura em telas menores */
     }
 
     .chart-card-title {
@@ -155,7 +161,7 @@
     <div class="filter-header">
         <i class="fa-solid fa-filter"></i> Parâmetros do Painel
     </div>
-    
+
     <div class="filter-grid">
         <div class="form-group">
             <label for="data_inicio"><i class="fa-regular fa-calendar-check"></i> Data Início</label>
@@ -170,15 +176,20 @@
         <div class="form-group">
             <label><i class="fa-solid fa-building"></i> Filial</label>
             <div class="dropdown">
-                <button class="btn btn-secondary dropdown-toggle dropdown-filial" type="button" data-bs-toggle="dropdown" aria-expanded="false" style="background-color: var(--branco); color: var(--azul-escuro); border-color: var(--cinza-borda); width: 100%; justify-content: space-between; display: flex; align-items: center; padding: 8px 12px; font-size: 0.9rem;">
+                <button class="btn btn-secondary dropdown-toggle dropdown-filial" type="button"
+                    data-bs-toggle="dropdown" aria-expanded="false"
+                    style="background-color: var(--branco); color: var(--azul-escuro); border-color: var(--cinza-borda); width: 100%; justify-content: space-between; display: flex; align-items: center; padding: 8px 12px; font-size: 0.9rem;">
                     Todas as Filiais
                 </button>
-                <ul class="dropdown-menu w-100 p-2" id="filialDropdown" style="max-height: 250px; overflow-y: auto; box-shadow: 0 4px 12px rgba(0,0,0,0.1);">
+                <ul class="dropdown-menu w-100 p-2" id="filialDropdown"
+                    style="max-height: 250px; overflow-y: auto; box-shadow: 0 4px 12px rgba(0,0,0,0.1);">
                     {% for f in filiais %}
                     <li>
                         <div class="form-check">
-                            <input class="form-check-input filial-checkbox" type="checkbox" value="{{ f.filial }}" id="filial_{{ f.filial }}">
-                            <label class="form-check-label" for="filial_{{ f.filial }}" style="font-size: 0.85rem; cursor: pointer;">
+                            <input class="form-check-input filial-checkbox" type="checkbox" value="{{ f.filial }}"
+                                id="filial_{{ f.filial }}">
+                            <label class="form-check-label" for="filial_{{ f.filial }}"
+                                style="font-size: 0.85rem; cursor: pointer;">
                                 {{ f.nome_filial }}
                             </label>
                         </div>
@@ -189,7 +200,8 @@
         </div>
 
         <div class="form-group">
-            <button onclick="atualizarDashboard()" id="btnFiltrar" class="btn-custom btn-primary-custom" style="height: 38px;">
+            <button onclick="atualizarDashboard()" id="btnFiltrar" class="btn-custom btn-primary-custom"
+                style="height: 38px;">
                 <i class="fa-solid fa-rotate"></i> Atualizar Gráficos
             </button>
         </div>
@@ -197,22 +209,35 @@
 </div>
 
 <div class="dashboard-grid">
-    
+
     <div class="chart-card">
         <div class="chart-card-title">
-            <i class="fa-solid fa-chart-column" style="color: var(--verde-principal);"></i> 
+            <i class="fa-solid fa-chart-column" style="color: var(--verde-principal);"></i>
             Faturamento x Margem por Período
         </div>
-        
+
         <div style="position: relative; height: 350px; width: 100%;">
             <canvas id="graficoFatPeriodo"></canvas>
         </div>
     </div>
 
+    <div class="chart-card">
+        <div class="chart-card-title">
+            <i class="fa-solid fa-chart-pie" style="color: var(--verde-principal);"></i>
+            Estatísticas de Justificativas
+        </div>
+
+        <div style="position: relative; height: 350px; width: 100%;">
+            <canvas id="graficoJustificativas"></canvas>
+        </div>
+    </div>
+
+
 </div>
 
 <script>
     let graficoFatPeriodo;
+    let graficoJustificativasChart;
 
     // Seta as fontes globais do Chart.js para usar a fonte do seu painel
     Chart.defaults.font.family = "'Poppins', sans-serif";
@@ -221,7 +246,7 @@
     function atualizarDashboard() {
         const btn = document.getElementById('btnFiltrar');
         const iconOriginal = btn.innerHTML;
-        
+
         // Efeito de carregamento no botão
         btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Processando...';
         btn.disabled = true;
@@ -234,15 +259,148 @@
 
         const url = `/api/estatisticas/?inicio=${inicio}&fim=${fim}&filiais=${filiaisStr}`;
 
+
         fetch(url)
             .then(response => response.json())
             .then(dados => {
+                const just_ctx = document.getElementById('graficoJustificativas').getContext('2d');
+                if (graficoJustificativasChart) {
+                    graficoJustificativasChart.destroy();
+                }
+
+                if (dados.estatisticas_justificativas) {
+                    const stats = dados.estatisticas_justificativas;
+                    const just_labels = stats.map(s => s.justificativa);
+                    const just_contagem = stats.map(s => s.contagem);
+                    const just_repres = stats.map(s => s.representatividade_vendas);
+                    const just_abaixo = stats.map(s => s.percentual_abaixo_margem);
+
+                    graficoJustificativasChart = new Chart(just_ctx, {
+                        type: 'bar',
+                        data: {
+                            labels: just_labels,
+                            datasets: [
+                                {
+                                    type: 'line',
+                                    label: '% do Total de Vendas',
+                                    data: just_repres,
+                                    borderColor: '#00A34F',
+                                    backgroundColor: '#00A34F',
+                                    borderWidth: 3,
+                                    pointBackgroundColor: '#FFFFFF',
+                                    pointBorderColor: '#00A34F',
+                                    pointBorderWidth: 2,
+                                    pointRadius: 4,
+                                    pointHoverRadius: 6,
+                                    fill: false,
+                                    tension: 0.4,
+                                    yAxisID: 'y1',
+                                },
+                                {
+                                    type: 'line',
+                                    label: '% do Total Abaixo Margem',
+                                    data: just_abaixo,
+                                    borderColor: '#D9420F',
+                                    backgroundColor: '#D9420F',
+                                    borderWidth: 3,
+                                    borderDash: [5, 5],
+                                    pointBackgroundColor: '#FFFFFF',
+                                    pointBorderColor: '#D9420F',
+                                    pointBorderWidth: 2,
+                                    pointRadius: 4,
+                                    pointHoverRadius: 6,
+                                    fill: false,
+                                    tension: 0.4,
+                                    yAxisID: 'y1',
+                                },
+                                {
+                                    type: 'bar',
+                                    label: 'Quantidade de Notas',
+                                    data: just_contagem,
+                                    backgroundColor: '#13162F',
+                                    borderRadius: 6,
+                                    maxBarThickness: 50,
+                                    yAxisID: 'y',
+                                }
+                            ]
+                        },
+                        options: {
+                            responsive: true,
+                            maintainAspectRatio: false,
+                            interaction: {
+                                mode: 'index',
+                                intersect: false,
+                            },
+                            plugins: {
+                                legend: {
+                                    position: 'top',
+                                    labels: {
+                                        usePointStyle: true,
+                                        padding: 20,
+                                        font: { weight: '500' }
+                                    }
+                                },
+                                tooltip: {
+                                    backgroundColor: 'rgba(19, 22, 47, 0.9)',
+                                    titleFont: { size: 13, family: "'Poppins', sans-serif" },
+                                    bodyFont: { size: 13, family: "'Poppins', sans-serif" },
+                                    padding: 12,
+                                    cornerRadius: 8,
+                                    callbacks: {
+                                        label: function (context) {
+                                            let label = context.dataset.label || '';
+                                            if (label) { label += ': '; }
+                                            if (context.dataset.type === 'line') {
+                                                label += context.parsed.y + '%';
+                                            } else {
+                                                label += context.parsed.y + ' nota(s)';
+                                            }
+                                            return label;
+                                        }
+                                    }
+                                }
+                            },
+                            scales: {
+                                x: {
+                                    grid: { display: false }
+                                },
+                                y: {
+                                    type: 'linear',
+                                    display: true,
+                                    position: 'left',
+                                    title: {
+                                        display: true,
+                                        text: 'Qtd Notas',
+                                        font: { weight: '500' }
+                                    },
+                                    grid: { color: '#E0E5EC' }
+                                },
+                                y1: {
+                                    type: 'linear',
+                                    display: true,
+                                    position: 'right',
+                                    title: {
+                                        display: true,
+                                        text: 'Percentual (%)',
+                                        font: { weight: '500' }
+                                    },
+                                    grid: { drawOnChartArea: false },
+                                    ticks: {
+                                        callback: function (value) { return value + '%'; }
+                                    }
+                                }
+                            }
+                        }
+                    });
+                }
+
                 const ctx = document.getElementById('graficoFatPeriodo').getContext('2d');
+
+                const totalDados = dados.labels.length;
 
                 if (graficoFatPeriodo) {
                     graficoFatPeriodo.destroy();
                 }
-                
 
                 graficoFatPeriodo = new Chart(ctx, {
                     type: 'bar', // Tipo base do gráfico
@@ -250,9 +408,9 @@
                         labels: dados.labels,
                         datasets: [
                             {
-                                type: 'line', 
-                                label: 'Margem Média (%)',
-                                data: dados.margens_por_mes.map(m => m.toFixed(2)),
+                                type: 'line',
+                                label: 'Margem %',
+                                data: dados.margem_percentual.map(m => m.toFixed(2)),
                                 borderColor: '#00A34F', // Verde Principal
                                 backgroundColor: '#00A34F',
                                 borderWidth: 3,
@@ -263,18 +421,38 @@
                                 pointHoverRadius: 6,
                                 fill: false,
                                 tension: 0.4, // Curva mais suave
-                                yAxisID: 'y1', 
+                                yAxisID: 'y1',
                             },
                             {
                                 type: 'bar',
-                                label: 'Faturamento (R$)',
+                                label: 'Faturamento',
                                 data: dados.total_vendas,
                                 backgroundColor: '#13162F', // Azul Escuro Tecnológico
                                 borderRadius: 6, // Arredonda o topo das colunas
                                 borderSkipped: false,
                                 maxBarThickness: 50, // Evita barras gigantes em telas largas
-                                yAxisID: 'y', 
-                            }
+                                yAxisID: 'y',
+                            },
+                            {
+                                type: 'bar',
+                                label: 'Custo',
+                                data: dados.custo_total,
+                                backgroundColor: '#D9420F',
+                                borderRadius: 6,
+                                borderSkipped: false,
+                                maxBarThickness: 50,
+                                yAxisID: 'y',
+                            },
+                            {
+                                type: 'bar',
+                                label: 'Margem',
+                                data: dados.margem_total,
+                                backgroundColor: '#0E6FC4',
+                                borderRadius: 6,
+                                borderSkipped: false,
+                                maxBarThickness: 50,
+                                yAxisID: 'y',
+                            },
                         ]
                     },
                     options: {
@@ -300,7 +478,7 @@
                                 padding: 12,
                                 cornerRadius: 8,
                                 callbacks: {
-                                    label: function(context) {
+                                    label: function (context) {
                                         let label = context.dataset.label || '';
                                         if (label) { label += ': '; }
                                         if (context.dataset.type === 'line') {
@@ -316,14 +494,16 @@
                         },
                         scales: {
                             x: {
-                                grid: { display: false } // Tira linhas de grade verticais para visual limpo
+                                grid: { display: false }, // Tira linhas de grade verticais para visual limpo
+                                // max: totalDados - 1,
+                                // min: totalDados - 6
                             },
                             y: {
                                 type: 'linear',
                                 display: true,
                                 position: 'left',
                                 title: {
-                                    display: true,
+                                    display: false,
                                     text: 'Faturamento (R$)',
                                     font: { weight: '500' }
                                 },
@@ -340,7 +520,7 @@
                                 },
                                 grid: { drawOnChartArea: false },
                                 ticks: {
-                                    callback: function(value) { return value + '%'; }
+                                    callback: function (value) { return value + '%'; }
                                 }
                             }
                         }
@@ -359,10 +539,10 @@
     }
 
     // Inicia o gráfico ao carregar a página e configura dropdown
-    document.addEventListener('DOMContentLoaded', function() {
+    document.addEventListener('DOMContentLoaded', function () {
         const checkboxes = document.querySelectorAll('.filial-checkbox');
         const btn = document.querySelector('.dropdown-filial');
-        
+
         function updateFilialText() {
             const checked = document.querySelectorAll('.filial-checkbox:checked').length;
             const total = checkboxes.length;
@@ -372,14 +552,14 @@
                 btn.innerHTML = checked + ' filial(is) selecionada(s)';
             }
         }
-        
+
         checkboxes.forEach(cb => cb.addEventListener('change', updateFilialText));
-        
-        document.getElementById('filialDropdown').addEventListener('click', function(e) {
+
+        document.getElementById('filialDropdown').addEventListener('click', function (e) {
             e.stopPropagation();
         });
-        
+
         atualizarDashboard();
     });
-</script> 
+</script>
 {% endblock %}

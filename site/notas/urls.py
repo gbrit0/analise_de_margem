@@ -4,12 +4,12 @@ from notas.views import (
     NotasListView, 
     atualizar_custo_api, 
     atualizar_justificativa_api, 
-    # estatisticas, 
     dashboard_view,
     dados_vendas_api,
-    # OPListView, 
-    op_list_view, JustificativaListView,
-    justificativa_admin_view, justificativa_save, justificativa_toggle_status
+    op_list_view,
+    justificativa_admin_view,
+    justificativa_save,
+    justificativa_toggle_status
 )
 
 from django.contrib.auth.decorators import login_required
@@ -21,9 +21,7 @@ urlpatterns = [
     path('api/atualizar-justificativa/', atualizar_justificativa_api, name='api_atualizar_justificativa'),
     path('estatisticas/', dashboard_view, name='estatisticas'),
     path('api/estatisticas/', dados_vendas_api, name='dados_vendas_api'),
-    # path('ops/<str:lote>/', login_required(OPListView.as_view(model=OP)), name='lista_ops'),
     path('ops/<str:lote>/', op_list_view, name='lista_ops'),
-    # path('justificativas/', login_required(JustificativaListView.as_view(model=Justificativa)), name='lista_justificativas'),
     path('justificativas/', justificativa_admin_view, name='admin_justificativas'),
     path('api/justificativa/salvar/', justificativa_save, name='api_justificativa_salvar'),
     path('api/justificativa/toggle/', justificativa_toggle_status, name='api_justificativa_toggle'),

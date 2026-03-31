@@ -1,6 +1,13 @@
 from setup import settings
 from .filters import NotaFilter
-from .models import Justificativa, Nota, Custo, Margem, Nf_Has_Justificativa, OP
+from .models import (
+    Justificativa, 
+    Nota, 
+    Custo, 
+    Margem, 
+    Nf_Has_Justificativa, 
+    OP
+)
 
 import os
 import json
@@ -328,27 +335,109 @@ def dados_vendas_api(request):
         filiais_list = filiais_str.split(',')
         queryset = queryset.filter(filial__in=filiais_list)
     
-    subquery_margem = Margem.objects.filter(
+    subquery_margem_percentual = Margem.objects.filter(
         chave=OuterRef('chave')
     ).values('margem_bruta_percentual').order_by('-custo__data_cadastro')[:1] # O Gemini disse: Para ordenar pelo atributo cadastro da tabela Custo (que possui a Foreign Key para Margem), você precisa utilizar a sintaxe de "follow relationship" do Django, que utiliza o duplo sublinhado (__).
+    
+    subquery_custo = Custo.objects.filter(
+            chave=OuterRef('pk')
+        ).order_by('-data_cadastro').values('valor')[:1]
+    
+    subquery_margem = Margem.objects.filter(
+        chave=OuterRef('chave')
+    ).values('margem_bruta').order_by('-custo__data_cadastro')[:1]
+
+    subquery_justificaticas = Nf_Has_Justificativa.objects.filter(
+        nf=OuterRef('pk')
+    ).values('justificativa')[:1]
+    
+    subquery_justificativas_texto = Nf_Has_Justificativa.objects.filter(
+        nf=OuterRef('pk')
+    ).order_by('-data_cadastro').values('justificativa__texto')[:1]
+    
+    with pool_mysql.connection() as con:
+        with con.cursor() as cursor:
+            query = """SELECT cod_cliente, loja_cliente FROM analise_margem.cliente_parceiro;"""
+            cursor.execute(query)
+            clientes_parceiros_raw = cursor.fetchall()
+            
+    set_parceiros = {(c[0], c[1]) for c in clientes_parceiros_raw}
+
+    notas_stats = queryset.annotate(
+        margem_pct=Subquery(subquery_margem_percentual),
+        just_texto=Subquery(subquery_justificativas_texto)
+    ).values('cod_cliente', 'loja', 'valor_contabil', 'margem_pct', 'just_texto')
+    
+    total_vendas_periodo = Decimal('0.0')
+    stats_just = {}
+    total_notas_abaixo_margem_global = 0
+
+    for nota in notas_stats:
+        val_contabil = nota['valor_contabil'] or Decimal('0.0')
+        total_vendas_periodo += val_contabil
         
+        is_parceiro = (nota['cod_cliente'], nota['loja']) in set_parceiros
+        limite_margem = 0.15 if is_parceiro else 0.27
+        margem_atual = nota['margem_pct']
+        
+        abaixo_margem = False
+        if margem_atual is not None and float(margem_atual) < limite_margem:
+            abaixo_margem = True
+            total_notas_abaixo_margem_global += 1
+            
+        j_texto = nota['just_texto']
+        if j_texto:
+            if j_texto not in stats_just:
+                stats_just[j_texto] = {
+                    'contagem': 0,
+                    'vendas_total': Decimal('0.0'),
+                    'abaixo_margem': 0
+                }
+            stats_just[j_texto]['contagem'] += 1
+            stats_just[j_texto]['vendas_total'] += val_contabil
+            if abaixo_margem:
+                stats_just[j_texto]['abaixo_margem'] += 1
+
+    estatisticas_justificativas = []
+    total_vendas_float = float(total_vendas_periodo)
+    
+    for j_texto, data in stats_just.items():
+        repres_vendas = (float(data['vendas_total']) / total_vendas_float * 100) if total_vendas_float > 0 else 0
+        perc_abaixo = (data['abaixo_margem'] / total_notas_abaixo_margem_global * 100) if total_notas_abaixo_margem_global > 0 else 0
+        
+        estatisticas_justificativas.append({
+            'justificativa': j_texto,
+            'contagem': data['contagem'],
+            'representatividade_vendas': round(repres_vendas, 2),
+            'percentual_abaixo_margem': round(perc_abaixo, 2)
+        })
+        
+    estatisticas_justificativas.sort(key=lambda x: x['contagem'], reverse=True)
+
     queryset = queryset.annotate(
         mes=TruncMonth('data_emissao')
     ).values('mes').annotate(
         total_vendas=Sum('valor_contabil'),
-        margem=Avg(subquery_margem)*100
+        margem_percentual=Avg(subquery_margem_percentual)*100,
+        margem_total=Sum(subquery_margem),
+        custo_total=Sum(subquery_custo)
     ).order_by('mes')
     
     labels = [item['mes'].strftime('%b/%Y') for item in queryset]
     
     total_vendas = [float(item['total_vendas']) for item in queryset]
-    margem_por_mes = [float(item['margem']) for item in queryset] 
+    margem_percentual = [float(item['margem_percentual']) for item in queryset]
+    margem_total = [float(item['margem_total']) for item in queryset]
+    custo_total = [float(item['custo_total']) for item in queryset] 
         
     return JsonResponse({
         # 'margem': queryset['margem_total'],
         'labels': labels,
         'total_vendas': total_vendas,
-        'margens_por_mes': margem_por_mes
+        'margem_percentual': margem_percentual,
+        'margem_total': margem_total,
+        'custo_total': custo_total,
+        'estatisticas_justificativas': estatisticas_justificativas
     })
     
 

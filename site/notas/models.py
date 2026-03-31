@@ -143,7 +143,6 @@ class Nf_Has_Justificativa(models.Model):
     nf = models.ForeignKey(to=Nota, on_delete=models.PROTECT)
     justificativa = models.ForeignKey(to=Justificativa, on_delete=models.PROTECT)
     data_cadastro = models.DateTimeField(auto_now=True)
-    # usuario = models.ForeignKey(to=CustomUser, on_delete=models.PROTECT, null=True, blank=True)
     usuario = models.ForeignKey(to=CustomUser, on_delete=models.PROTECT, default=2)
 
 
