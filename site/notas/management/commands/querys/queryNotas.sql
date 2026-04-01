@@ -26,7 +26,7 @@ SELECT DISTINCT
     D2_QUANT AS [quantidade],
     CASE 
         WHEN A1_TABELA IS NULL THEN '-'
-        ELSE A1_TABELA
+        ELSE TRIM(A1_TABELA) + ' - ' + TRIM(DA0.DA0_DESCRI)
     END AS [tabela_preco],
     CASE WHEN 
         DA1.DA1_PRCVEN IS NULL THEN 0
@@ -109,7 +109,11 @@ FROM SD2010 AS D2 -- Itens de Venda da NF
         AND X5.X5_TABELA = '02'
         AND X5.X5_CHAVE = B1_TIPO
         AND SUBSTRING(X5.X5_FILIAL, 1, 2) = B1_FILIAL
-
+	
+    LEFT JOIN DA0010 AS DA0 ON -- Tabela DA0 - Tabela de Precos
+    	DA0.D_E_L_E_T_ <> '*'
+    	AND DA0.DA0_CODTAB = A1.A1_TABELA
+    	-- AND DA0.DA0_FILIAL = A1.A1_FILIAL
 WHERE
     D2.D_E_L_E_T_ <> '*'
     AND D2_EMISSAO >= 20250901 -- AND 20250930

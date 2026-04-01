@@ -551,3 +551,34 @@ def justificativa_toggle_status(request):
         return JsonResponse({'success': True, 'ativo': justificativa.ativo})
     except Exception as e:
         return JsonResponse({'success': False, 'error': str(e)}, status=500)
+    
+# IMPLEMENTAR O DOWNLOAD DOS EXCEL
+
+from django.http import HttpResponse
+from openpyxl import Workbook
+from .models import Nota
+
+def exportar_excel(request):
+    # 1. Criar o workbook e planilha
+    wb = Workbook()
+    ws = wb.active
+    ws.title = "Dados"
+
+    # 2. Adicionar cabeçalhos
+    columns = ['ID', 'Nome', 'Data']
+    ws.append(columns)
+
+    # 3. Adicionar dados
+    dados = Nota.objects.all().values_list('id', 'nome', 'data')
+    for linha in dados:
+        ws.append(linha)
+
+    # 4. Configurar a resposta HTTP para download
+    response = HttpResponse(
+        content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+    )
+    response['Content-Disposition'] = 'attachment; filename="dados.xlsx"'
+
+    # 5. Salvar o arquivo no response
+    wb.save(response)
+    return response

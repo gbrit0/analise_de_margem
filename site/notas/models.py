@@ -32,7 +32,7 @@ class Nota(models.Model):
     classificacao_produto = models.CharField(default=None, null=True, max_length=100)
     estado_destino = models.CharField(default=None, blank=False, max_length=2)
     quantidade = models.DecimalField(max_digits=12, decimal_places=2)
-    tabela_preco = models.CharField(default=None, blank=False, max_length=10)
+    tabela_preco = models.CharField(default=None, blank=False, max_length=50)
     preco_tabela = models.DecimalField(max_digits=18, decimal_places=2, default=None, blank=True)
     valor_contabil = models.DecimalField(max_digits=18, decimal_places=2)
     valor_unitario = models.DecimalField(max_digits=18, decimal_places=2)
