@@ -93,8 +93,12 @@ class Nota(models.Model):
         return locale.currency(self.valor_icms, grouping=True)
     
     @property
-    def relacao_lote_nota(self):
-        return f"{self.filial}{self.nota}{self.item}{self.recno}"
+    def preco_tabela_formatado(self):
+        return locale.currency(self.preco_tabela, grouping=True)
+    
+    # @property
+    # def relacao_lote_nota(self):
+    #     return f"{self.filial}{self.nota}{self.item}{self.recno}"
     
     def __str__(self):
         return self.chave
@@ -202,5 +206,19 @@ class OP(models.Model):
     @property
     def custo2_fmt(self):
         return locale.currency(self.custo_2, grouping=True)
+
+    @property
+    def descricao_da_conta_fmt(self):
+        if self.descricao_da_conta is None:
+            return '-'
+        else:
+            return self.descricao_da_conta
+    
+    @property
+    def centro_custo_fmt(self):
+        if self.desc_centro_de_custo is None:
+            return '-'
+        else:
+            return self.desc_centro_de_custo
         
         

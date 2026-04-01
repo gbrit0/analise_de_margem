@@ -9,6 +9,8 @@ from .models import (
     OP
 )
 
+from users.models import CustomUser
+
 import os
 import json
 import locale
@@ -195,6 +197,15 @@ class NotasListView(LoginRequiredMixin, FilterView, ListView):
             # Se a tupla (cod_cliente, loja) da nota existir no SET, recebe True.
             if (nota.cod_cliente, nota.loja) in set_parceiros:
                 nota.is_parceiro = True
+                margem = Margem.objects.filter(chave=nota).last()
+                if margem.margem_bruta_percentual > 0.15 and margem.margem_bruta_percentual < 0.27:
+                    justificativa_nf = Nf_Has_Justificativa.objects.filter(nf=nota).last()
+                    if not justificativa_nf:
+                        Nf_Has_Justificativa.objects.create(
+                            nf=nota,
+                            justificativa=Justificativa.objects.get(texto='OK. Margem Parceiro.'),
+                            usuario=CustomUser.objects.get(id=2)
+                        )
             else:
                 nota.is_parceiro = False
 
@@ -486,6 +497,13 @@ def op_list_view(request, lote):
             op['custo'] = locale.currency(op['custo'], grouping=True)
         if op.get('custo_2') is not None:
             op['custo_2'] = locale.currency(op['custo_2'], grouping=True)
+
+        if op.get('c_contabil') is None:
+            op['c_contabil'] = '-'
+            op['descricao_da_conta'] = '-'
+        if op.get('centro_custo') is None:
+            op['centro_custo'] = '-'
+            op['desc_centro_de_custo'] = '-'
             
     return render(request, 'notas/op_list.html', {'linhas_op': linhas_op})
 

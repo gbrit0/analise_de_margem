@@ -324,14 +324,14 @@
                     <button type="button" id="prevMonth" class="btn-icon" title="Mês anterior"><i
                             class="fa-solid fa-chevron-left"></i></button>
                     <select id="data_emissao_month" name="data_emissao_month" class="form-select" style="flex: 1;">
-                        <option value="">Todos</option>
                         {% for m in meses_disponiveis %}
                         <option value="{{ m.value }}" {% if m.value == selected_month %}selected{% endif %}>{{ m.label }}
                         </option>
                         {% endfor %}
                     </select>
-                    <button type="button" id="nextMonth" class="btn-icon" title="Próximo mês"><i
-                            class="fa-solid fa-chevron-right"></i></button>
+                    <button type="button" id="nextMonth" class="btn-icon" title="Próximo mês">
+                        <i class="fa-solid fa-chevron-right"></i>
+                    </button>
                 </div>
             </div>
 
@@ -396,14 +396,6 @@
                 {{ filter.form.tipo_produto }}
             </div>
 
-            <div class="form-group" style="display: flex; flex-direction: row; gap: 8px; align-items: flex-end;">
-                <button type="submit" class="btn-custom btn-primary-custom" style="flex: 1;">
-                    <i class="fa-solid fa-filter"></i> Aplicar
-                </button>
-                <a href="{% url 'lista_notas' %}" class="btn-custom btn-secondary-custom" title="Limpar Filtros">
-                    <i class="fa-solid fa-eraser"></i>
-                </a>
-            </div>
         </div>
     </form>
 </div>
@@ -509,7 +501,7 @@
 
                 <td data-label="Tabela Preço" class="text-right">{{ nota.tabela_preco }}</td>
 
-                <td data-label="Preço Tabela" class="text-right">{{ nota.preco_tabela }}</td>
+                <td data-label="Preço Tabela" class="text-right">{{ nota.preco_tabela_formatado }}</td>
 
                 <td data-label="Margem Bruta" class="text-right celula-margem-bruta" style="font-weight:bold;">
                     {% if nota.margem_bruta_formatada %}{{ nota.margem_bruta_formatada }}{% else %}-{% endif %}
@@ -517,7 +509,7 @@
 
                 <td data-label="Margem %" class="text-right celula-margem-pct col-principal"
                     style="font-weight:bold; color: {% if nota.margem_percentual != None %}{% if nota.is_parceiro and nota.margem_percentual < 15 %}var(--vermelho-alerta){% elif not nota.is_parceiro and nota.margem_percentual < 27 %}var(--vermelho-alerta){% else %}var(--verde-principal){% endif %}{% else %}var(--verde-principal){% endif %};">
-                    {% if nota.margem_percentual != None %}{{ nota.margem_percentual|floatformat:2 }}%{% else%}-{%endif%}
+                    {% if nota.margem_percentual != None %}{{ nota.margem_percentual|floatformat:2 }}%{% else %}-{%endif%}
                 </td>
 
                 <td data-label="Estoque?" class="text-center">
@@ -656,7 +648,7 @@
             var currentVal = sel.val();
             var idx = options.index(options.filter('[value="' + currentVal + '"]'));
             if (idx === -1) idx = 0;
-            var newIdx = Math.max(0, idx - 1);
+            var newIdx = Math.min(options.length - 1, idx + 1);
             var newVal = $(options.get(newIdx)).val();
             sel.val(newVal);
             sel.closest('form').submit();
@@ -669,13 +661,14 @@
             var currentVal = sel.val();
             var idx = options.index(options.filter('[value="' + currentVal + '"]'));
             if (idx === -1) idx = 0;
-            var newIdx = Math.min(options.length - 1, idx + 1);
+            var newIdx = Math.max(0, idx - 1);
             var newVal = $(options.get(newIdx)).val();
             sel.val(newVal);
             sel.closest('form').submit();
         });
 
-        // Logica para exibição e controle do dropdown de filiais
+        // Lógica para controle do dropdown de filiais
+        let filiaisChanged = false;
         function updateFilialButtonText() {
             var checked = $('.filial-checkbox:checked').length;
             var total = $('.filial-checkbox').length;
@@ -686,12 +679,30 @@
                 btn.html(checked + ' filial(is) selecionada(s)');
             }
         }
-        $('.filial-checkbox').on('change', updateFilialButtonText);
+        $('.filial-checkbox').on('change', function() {
+            filiaisChanged = true;
+            updateFilialButtonText();
+        });
         updateFilialButtonText();
 
         $('.dropdown-menu').on('click', function (e) {
             if ($(this).hasClass('dropdown-menu')) {
                 e.stopPropagation();
+            }
+        });
+
+        // Submissão automática dos formulários de filtro (dinâmicos)
+        $('.filter-grid input[type="text"], .filter-grid input[type="number"]').on('change', function() {
+            $(this).closest('form').submit();
+        });
+
+        $('.filter-grid select').on('change', function() {
+            $(this).closest('form').submit();
+        });
+
+        $('.dropdown').on('hidden.bs.dropdown', function () {
+            if (filiaisChanged) {
+                $(this).closest('form').submit();
             }
         });
     });

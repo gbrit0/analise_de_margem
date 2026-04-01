@@ -58,16 +58,16 @@ class Command(BaseCommand):
             notas_para_atualizar = []
             custos_para_criar = []
             margens_para_criar = []
-            lotes_unicos = set()
-            relacao_lote_nota = {} 
+            # lotes_unicos = set()
+            # relacao_lote_nota = {} 
 
             for row in rows_notas:
                 chave, filial, nome_filial, nota, item, no_pedido, vendedor, data_emissao, lote, cfop, cfop_descri, atualiza_estoque, gera_duplicata, cod_produto, produto, tipo_produto, desc_tipo_produto, armazem, cod_cliente, loja, cliente, grp_amar_ctb, classificacao_produto, estado_destino, quantidade, tabela_preco, preco_tabela, valor_contabil, custo_valor, valor_unitario, valor_ipi, valor_imp5, valor_imp6, valor_icms_difal, valor_icms, aliq_icms, recno = row
                 
                 # Guarda o lote se existir para a busca das OPs
-                if lote and lote.strip():
-                    lotes_unicos.add(lote.strip())
-                    relacao_lote_nota[lote.strip()] = lote.strip() # f"{filial}{nota}{item}{recno}"
+                # if lote and lote.strip():
+                #     lotes_unicos.add(lote.strip())
+                #     relacao_lote_nota[lote.strip()] = lote.strip() # f"{filial}{nota}{item}{recno}"
 
                 nota_obj = Nota(
                     chave=chave, filial=filial, nome_filial=nome_filial, nota=nota, item=item,
