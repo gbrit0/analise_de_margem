@@ -12,8 +12,8 @@
                 <th>Quantidade</th>
                 <!-- <th>Quant. 2</th> -->
                 <th>Custo</th>
-                <th>Preço Tabela</th>
-                <th>Tabela Preço</th>
+                <!-- <th>Preço Tabela</th>
+                <th>Tabela Preço</th> -->
                 <!-- <th>Custo 2</th> -->
                 <th>Ord. Produção</th>
                 <th>Lote</th>
@@ -39,7 +39,7 @@
         </thead>
         <tbody>
             {% for op in linhas_op %}
-            <tr {% if op.tp_movimento == '010' %}class="table-warning" {% endif %}>
+            <tr {% if op.tp_movimento=='010' %}class="table-warning" {% endif %}>
                 <td>{{ op.filial }}</td>
                 <td>{{ op.produto }}</td>
                 <td>{{ op.descr_prod }}</td>
@@ -50,8 +50,8 @@
                 <td>{{ op.quantidade }}</td>
                 <!-- <td>{{ op.quant_2 }}</td> -->
                 <td>{{ op.custo }}</td>
-                <td>{{ op.preco_tabela }}</td>
-                <td>{{ op.tabela_preco }}</td>
+                <!-- <td>{{ op.preco_tabela }}</td>
+                <td>{{ op.tabela_preco }}</td> -->
                 <!-- <td>{{ op.custo_2 }}</td> -->
                 <td>{{ op.ord_producao }}</td>
                 <td>{{ op.lote }}</td>

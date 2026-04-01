@@ -2,7 +2,33 @@
 {% block page_title %}Notas Fiscais - Análise de Margem{% endblock %}
 
 {% block content %}
+<link rel="stylesheet" href="https://cdn.datatables.net/responsive/2.5.0/css/responsive.dataTables.min.css">
 <style>
+    /* Customização do ícone de expansão (DataTables Responsive) */
+    table.dataTable.dtr-column>tbody>tr>td.dtr-control:before, 
+    table.dataTable.dtr-column>tbody>tr>th.dtr-control:before {
+        background-color: var(--verde-principal) !important;
+        border-radius: 4px !important;
+        box-shadow: none !important;
+        border: none !important;
+        font-family: "Font Awesome 6 Free";
+        content: "\f067" !important; /* fa-plus */
+        font-weight: 900;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        line-height: 1;
+        width: 1.4em !important;
+        height: 1.4em !important;
+        color: white;
+    }
+
+    table.dataTable.dtr-column>tbody>tr.parent>td.dtr-control:before, 
+    table.dataTable.dtr-column>tbody>tr.parent>th.dtr-control:before {
+        background-color: var(--vermelho-alerta) !important;
+        content: "\f068" !important; /* fa-minus */
+    }
+
     .detalhe-card {
         background: #ffffff;
         border-left: 4px solid #13162F;
@@ -404,6 +430,7 @@
     <table id="tabelaNotas" class="display nowrap" style="width:100%">
         <thead>
             <tr>
+                <th style="width: 30px;"></th> <!-- Coluna de expansão -->
                 <th>Filial</th>
                 <th>Nota</th>
                 <th>Emissão</th>
@@ -440,6 +467,7 @@
             {% for nota in object_list %}
             {% if nota.cod_produto != 'E000H2P8' and nota.cod_produto != 'B0010046' %}
             <tr>
+                <td></td> <!-- Célula de expansão -->
                 <td data-label="Filial" class="text-center">{{ nota.filial }}</td>
 
                 <td data-label="Nota" class="col-principal"><strong style="color: var(--azul-escuro);">{{ nota.nota }}</strong></td>
@@ -584,6 +612,8 @@
             // responsive: isMobile ? false : true, 
             responsive: isMobile ? false : {
                 details: {
+                    type: 'column',
+                    target: 0,
                     renderer: function (api, rowIdx, columns) {
                         var data = $.map(columns, function (col, i) {
                             // Gera o card apenas para as colunas que estão ocultas (hidden)
@@ -610,15 +640,20 @@
             info: false,
             searching: false,
             columnDefs: [
+                {
+                    className: 'dtr-control text-center',
+                    orderable: false,
+                    targets: 0
+                },
                 // 1. FORÇA essas colunas a irem para dentro do botão (+) no PC
                 {
-                    targets: [6, 7, 9, 10, 13, 14, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28], // Tipo, Lote, Qtd, Estoque?, Duplicata?, Armazém, Gp. Amar. CTB, UF, Vl. Unit, IPI, Imp5, Imp6, Difal, ICMS, Aliq %
+                    targets: [7, 8, 10, 11, 14, 15, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29], // Tipo, Lote, Qtd, Estoque?, Duplicata?, Armazém, Gp. Amar. CTB, UF, Vl. Unit, IPI, Imp5, Imp6, Difal, ICMS, Aliq %
                     className: 'none'
                 },
                 // quero melhorar a visualização dessas outras colunas, ela esta como uma lista, quero que fique mais dinamica para deixar mais interativo para o usuario 
                 // 2. Trava as suas colunas preferidas SEMPRE na tela principal
                 {
-                    targets: [0, 1, 2, 3, 4, 5, 8, 11, 12, 15, 16, 29], // Filial, Nota, Emissão, Nº Pedido, Vendedor, Cliente, Produto, Vl. Contábil, Custo, Margem Bruta, Margem %, Justificativa
+                    targets: [1, 2, 3, 4, 5, 6, 9, 12, 13, 16, 17, 30], // Filial, Nota, Emissão, Nº Pedido, Vendedor, Cliente, Produto, Vl. Contábil, Custo, Margem Bruta, Margem %, Justificativa
                     className: 'all dt-head-nowrap'
                 }
             ]

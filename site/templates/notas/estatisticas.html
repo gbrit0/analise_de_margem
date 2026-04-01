@@ -158,19 +158,46 @@
 </style>
 
 <div class="filter-card">
-    <div class="filter-header">
-        <i class="fa-solid fa-filter"></i> Parâmetros do Painel
+    <div class="filter-header" style="justify-content: space-between;">
+        <div>
+            <i class="fa-solid fa-filter"></i> Parâmetros do Painel
+        </div>
+        <div id="loadingIndicator" style="display: none; font-size: 0.9rem; color: var(--verde-principal);">
+            <i class="fa-solid fa-spinner fa-spin"></i> Atualizando...
+        </div>
     </div>
 
     <div class="filter-grid">
         <div class="form-group">
-            <label for="data_inicio"><i class="fa-regular fa-calendar-check"></i> Data Início</label>
-            <input type="date" id="data_inicio" class="form-control">
-        </div>
+            <label><i class="fa-regular fa-calendar-alt"></i> Meses de Emissão</label>
+            <div class="dropdown">
+                <button class="btn btn-secondary dropdown-toggle dropdown-meses" type="button"
+                    data-bs-toggle="dropdown" aria-expanded="false"
+                    style="background-color: var(--branco); color: var(--azul-escuro); border-color: var(--cinza-borda); width: 100%; justify-content: space-between; display: flex; align-items: center; padding: 8px 12px; font-size: 0.9rem;">
+                    Selecionar Meses
+                </button>
+                <ul class="dropdown-menu w-100 p-2" id="mesDropdown"
+                    style="max-height: 250px; overflow-y: auto; box-shadow: 0 4px 12px rgba(0,0,0,0.1);">
+                    {% for m in meses_disponiveis %}
+                    <li>
+                        <div class="form-check">
+                            <input class="form-check-input mes-checkbox" type="checkbox" value="{{ m.value }}"
+                                id="mes_{{ m.value }}">
+                                
+                            {% comment %}
+                                {% if m.value == selected_month %}checked{% endif %}
+                                Incluir essa tag acima dentro do input acima para marcar apenas o mes atual no filtro.
+                            {% endcomment %}
 
-        <div class="form-group">
-            <label for="data_fim"><i class="fa-regular fa-calendar-xmark"></i> Data Fim</label>
-            <input type="date" id="data_fim" class="form-control">
+                            <label class="form-check-label" for="mes_{{ m.value }}"
+                                style="font-size: 0.85rem; cursor: pointer;">
+                                {{ m.label }}
+                            </label>
+                        </div>
+                    </li>
+                    {% endfor %}
+                </ul>
+            </div>
         </div>
 
         <div class="form-group">
@@ -197,13 +224,6 @@
                     {% endfor %}
                 </ul>
             </div>
-        </div>
-
-        <div class="form-group">
-            <button onclick="atualizarDashboard()" id="btnFiltrar" class="btn-custom btn-primary-custom"
-                style="height: 38px;">
-                <i class="fa-solid fa-rotate"></i> Atualizar Gráficos
-            </button>
         </div>
     </div>
 </div>
@@ -244,20 +264,16 @@
     Chart.defaults.color = '#6c757d';
 
     function atualizarDashboard() {
-        const btn = document.getElementById('btnFiltrar');
-        const iconOriginal = btn.innerHTML;
+        const loading = document.getElementById('loadingIndicator');
+        if (loading) loading.style.display = 'block';
 
-        // Efeito de carregamento no botão
-        btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Processando...';
-        btn.disabled = true;
-
-        const inicio = document.getElementById('data_inicio').value;
-        const fim = document.getElementById('data_fim').value;
+        const mesesChecados = Array.from(document.querySelectorAll('.mes-checkbox:checked')).map(cb => cb.value);
+        const mesesStr = mesesChecados.join(',');
 
         const filiaisChecadas = Array.from(document.querySelectorAll('.filial-checkbox:checked')).map(cb => cb.value);
         const filiaisStr = filiaisChecadas.join(',');
 
-        const url = `/api/estatisticas/?inicio=${inicio}&fim=${fim}&filiais=${filiaisStr}`;
+        const url = `/api/estatisticas/?meses=${mesesStr}&filiais=${filiaisStr}`;
 
 
         fetch(url)
@@ -532,14 +548,14 @@
                 alert("Ocorreu um erro ao atualizar os gráficos.");
             })
             .finally(() => {
-                // Restaura o botão
-                btn.innerHTML = iconOriginal;
-                btn.disabled = false;
+                const loading = document.getElementById('loadingIndicator');
+                if (loading) loading.style.display = 'none';
             });
     }
 
     // Inicia o gráfico ao carregar a página e configura dropdown
     document.addEventListener('DOMContentLoaded', function () {
+        // --- FILIAIS ---
         const checkboxes = document.querySelectorAll('.filial-checkbox');
         const btn = document.querySelector('.dropdown-filial');
 
@@ -553,11 +569,54 @@
             }
         }
 
-        checkboxes.forEach(cb => cb.addEventListener('change', updateFilialText));
+        let filtroAlterado = false;
+
+        checkboxes.forEach(cb => cb.addEventListener('change', function() {
+            updateFilialText();
+            filtroAlterado = true;
+        }));
 
         document.getElementById('filialDropdown').addEventListener('click', function (e) {
             e.stopPropagation();
         });
+
+        // --- MESES ---
+        const mesesCheckboxes = document.querySelectorAll('.mes-checkbox');
+        const btnMeses = document.querySelector('.dropdown-meses');
+
+        function updateMesesText() {
+            const checked = document.querySelectorAll('.mes-checkbox:checked').length;
+            const total = mesesCheckboxes.length;
+            if (checked === 0 || checked === total) {
+                btnMeses.innerHTML = 'Todos os Meses';
+            } else {
+                btnMeses.innerHTML = checked + ' mês(es) selecionado(s)';
+            }
+        }
+
+        mesesCheckboxes.forEach(cb => cb.addEventListener('change', function() {
+            updateMesesText();
+            filtroAlterado = true;
+        }));
+        
+        document.getElementById('mesDropdown').addEventListener('click', function (e) {
+            e.stopPropagation();
+        });
+
+        // Escuta o fechamento de qualquer dropdown na página
+        const bsDropdowns = document.querySelectorAll('.dropdown');
+        bsDropdowns.forEach(dd => {
+            dd.addEventListener('hidden.bs.dropdown', function () {
+                if (filtroAlterado) {
+                    atualizarDashboard();
+                    filtroAlterado = false;
+                }
+            });
+        });
+
+        // Chamadas iniciais para preencher o texto dos botões corretamente no load
+        updateFilialText();
+        updateMesesText();
 
         atualizarDashboard();
     });

@@ -315,33 +315,62 @@ def atualizar_justificativa_api(request):
 def dashboard_view(request):
     selected = request.GET.get('data_emissao_month', '')
     
+    meses_qs = Nota.objects.annotate(
+        year=ExtractYear('data_emissao'),
+        month=ExtractMonth('data_emissao')
+    ).values('year', 'month').distinct().order_by('-year', '-month')
+
+    meses = []
+    for m in meses_qs:
+        y = int(m['year'])
+        mo = int(m['month'])
+        meses.append({
+            'value': f"{y}-{mo:02d}",
+            'label': f"{mo:02d}/{y}"
+        })
+
     # Se não veio valor no GET, tenta preencher com mês atual (se houver dados),
     # caso contrário preenche com o mês mais recente disponível.
     if not selected:
         hoje = datetime.datetime.today()
         atual = f"{hoje.year}-{hoje.month:02d}"
-        selected = atual
+        valores = [m['value'] for m in meses]
+        if atual in valores:
+            selected = atual
+        elif len(valores) > 0:
+            selected = valores[0]
         
     filiais = Nota.objects.values('filial', 'nome_filial').distinct()
     
-    if filiais:
-        return render(request, 'notas/estatisticas.html', {'filiais': filiais, 'selected_month': selected})
+    context = {
+        'filiais': filiais,
+        'meses_disponiveis': meses,
+        'selected_month': selected
+    }
     
-    return render(request, 'notas/estatisticas.html')
+    return render(request, 'notas/estatisticas.html', context)
 
 @login_required
 def dados_vendas_api(request):
     
-    data_inicio = request.GET.get('inicio')
-    data_fim = request.GET.get('fim')
+    meses_str = request.GET.get('meses')
     filiais_str = request.GET.get('filiais')
         
     queryset = Nota.objects.all()
     
-    if data_inicio:
-        queryset = queryset.filter(data_emissao__gte=parse_date(data_inicio))
-    if data_fim:
-        queryset = queryset.filter(data_emissao__lte=parse_date(data_fim))
+    if meses_str:
+        meses_list = meses_str.split(',')
+        queries = Q()
+        for mes in meses_list:
+            if '-' in mes:
+                try:
+                    y, m = mes.split('-')
+                    queries |= Q(data_emissao__year=int(y), data_emissao__month=int(m))
+                except ValueError:
+                    pass
+        if queries:
+            queryset = queryset.filter(queries)
+            
     if filiais_str:
         filiais_list = filiais_str.split(',')
         queryset = queryset.filter(filial__in=filiais_list)
@@ -481,7 +510,7 @@ def dados_vendas_api(request):
 #         return context
 
 @login_required
-@cache_page(60 * 15)
+# @cache_page(60 * 15)
 def op_list_view(request, lote):
     with open(f'{settings.BASE_DIR}/notas/management/commands/querys/buscaOPs.sql', 'r') as f:
         query_ops = f.read()
