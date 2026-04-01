@@ -158,12 +158,17 @@
 </style>
 
 <div class="filter-card">
-    <div class="filter-header" style="justify-content: space-between;">
+    <div class="filter-header" style="justify-content: space-between; align-items: center;">
         <div>
             <i class="fa-solid fa-filter"></i> Parâmetros do Painel
         </div>
-        <div id="loadingIndicator" style="display: none; font-size: 0.9rem; color: var(--verde-principal);">
-            <i class="fa-solid fa-spinner fa-spin"></i> Atualizando...
+        <div style="display: flex; gap: 10px; align-items: center;">
+            <div id="loadingIndicator" style="display: none; font-size: 0.9rem; color: var(--verde-principal);">
+                <i class="fa-solid fa-spinner fa-spin"></i> Atualizando...
+            </div>
+            <button type="button" class="btn-custom btn-secondary-custom" onclick="exportarEstatisticas()" title="Exportar gráficos e tabelas para Excel">
+                <i class="fa-solid fa-file-excel"></i> Exportar Excel
+            </button>
         </div>
     </div>
 
@@ -620,5 +625,16 @@
 
         atualizarDashboard();
     });
+
+    function exportarEstatisticas() {
+        const mesesChecados = Array.from(document.querySelectorAll('.mes-checkbox:checked')).map(cb => cb.value);
+        const mesesStr = mesesChecados.join(',');
+
+        const filiaisChecadas = Array.from(document.querySelectorAll('.filial-checkbox:checked')).map(cb => cb.value);
+        const filiaisStr = filiaisChecadas.join(',');
+
+        const url = `/exportar-estatisticas/?meses=${mesesStr}&filiais=${filiaisStr}`;
+        window.location.href = url;
+    }
 </script>
 {% endblock %}

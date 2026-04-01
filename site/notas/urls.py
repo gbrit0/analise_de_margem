@@ -9,7 +9,9 @@ from notas.views import (
     op_list_view,
     justificativa_admin_view,
     justificativa_save,
-    justificativa_toggle_status
+    justificativa_toggle_status,
+    exportar_excel,
+    exportar_estatisticas_excel
 )
 
 from django.contrib.auth.decorators import login_required
@@ -25,4 +27,6 @@ urlpatterns = [
     path('justificativas/', justificativa_admin_view, name='admin_justificativas'),
     path('api/justificativa/salvar/', justificativa_save, name='api_justificativa_salvar'),
     path('api/justificativa/toggle/', justificativa_toggle_status, name='api_justificativa_toggle'),
+    path('exportar/', exportar_excel, name='exportar_excel'),
+    path('exportar-estatisticas/', exportar_estatisticas_excel, name='exportar_estatisticas_excel'),
 ]

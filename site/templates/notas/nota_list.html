@@ -334,11 +334,15 @@
 {% csrf_token %}
 
 <div class="filter-card">
-    <div class="filter-header" style="justify-content: space-between;">
+    <div class="filter-header" style="justify-content: space-between; align-items: center;">
         <div>
             <i class="fa-solid fa-sliders"></i> Filtros de Análise
         </div>
-
+        <div>
+            <a href="{% url 'exportar_excel' %}?{{ request.GET.urlencode }}" class="btn-custom btn-secondary-custom" title="Exportar resultados para Excel">
+                <i class="fa-solid fa-file-excel"></i> Exportar Excel
+            </a>
+        </div>
     </div>
 
     <form method="get" class="form-inline">

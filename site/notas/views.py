@@ -11,6 +11,11 @@ from .models import (
 
 from users.models import CustomUser
 
+from openpyxl import Workbook
+from openpyxl.styles import Font, PatternFill, Border, Side
+from openpyxl.utils import get_column_letter
+from openpyxl.formatting.rule import FormulaRule
+
 import os
 import json
 import locale
@@ -599,33 +604,232 @@ def justificativa_toggle_status(request):
     except Exception as e:
         return JsonResponse({'success': False, 'error': str(e)}, status=500)
     
-# IMPLEMENTAR O DOWNLOAD DOS EXCEL
 
-from django.http import HttpResponse
-from openpyxl import Workbook
-from .models import Nota
-
+@login_required
 def exportar_excel(request):
+    # Obtém o queryset base com as pre-anotações e filial filter
+    notas_view = NotasListView()
+    notas_view.request = request
+    base_qs = notas_view.get_queryset()
+
+    # Aplica os filtros da URL
+    f = NotaFilter(request.GET, queryset=base_qs)
+    queryset = f.qs
+
     # 1. Criar o workbook e planilha
     wb = Workbook()
     ws = wb.active
     ws.title = "Dados"
 
-    # 2. Adicionar cabeçalhos
-    columns = ['ID', 'Nome', 'Data']
+    # 2. Adicionar cabeçalhos (Substituído por campos existentes para não ocorrer Crash do framework)
+    columns = [
+        'chave',
+        'filial',
+        'nome_filial',
+        'nota',
+        'item',
+        'no_pedido',
+        'vendedor',
+        'data_emissao',
+        'lote',
+        'cfop',
+        'cfop_descri',
+        'atualiza_estoque',
+        'gera_duplicata',
+        'cod_produto',
+        'produto',
+        'tipo_produto',
+        'desc_tipo_produto',
+        'armazem',
+        'cod_cliente',
+        'loja',
+        'cliente',
+        'grp_amar_ctb',
+        'classificacao_produto',
+        'estado_destino',
+        'quantidade',
+        'tabela_preco',
+        'preco_tabela',
+        'valor_contabil',
+        'valor_unitario',
+        'valor_ipi',
+        'valor_imp5',
+        'valor_imp6',
+        'valor_icms_difal',
+        'valor_icms',
+        'aliq_icms',
+    ]
     ws.append(columns)
 
-    # 3. Adicionar dados
-    dados = Nota.objects.all().values_list('id', 'nome', 'data')
+    # 3. Adicionar dados (Dados reais baseados no Model para evitar crash na query)
+    # Lembre-se de adaptar essa query de acordo com os dados exatos que desejar!
+    
+    # Obtém o queryset base com as pre-anotações e filial filter
+    notas_view = NotasListView()
+    notas_view.request = request
+    base_qs = notas_view.get_queryset()
+
+    # Aplica os filtros da URL
+    f = NotaFilter(request.GET, queryset=base_qs)
+    queryset = f.qs
+
+    dados = list(queryset.values_list(*columns))
     for linha in dados:
         ws.append(linha)
 
-    # 4. Configurar a resposta HTTP para download
+    # 4. Formatos
+    fmt_header_fill = PatternFill(start_color="D9E1F2", end_color="D9E1F2", fill_type="solid")
+    fmt_header_font = Font(bold=True)
+    fmt_border = Border(left=Side(style='thin'), right=Side(style='thin'), 
+                        top=Side(style='thin'), bottom=Side(style='thin'))
+
+    # Formatar o cabeçalho
+    for cell in ws[1]:
+        cell.font = fmt_header_font
+        cell.fill = fmt_header_fill
+        cell.border = fmt_border
+
+    # 5. Aplica formatação de colunas (Largura e Números)
+    for col_idx, col_name in enumerate(columns, 1):
+        col_name_lower = str(col_name).lower()
+        num_format = None
+        
+        if any(x in col_name_lower for x in ['valor_', 'custo', 'vlr_', 'margem_bruta']):
+            num_format = 'R$ #,##0.00'
+        elif any(x in col_name_lower for x in ['percent', 'aliquota', 'diff_percentual']):
+            num_format = '0.00%'
+
+        max_len = len(str(col_name))
+        
+        last_row = len(dados) + 1
+        for row_idx in range(2, last_row + 1):
+            cell = ws.cell(row=row_idx, column=col_idx)
+            
+            if num_format:
+                cell.number_format = num_format
+            
+            if cell.value is not None:
+                max_len = max(max_len, len(str(cell.value)))
+
+        ws.column_dimensions[get_column_letter(col_idx)].width = max_len + 2
+
+    last_col_letter = get_column_letter(len(columns))
+    last_row = len(dados) + 1
+
+    # 6. Lógica para colorir a linha inteira se tp_movimento == '010'
+    if 'tp_movimento' in columns:
+        col_idx = columns.index('tp_movimento') + 1
+        col_letter = get_column_letter(col_idx)
+        
+        fmt_destaque = PatternFill(start_color="FFEB9C", end_color="FFEB9C", fill_type="solid")
+        
+        # A fórmula é semelhante à do Excel. Passamos uma string numa lista e setamos stopIfTrue
+        formula = [f'=${col_letter}2="010"']
+        
+        rule = FormulaRule(formula=formula, stopIfTrue=True, fill=fmt_destaque)
+        ws.conditional_formatting.add(f"A2:{last_col_letter}{last_row}", rule)
+
+    # Autofilter
+    ws.auto_filter.ref = f"A1:{last_col_letter}{last_row}"
+
+    # 7. Configurar a resposta HTTP para download
     response = HttpResponse(
         content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
     )
     response['Content-Disposition'] = 'attachment; filename="dados.xlsx"'
 
-    # 5. Salvar o arquivo no response
+    # 8. Salvar o arquivo no response
+    wb.save(response)
+    return response
+
+
+@login_required
+def exportar_estatisticas_excel(request):
+    import json
+    from openpyxl import Workbook
+    from openpyxl.styles import Font, PatternFill, Border, Side
+    from openpyxl.utils import get_column_letter
+
+    # 1. Obtém os dados chamando a API localmente
+    resp = dados_vendas_api(request)
+    if resp.status_code != 200:
+        return HttpResponse("Erro ao gerar dados", status=500)
+    
+    dados_json = json.loads(resp.content)
+    
+    wb = Workbook()
+    
+    # Aba 1: Estatísticas Justificativas
+    ws1 = wb.active
+    ws1.title = "Estatísticas Justificativas"
+    
+    cols1 = ['Justificativa', 'Qtd Notas', 'Representatividade Vendas', 'Abaixo Margem Percentual']
+    ws1.append(cols1)
+    
+    for item in dados_json.get('estatisticas_justificativas', []):
+        ws1.append([
+            item['justificativa'],
+            item['contagem'],
+            item['representatividade_vendas'] / 100.0,
+            item['percentual_abaixo_margem'] / 100.0
+        ])
+        
+    # Aba 2: Estatísticas Período
+    ws2 = wb.create_sheet(title="Estatísticas Por Período")
+    cols2 = ['Mês', 'Faturamento (valor_)', 'Custo Total', 'Margem Bruta', 'Margem Percentual']
+    ws2.append(['Mês', 'Faturamento', 'Custo Total', 'Margem Total', 'Margem Percentual'])
+    
+    labels = dados_json.get('labels', [])
+    vendas = dados_json.get('total_vendas', [])
+    custos = dados_json.get('custo_total', [])
+    margens = dados_json.get('margem_total', [])
+    margens_pct = dados_json.get('margem_percentual', [])
+    
+    for i in range(len(labels)):
+        ws2.append([
+            labels[i],
+            vendas[i],
+            custos[i],
+            margens[i],
+            (margens_pct[i] / 100.0) if margens_pct[i] is not None else 0
+        ])
+    
+    # Aplicar formato
+    fmt_header_fill = PatternFill(start_color="D9E1F2", end_color="D9E1F2", fill_type="solid")
+    fmt_header_font = Font(bold=True)
+    fmt_border = Border(left=Side(style='thin'), right=Side(style='thin'), top=Side(style='thin'), bottom=Side(style='thin'))
+    
+    for ws, cols in [(ws1, cols1), (ws2, cols2)]:
+        # Formatar cabeçalho
+        for cell in ws[1]:
+            cell.font = fmt_header_font
+            cell.fill = fmt_header_fill
+            cell.border = fmt_border
+
+        for col_idx, col_name in enumerate(cols, 1):
+            col_name_lower = str(col_name).lower()
+            num_format = None
+            if any(x in col_name_lower for x in ['valor_', 'custo', 'vlr_', 'margem_bruta', 'faturamento']):
+                num_format = 'R$ #,##0.00'
+            elif any(x in col_name_lower for x in ['percent', 'aliquota', 'diff_percentual', 'representatividade', 'abaixo margem']):
+                num_format = '0.00%'
+
+            max_len = len(str(ws.cell(row=1, column=col_idx).value))
+            
+            for row_idx in range(2, ws.max_row + 1):
+                cell = ws.cell(row=row_idx, column=col_idx)
+                if num_format:
+                    cell.number_format = num_format
+                if cell.value is not None:
+                    max_len = max(max_len, len(str(cell.value)))
+
+            ws.column_dimensions[get_column_letter(col_idx)].width = max_len + 2
+            
+        last_col_letter = get_column_letter(len(cols))
+        if ws.max_row > 1:
+            ws.auto_filter.ref = f"A1:{last_col_letter}{ws.max_row}"
+        
+    response = HttpResponse(content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
+    response['Content-Disposition'] = 'attachment; filename="estatisticas.xlsx"'
     wb.save(response)
     return response
