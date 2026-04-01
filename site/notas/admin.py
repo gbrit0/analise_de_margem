@@ -13,6 +13,9 @@ class CustomJustificativasAdmin(admin.ModelAdmin):
     list_display_links = ('texto', 'data_cadastro', 'ativo', 'data_desativa', 'usuario')
     search_fields = ('texto', 'data_cadastro', 'ativo', 'data_desativa', 'usuario')
 
+    def has_delete_permission(self, request, obj=None):
+        return False
+
 class CustomNotasAdmin(admin.ModelAdmin):
     list_display = ['filial', 'nota', 'no_pedido', 'produto',]
     list_display_links = ['filial', 'nota', 'no_pedido', 'produto',]
