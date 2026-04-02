@@ -28,17 +28,12 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 SECRET_KEY = 'django-insecure-ch!@ntcoyc$y3(d4mt_pf=8h_=u7z%_bcld+8jcu@!dzea%&%!'
 
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = True
+DEBUG = os.getenv('DEBUG')
 
-ALLOWED_HOSTS = [
-    'brg.datasetsolucoes.com.br',
-    '172.49.49.6',
-]
+ALLOWED_HOSTS = os.getenv('ALLOWED_HOSTS')
 
-CORS_ALLOWED_ORIGINS = [
-    'brg.datasetsolucoes.com.br:7040',
-    '172.49.49.6:8000',
-]
+CORS_ALLOWED_ORIGINS = os.getenv('CORS_ALLOWED_ORIGINS')
+
 # Application definition
 
 INSTALLED_APPS = [
@@ -90,19 +85,19 @@ WSGI_APPLICATION = 'setup.wsgi.application'
 DATABASES = {
     'default': {
         'ENGINE': 'django.db.backends.mysql',
-        'NAME': f"{os.getenv('DB_NAME')}",
-        'USER': f"{os.getenv('DB_USER')}",
+        'NAME':     f"{os.getenv('DB_NAME')}",
+        'USER':     f"{os.getenv('DB_USER')}",
         'PASSWORD': f"{os.getenv('DB_PASSWORD')}",
-        'HOST': f"{os.getenv('DB_HOST')}",
-        'PORT': f"{os.getenv('DB_PORT')}",
+        'HOST':     f"{os.getenv('DB_HOST')}",
+        'PORT':     f"{os.getenv('DB_PORT')}",
     },
     'protheus': {
         'ENGINE': 'mssql',
-        'NAME': f"{os.getenv('PROTHEUS_DB_NAME')}",
-        'USER': f"{os.getenv('PROTHEUS_DB_USER')}",
+        'NAME':     f"{os.getenv('PROTHEUS_DB_NAME')}",
+        'USER':     f"{os.getenv('PROTHEUS_DB_USER')}",
         'PASSWORD': f"{os.getenv('PROTHEUS_DB_PASSWORD')}",
-        'HOST': f"{os.getenv('PROTHEUS_DB_HOST')}",
-        'PORT': f"{os.getenv('PROTHEUS_DB_PORT')}",
+        'HOST':     f"{os.getenv('PROTHEUS_DB_HOST')}",
+        'PORT':     f"{os.getenv('PROTHEUS_DB_PORT')}",
     },
 }
 
@@ -137,11 +132,11 @@ USE_I18N = True
 
 USE_TZ = True
 
-
 # Static files (CSS, JavaScript, Images)
 # https://docs.djangoproject.com/en/5.2/howto/static-files/
 
 STATIC_URL = 'static/'
+
 STATICFILES_DIRS = [
     BASE_DIR / "static",
 ]
@@ -168,6 +163,6 @@ LOGOUT_REDIRECT_URL = '/login'
 CACHES = {
     "default": {
         "BACKEND": "django.core.cache.backends.redis.RedisCache",
-        "LOCATION": "redis://172.49.49.6:6380",
+        "LOCATION": f"redis://{os.getenv('REDIS_HOST')}:{os.getenv('REDIS_PORT')}",
     }
 }
