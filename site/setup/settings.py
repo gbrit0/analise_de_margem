@@ -30,9 +30,15 @@ SECRET_KEY = 'django-insecure-ch!@ntcoyc$y3(d4mt_pf=8h_=u7z%_bcld+8jcu@!dzea%&%!
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = os.getenv('DEBUG')
 
-ALLOWED_HOSTS = os.getenv('ALLOWED_HOSTS')
+ALLOWED_HOSTS = [
+    'brg.datasetsolucoes.com.br',
+    'margem.brggeradores.com.br'
+]
 
-CORS_ALLOWED_ORIGINS = os.getenv('CORS_ALLOWED_ORIGINS')
+CORS_ALLOWED_ORIGINS = [
+    'brg.datasetsolucoes.com.br:7040',
+    'margem.brggeradores.com.br'
+]
 
 # Application definition
 

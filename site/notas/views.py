@@ -540,7 +540,7 @@ def op_list_view(request, lote):
             op['centro_custo'] = '-'
             op['desc_centro_de_custo'] = '-'
             
-    return render(request, 'notas/op_list.html', {'linhas_op': linhas_op})
+    return render(request, 'notas/op_list.html', {'linhas_op': linhas_op, 'lote': lote})
 
 class JustificativaListView(LoginRequiredMixin, FilterView, ListView):
     login_url = 'login/'
@@ -832,5 +832,125 @@ def exportar_estatisticas_excel(request):
         
     response = HttpResponse(content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
     response['Content-Disposition'] = 'attachment; filename="estatisticas.xlsx"'
+    wb.save(response)
+    return response
+
+
+@login_required
+def exportar_op_excel(request, lote):
+    from openpyxl import Workbook
+    from openpyxl.styles import Font, PatternFill, Border, Side
+    from openpyxl.utils import get_column_letter
+    from openpyxl.formatting.rule import FormulaRule
+    
+    with open(f'{settings.BASE_DIR}/notas/management/commands/querys/buscaOPs.sql', 'r') as file:
+        query_ops = file.read()
+        
+    with pool.connection() as conn:
+        with conn.cursor() as cursor:
+            cursor.execute(query_ops, lote)
+            colunas = [coluna[0] for coluna in cursor.description]
+            linhas_op = [dict(zip(colunas, linha)) for linha in cursor.fetchall()]
+
+    wb = Workbook()
+    ws = wb.active
+    ws.title = f"OPs Lote {lote}"
+    
+    cols_display = [
+        ('filial', 'Filial'),
+        ('produto', 'Produto'),
+        ('descr_prod', 'Descr. Produto'),
+        ('armazem', 'Armazém'),
+        ('tp_movimento', 'Tp. Mov.'),
+        ('descricao_tm', 'Desc. TM'),
+        ('unidade', 'Unidade'),
+        ('quantidade', 'Quantidade'),
+        ('custo', 'Custo'),
+        ('ord_producao', 'Ord. Produção'),
+        ('lote', 'Lote'),
+        ('os_ass_tecn', 'OS Ass. Tecn.'),
+        ('grupo', 'Grupo'),
+        ('descricao_grupo', 'Desc. Grupo'),
+        ('tipo_re_de', 'Tipo RE/DE'),
+        ('ext_texto', 'Ext. Texto'),
+        ('documento', 'Documento'),
+        ('dt_emissao', 'Dt. Emissão'),
+        ('c_contabil', 'C. Contábil'),
+        ('descricao_da_conta', 'Desc. Conta'),
+        ('centro_custo', 'Centro Custo'),
+        ('desc_centro_de_custo', 'Desc. C.Custo'),
+        ('parc_total', 'Parc./Total'),
+        ('estornado', 'Estornado'),
+        ('sequencial', 'Sequencial'),
+        ('tipo', 'Tipo'),
+        ('usuario', 'Usuário'),
+        ('nr_s_a', 'Nr. S.A.'),
+        ('item_s_a', 'Item S.A.'),
+    ]
+    
+    ws.append([c[1] for c in cols_display])
+    
+    for op in linhas_op:
+        row_data = []
+        for key, name in cols_display:
+            val = op.get(key)
+            if key in ['c_contabil', 'centro_custo'] and val is None:
+                val = '-'
+            elif key in ['descricao_da_conta', 'desc_centro_de_custo'] and val is None:
+                val = '-'
+            row_data.append(val)
+        ws.append(row_data)
+        
+    fmt_header_fill = PatternFill(start_color="D9E1F2", end_color="D9E1F2", fill_type="solid")
+    fmt_header_font = Font(bold=True)
+    fmt_border = Border(left=Side(style='thin'), right=Side(style='thin'), top=Side(style='thin'), bottom=Side(style='thin'))
+    
+    for cell in ws[1]:
+        cell.font = fmt_header_font
+        cell.fill = fmt_header_fill
+        cell.border = fmt_border
+        
+    col_names = [c[1] for c in cols_display]
+    for col_idx, col_name in enumerate(col_names, 1):
+        col_name_lower = str(col_name).lower()
+        num_format = None
+        
+        if any(x in col_name_lower for x in ['valor_', 'custo', 'vlr_', 'margem_bruta']):
+            num_format = 'R$ #,##0.00'
+        elif any(x in col_name_lower for x in ['percent', 'aliquota', 'diff_percentual']):
+            num_format = '0.00%'
+
+        max_len = len(str(col_name))
+        
+        last_row = len(linhas_op) + 1
+        for row_idx in range(2, last_row + 1):
+            cell = ws.cell(row=row_idx, column=col_idx)
+            if num_format:
+                cell.number_format = num_format
+            if cell.value is not None:
+                max_len = max(max_len, len(str(cell.value)))
+
+        ws.column_dimensions[get_column_letter(col_idx)].width = max_len + 2
+
+    if 'Tp. Mov.' in col_names:
+        col_idx = col_names.index('Tp. Mov.') + 1
+        col_letter = get_column_letter(col_idx)
+        
+        fmt_destaque = PatternFill(start_color="FFEB9C", end_color="FFEB9C", fill_type="solid")
+        
+        last_row = len(linhas_op) + 1
+        last_col_letter = get_column_letter(len(col_names))
+        
+        formula = [f'=${col_letter}2="010"']
+        rule = FormulaRule(formula=formula, stopIfTrue=True, fill=fmt_destaque)
+        ws.conditional_formatting.add(f"A2:{last_col_letter}{last_row}", rule)
+
+    last_col_letter = get_column_letter(len(col_names))
+    last_row = len(linhas_op) + 1
+    if last_row > 1:
+        ws.auto_filter.ref = f"A1:{last_col_letter}{last_row}"
+
+    response = HttpResponse(content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
+    response['Content-Disposition'] = f'attachment; filename="OPs_lote_{lote}.xlsx"'
     wb.save(response)
     return response

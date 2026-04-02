@@ -1,3 +1,9 @@
+<div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
+    <h5 style="margin: 0; color: var(--azul-escuro);"><i class="fa-solid fa-industry"></i> Ordens de Produção (Lote: {{ lote }})</h5>
+    <a href="{% url 'exportar_op_excel' lote=lote %}" target="_parent" class="btn btn-sm btn-success" style="background-color: var(--verde-principal); border: none;" title="Exportar para Excel">
+        <i class="fa-solid fa-file-excel"></i> Exportar
+    </a>
+</div>
 <div class="table-responsive">
     <table class="table table-bordered table-striped table-hover">
         <thead>
