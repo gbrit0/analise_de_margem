@@ -54,10 +54,10 @@ class Command(BaseCommand):
             data_corte = date(2026, 2, 1)
             cfops_especiais = {'5101', '6101', '5116', '6116', '6107'}
 
-            notas_para_criar = set()
-            notas_para_atualizar = []
-            custos_para_criar = []
-            margens_para_criar = []
+            notas_para_criar = {}
+            notas_para_atualizar = {}
+            custos_para_criar = {}
+            margens_para_criar = {}
             # lotes_unicos = set()
             # relacao_lote_nota = {} 
 
@@ -84,11 +84,11 @@ class Command(BaseCommand):
                 )
 
                 if chave not in chaves_existentes:
-                    notas_para_criar.add(nota_obj)
+                    notas_para_criar[chave] = nota_obj
                     
                     # Prepara Custo e Margem apenas para as notas novas
                     custo_obj = Custo(chave_id=chave, valor=custo_valor, usuario=usuario_sistema)
-                    custos_para_criar.append(custo_obj)
+                    custos_para_criar[chave] = custo_obj
                     
                     pro_goias = 0.0477 if data_emissao >= data_corte else 0.02
                     
@@ -102,17 +102,17 @@ class Command(BaseCommand):
                         margem_bruta=margem_bruta,
                         margem_bruta_percentual=margem_bruta / valor_contabil if valor_contabil else 0
                     )
-                    margens_para_criar.append(margem_obj)
+                    margens_para_criar[chave] = margem_obj
                 else:
-                    notas_para_atualizar.append(nota_obj)
+                    notas_para_atualizar[chave] = nota_obj
 
             # 4. Executa as operações em lote no Django
             with transaction.atomic():
                 if notas_para_criar:
-                    Nota.objects.bulk_create(notas_para_criar, batch_size=1000)
+                    Nota.objects.bulk_create(notas_para_criar.values(), batch_size=1000)
                     # Nota: bulk_create não retorna os IDs em alguns bancos de dados antigos, mas como você usa 'chave' (que você mesmo define), é seguro inserir Custo/Margem direto.
-                    Custo.objects.bulk_create(custos_para_criar, batch_size=1000)
-                    Margem.objects.bulk_create(margens_para_criar, batch_size=1000)
+                    Custo.objects.bulk_create(custos_para_criar.values(), batch_size=1000)
+                    Margem.objects.bulk_create(margens_para_criar.values(), batch_size=1000)
                 
                 if notas_para_atualizar:
                     # Campos que devem ser atualizados
@@ -121,7 +121,7 @@ class Command(BaseCommand):
                         'preco_tabela', 'valor_contabil', 'valor_unitario', 'valor_ipi', 'valor_imp5', 
                         'valor_imp6', 'valor_icms_difal', 'valor_icms', 'aliq_icms', 
                     ] 
-                    Nota.objects.bulk_update(notas_para_atualizar, campos_update, batch_size=1000)
+                    Nota.objects.bulk_update(notas_para_atualizar.values(), campos_update, batch_size=1000)
 
             self.stdout.write("Notas salvas. Buscando OPs no Protheus...")
 
