@@ -28,7 +28,7 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 SECRET_KEY = 'django-insecure-ch!@ntcoyc$y3(d4mt_pf=8h_=u7z%_bcld+8jcu@!dzea%&%!'
 
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = os.getenv('DEBUG')
+DEBUG = True # os.getenv('DEBUG')
 
 ALLOWED_HOSTS = [
     'brg.datasetsolucoes.com.br',
@@ -37,9 +37,9 @@ ALLOWED_HOSTS = [
 ]
 
 CORS_ALLOWED_ORIGINS = [
-    'brg.datasetsolucoes.com.br:30035',
-    '172.49.49.6:8000',
-    'margem.brggeradores.com.br'
+    'http://brg.datasetsolucoes.com.br:30035',
+    'http://172.49.49.6:8000',
+    "https://margem.brggeradores.com.br"
 ]
 
 # Application definition
@@ -174,3 +174,8 @@ CACHES = {
         "LOCATION": f"redis://{os.getenv('REDIS_HOST')}:{os.getenv('REDIS_PORT')}",
     }
 }
+
+
+SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
+CSRF_COOKIE_SECURE = True
+SESSION_COOKIE_SECURE = True
