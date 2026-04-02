@@ -1,5 +1,6 @@
 from django.db import models
 from users.models import CustomUser
+from django.utils import timezone
 
 import locale
 
@@ -10,6 +11,7 @@ class Nota(models.Model):
     filial = models.CharField(default=None, blank=False, max_length=50)
     nome_filial = models.CharField(default=None, blank=False, max_length=80)
     nota = models.CharField(default=None, blank=False, max_length=20)
+    item = models.CharField(default=None, blank=False, max_length=20)
     no_pedido = models.CharField(default=None, blank=False, max_length=15)
     vendedor = models.CharField(default=None, blank=False, null=True, max_length=60)
     data_emissao = models.DateField()
@@ -30,7 +32,7 @@ class Nota(models.Model):
     classificacao_produto = models.CharField(default=None, null=True, max_length=100)
     estado_destino = models.CharField(default=None, blank=False, max_length=2)
     quantidade = models.DecimalField(max_digits=12, decimal_places=2)
-    tabela_preco = models.CharField(default=None, blank=False, max_length=10)
+    tabela_preco = models.CharField(default=None, blank=False, max_length=50)
     preco_tabela = models.DecimalField(max_digits=18, decimal_places=2, default=None, blank=True)
     valor_contabil = models.DecimalField(max_digits=18, decimal_places=2)
     valor_unitario = models.DecimalField(max_digits=18, decimal_places=2)
@@ -40,6 +42,7 @@ class Nota(models.Model):
     valor_icms_difal = models.DecimalField(max_digits=18, decimal_places=2)
     valor_icms = models.DecimalField(max_digits=18, decimal_places=2)
     aliq_icms = models.DecimalField(max_digits=5, decimal_places=2)
+    recno = models.BigIntegerField()
     delete = models.BooleanField(default=False)
     
     class Meta():
@@ -89,6 +92,14 @@ class Nota(models.Model):
     def valor_icms_formatado(self):
         return locale.currency(self.valor_icms, grouping=True)
     
+    @property
+    def preco_tabela_formatado(self):
+        return locale.currency(self.preco_tabela, grouping=True)
+    
+    # @property
+    # def relacao_lote_nota(self):
+    #     return f"{self.filial}{self.nota}{self.item}{self.recno}"
+    
     def __str__(self):
         return self.chave
 
@@ -114,7 +125,7 @@ class Justificativa(models.Model):
     ativo = models.BooleanField(default=True)
     data_desativa = models.DateTimeField(blank=True, null=True)
     # usuario = models.ForeignKey(to=CustomUser, on_delete=models.PROTECT, null=True, blank=True)
-    usuario = models.ForeignKey(to=CustomUser, on_delete=models.PROTECT, default=2)
+    usuario = models.ForeignKey(to=CustomUser, on_delete=models.PROTECT, default=2, editable=False)
     
     class Meta():
         verbose_name = "Justificativa"
@@ -123,12 +134,19 @@ class Justificativa(models.Model):
     def __str__(self):
         return self.texto
     
+    def save(self, *args, **kwargs):
+        if not self.ativo:
+            if not self.data_desativa:
+                self.data_desativa = timezone.now()
+        else:
+            self.data_desativa = None
+            
+        super().save(*args, **kwargs)
     
 class Nf_Has_Justificativa(models.Model):
     nf = models.ForeignKey(to=Nota, on_delete=models.PROTECT)
     justificativa = models.ForeignKey(to=Justificativa, on_delete=models.PROTECT)
     data_cadastro = models.DateTimeField(auto_now=True)
-    # usuario = models.ForeignKey(to=CustomUser, on_delete=models.PROTECT, null=True, blank=True)
     usuario = models.ForeignKey(to=CustomUser, on_delete=models.PROTECT, default=2)
 
 
@@ -144,12 +162,13 @@ class Margem(models.Model):
         verbose_name_plural = "Margens"
         
 class OP(models.Model):
-    filial               = models.CharField(default=None, blank=True, max_length=50)
-    produto              = models.CharField(default=None, blank=True, max_length=15)
+    id_op                = models.CharField(default=None, blank=True, max_length=80)
+    filial               = models.CharField(default=None, blank=False, max_length=50)
+    produto              = models.CharField(default=None, blank=False, max_length=15)
     armazem              = models.CharField(default=None, blank=True, max_length=60)
     tp_movimento         = models.CharField(default=None, blank=True, max_length=3)
-    descricao_tm         = models.CharField(default=None, blank=True, max_length=50)
-    descr_prod           = models.CharField(default=None, blank=True, max_length=50)
+    descricao_tm         = models.CharField(default=None, blank=True, null=True, max_length=80)
+    descr_prod           = models.CharField(default=None, blank=True, null=True, max_length=80)
     unidade              = models.CharField(default=None, blank=True, max_length=2)
     quantidade           = models.DecimalField(max_digits=12, decimal_places=2)
     quant_2              = models.DecimalField(max_digits=12, decimal_places=2)
@@ -159,24 +178,47 @@ class OP(models.Model):
     lote                 = models.CharField(default=None, blank=True, max_length=20)
     os_ass_tecn          = models.CharField(default=None, blank=True, max_length=8)
     grupo                = models.CharField(default=None, blank=True, max_length=4)
-    descricao_grupo      = models.CharField(default=None, blank=True, max_length=60)
-    tipo_re_de	         = models.CharField(default=None, blank=True, max_length=3)
-    ext_texto	         = models.CharField(default=None, blank=True, max_length=2)
-    documento	         = models.CharField(default=None, blank=True, max_length=12)
+    descricao_grupo      = models.CharField(default=None, blank=True, null=True, max_length=60)
+    tipo_re_de	         = models.CharField(default=None, blank=True, null=True, max_length=3)
+    ext_texto	         = models.CharField(default=None, blank=True, null=True, max_length=2)
+    documento	         = models.CharField(default=None, blank=True, null=True, max_length=12)
     dt_emissao	         = models.DateField()
     c_contabil	         = models.CharField(default=None, blank=True, max_length=10)
-    descricao_da_conta	 = models.CharField(default=None, blank=True, max_length=60)
+    descricao_da_conta	 = models.CharField(default=None, blank=True, null=True, max_length=60)
     centro_custo	     = models.CharField(default=None, blank=True, max_length=8)
-    desc_centro_de_custo = models.CharField(default=None, blank=True, max_length=60)
-    parc_total	         = models.CharField(default=None, blank=True, max_length=1)
-    estornado            = models.CharField(default=None, blank=True, max_length=1)
-    sequencial	         = models.CharField(default=None, blank=True, max_length=6)
-    tipo	             = models.CharField(default=None, blank=True, max_length=2)
-    usuario	             = models.CharField(default=None, blank=True, max_length=40)
-    nr_s_a	             = models.CharField(default=None, blank=True, max_length=6)
-    item_s_a	         = models.CharField(default=None, blank=True, max_length=2)
+    desc_centro_de_custo = models.CharField(default=None, blank=True, null=True, max_length=60)
+    parc_total	         = models.CharField(default=None, blank=True, null=True, max_length=1)
+    estornado            = models.CharField(default=None, blank=True, null=True, max_length=1)
+    sequencial	         = models.CharField(default=None, blank=True, null=True, max_length=6)
+    tipo	             = models.CharField(default=None, blank=True, null=True, max_length=2)
+    usuario	             = models.CharField(default=None, blank=True, null=True, max_length=40)
+    nr_s_a	             = models.CharField(default=None, blank=True, null=True, max_length=6)
+    item_s_a	         = models.CharField(default=None, blank=True, null=True, max_length=2)
     
     class Meta():
         verbose_name = "Op"
         verbose_name_plural = "Ops"
+    
+    @property
+    def custo1_fmt(self):
+        return locale.currency(self.custo, grouping=True)
+    
+    @property
+    def custo2_fmt(self):
+        return locale.currency(self.custo_2, grouping=True)
+
+    @property
+    def descricao_da_conta_fmt(self):
+        if self.descricao_da_conta is None:
+            return '-'
+        else:
+            return self.descricao_da_conta
+    
+    @property
+    def centro_custo_fmt(self):
+        if self.desc_centro_de_custo is None:
+            return '-'
+        else:
+            return self.desc_centro_de_custo
+        
         

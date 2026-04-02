@@ -1,0 +1,334 @@
+{% extends 'base.html' %}
+{% block page_title %}Administração - Justificativas{% endblock %}
+
+{% block content %}
+<style>
+    .admin-card {
+        background: var(--branco);
+        border-radius: 12px;
+        padding: 24px;
+        margin-bottom: 24px;
+        box-shadow: 0 4px 12px rgba(19, 22, 47, 0.05);
+        border: 1px solid var(--cinza-borda);
+    }
+
+    .admin-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 24px;
+    }
+
+    .admin-title {
+        color: var(--azul-escuro);
+        font-weight: 600;
+        font-size: 1.25rem;
+    }
+
+    .admin-title i {
+        color: var(--verde-principal);
+        margin-right: 10px;
+    }
+
+    /* Botões */
+    .btn-custom {
+        font-family: 'Poppins', sans-serif;
+        padding: 8px 16px;
+        border-radius: 6px;
+        font-weight: 500;
+        cursor: pointer;
+        transition: all 0.2s;
+        border: none;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        gap: 8px;
+    }
+
+    .btn-primary-custom {
+        background-color: var(--verde-principal);
+        color: var(--branco);
+    }
+
+    .btn-primary-custom:hover {
+        background-color: #008a42;
+        color: var(--branco);
+    }
+
+    .btn-danger-custom {
+        background-color: var(--vermelho-alerta);
+        color: var(--branco);
+    }
+
+    .btn-danger-custom:hover {
+        background-color: #c93b4a;
+        color: var(--branco);
+    }
+
+    /* Tabela de Justificativas */
+    .table-container {
+        background: var(--branco);
+        border-radius: 12px;
+        padding: 20px;
+        box-shadow: 0 4px 12px rgba(19, 22, 47, 0.05);
+        border: 1px solid var(--cinza-borda);
+    }
+
+    table.dataTable {
+        border-collapse: collapse !important;
+        width: 100% !important;
+    }
+    
+    .status-badge {
+        padding: 4px 10px;
+        border-radius: 4px;
+        font-weight: 600;
+        font-size: 0.85rem;
+    }
+
+    .status-ativo {
+        background-color: var(--verde-claro);
+        color: var(--azul-escuro);
+    }
+
+    .status-inativo {
+        background-color: var(--vermelho-alerta);
+        color: var(--branco);
+    }
+    
+    .action-btn {
+        background: none;
+        border: none;
+        cursor: pointer;
+        font-size: 1.1rem;
+        padding: 4px 8px;
+        border-radius: 4px;
+        transition: 0.2s;
+    }
+    
+    .edit-btn { color: var(--azul-escuro); }
+    .edit-btn:hover { background-color: var(--cinza-fundo); color: var(--verde-principal); }
+    
+    .toggle-btn { color: var(--vermelho-alerta); }
+    .toggle-btn:hover { background-color: rgba(230, 71, 89, 0.1); }
+    .toggle-btn.is-inactive { color: var(--verde-principal); }
+    .toggle-btn.is-inactive:hover { background-color: rgba(0, 163, 79, 0.1); }
+
+    /* Inputs */
+    .form-control {
+        font-family: 'Poppins', sans-serif;
+        padding: 8px 12px;
+        border: 1px solid var(--cinza-borda);
+        border-radius: 6px;
+        background-color: var(--branco);
+        color: var(--azul-escuro);
+        font-size: 0.9rem;
+        transition: all 0.3s ease;
+    }
+
+    .form-control:focus {
+        border-color: var(--verde-principal);
+        outline: none;
+        box-shadow: 0 0 0 3px rgba(0, 163, 79, 0.1);
+    }
+</style>
+
+{% csrf_token %}
+
+<div class="main-content">
+    <div class="admin-card">
+        <div class="admin-header">
+            <div class="admin-title">
+                <i class="fa-solid fa-list-check"></i> Gerenciar Justificativas
+            </div>
+            <button class="btn-custom btn-primary-custom" onclick="abrirModalNova()">
+                <i class="fa-solid fa-plus"></i> Nova Justificativa
+            </button>
+        </div>
+        
+        <div class="table-container">
+            <table id="tabelaJustificativas" class="display nowrap" style="width:100%">
+                <thead>
+                    <tr>
+                        <th width="10%">ID</th>
+                        <th width="50%">Texto da Justificativa</th>
+                        <th width="15%" class="text-center">Status</th>
+                        <th width="15%" class="text-right">Ações</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for just in justificativas %}
+                    <tr id="just-row-{{ just.id }}">
+                        <td>{{ just.id }}</td>
+                        <td class="just-text">{{ just.texto }}</td>
+                        <td class="text-center">
+                            {% if just.ativo %}
+                                <span class="status-badge status-ativo" id="status-badge-{{ just.id }}">Ativo</span>
+                            {% else %}
+                                <span class="status-badge status-inativo" id="status-badge-{{ just.id }}">Inativo</span>
+                            {% endif %}
+                        </td>
+                        <td class="text-right">
+                            <button class="action-btn edit-btn" onclick="abrirModalEditar({{ just.id }}, '{{ just.texto|escapejs }}')" title="Editar">
+                                <i class="fa-solid fa-pen-to-square"></i>
+                            </button>
+                            {% if just.ativo %}
+                                <button class="action-btn toggle-btn" id="toggle-btn-{{ just.id }}" onclick="toggleStatus({{ just.id }})" title="Desativar">
+                                    <i class="fa-solid fa-ban"></i>
+                                </button>
+                            {% else %}
+                                <button class="action-btn toggle-btn is-inactive" id="toggle-btn-{{ just.id }}" onclick="toggleStatus({{ just.id }})" title="Ativar">
+                                    <i class="fa-solid fa-check"></i>
+                                </button>
+                            {% endif %}
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<!-- Modal de Criação / Edição -->
+<div class="modal fade" id="modalJustificativa" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="modalTitulo">Nova Justificativa</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <input type="hidden" id="justificativaId">
+                <div class="form-group">
+                    <label for="justificativaTexto" class="mb-2" style="font-weight: 500; color: var(--azul-escuro);">Texto</label>
+                    <input type="text" class="form-control" id="justificativaTexto" maxlength="150" placeholder="Digite a justificativa...">
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary text-dark border bg-light" data-bs-dismiss="modal">Cancelar</button>
+                <button type="button" class="btn-custom btn-primary-custom" onclick="salvarJustificativa()">
+                    <i class="fa-solid fa-save"></i> Salvar
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script src="https://cdn.datatables.net/1.13.6/js/jquery.dataTables.min.js"></script>
+<script>
+    $(document).ready(function() {
+        $('#tabelaJustificativas').DataTable({
+            language: {
+                url: '//cdn.datatables.net/plug-ins/1.13.6/i18n/pt-BR.json'
+            },
+            ordering: true,
+            info: true,
+            paging: true,
+            pageLength: 25,
+            lengthMenu: [10, 25, 50, 100],
+            columnDefs: [
+                { targets: 3, orderable: false }
+            ]
+        });
+    });
+
+    function getModalInstance() {
+        const modalElement = document.getElementById('modalJustificativa');
+        return bootstrap.Modal.getOrCreateInstance(modalElement);
+    }
+
+    function abrirModalNova() {
+        document.getElementById('modalTitulo').innerText = "Nova Justificativa";
+        document.getElementById('justificativaId').value = "";
+        document.getElementById('justificativaTexto').value = "";
+        getModalInstance().show();
+    }
+
+    function abrirModalEditar(id, texto) {
+        document.getElementById('modalTitulo').innerText = "Editar Justificativa";
+        document.getElementById('justificativaId').value = id;
+        document.getElementById('justificativaTexto').value = texto;
+        getModalInstance().show();
+    }
+
+    function salvarJustificativa() {
+        const id = document.getElementById('justificativaId').value;
+        const texto = document.getElementById('justificativaTexto').value.trim();
+        const csrfToken = document.querySelector('[name=csrfmiddlewaretoken]').value;
+
+        if (!texto) {
+            alert("O texto é obrigatório!");
+            return;
+        }
+
+        fetch('{% url "api_justificativa_salvar" %}', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': csrfToken
+            },
+            body: JSON.stringify({
+                'id': id,
+                'texto': texto
+            })
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                // Ao invés de manipular o DOM complexo do DataTable, a página recarrega para manter a integridade, 
+                // para listagens e forms costuma ser mais simples quando lidando com DataTables sem Ajax source
+                location.reload(); 
+            } else {
+                alert('Erro: ' + data.error);
+            }
+        })
+        .catch(error => {
+            console.error('Erro:', error);
+            alert('Erro de comunicação do servidor.');
+        });
+    }
+
+    function toggleStatus(id) {
+        const csrfToken = document.querySelector('[name=csrfmiddlewaretoken]').value;
+
+        fetch('{% url "api_justificativa_toggle" %}', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': csrfToken
+            },
+            body: JSON.stringify({
+                'id': id
+            })
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                const badge = document.getElementById(`status-badge-${id}`);
+                const btn = document.getElementById(`toggle-btn-${id}`);
+                
+                if (data.ativo) {
+                    badge.className = "status-badge status-ativo";
+                    badge.innerText = "Ativo";
+                    btn.className = "action-btn toggle-btn";
+                    btn.innerHTML = '<i class="fa-solid fa-ban"></i>';
+                    btn.title = "Desativar";
+                } else {
+                    badge.className = "status-badge status-inativo";
+                    badge.innerText = "Inativo";
+                    btn.className = "action-btn toggle-btn is-inactive";
+                    btn.innerHTML = '<i class="fa-solid fa-check"></i>';
+                    btn.title = "Ativar";
+                }
+            } else {
+                alert('Erro: ' + data.error);
+            }
+        })
+        .catch(error => {
+            console.error('Erro:', error);
+            alert('Erro de comunicação do servidor.');
+        });
+    }
+</script>
+{% endblock %}

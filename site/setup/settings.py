@@ -28,7 +28,7 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 SECRET_KEY = 'django-insecure-ch!@ntcoyc$y3(d4mt_pf=8h_=u7z%_bcld+8jcu@!dzea%&%!'
 
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = False
+DEBUG = os.getenv('DEBUG')
 
 ALLOWED_HOSTS = [
     'brg.datasetsolucoes.com.br',
@@ -41,6 +41,7 @@ CORS_ALLOWED_ORIGINS = [
     '172.49.49.6:8000',
     'margem.brggeradores.com.br'
 ]
+
 # Application definition
 
 INSTALLED_APPS = [
@@ -92,19 +93,19 @@ WSGI_APPLICATION = 'setup.wsgi.application'
 DATABASES = {
     'default': {
         'ENGINE': 'django.db.backends.mysql',
-        'NAME': f"{os.getenv('DB_NAME')}",
-        'USER': f"{os.getenv('DB_USER')}",
+        'NAME':     f"{os.getenv('DB_NAME')}",
+        'USER':     f"{os.getenv('DB_USER')}",
         'PASSWORD': f"{os.getenv('DB_PASSWORD')}",
-        'HOST': f"{os.getenv('DB_HOST')}",
-        'PORT': f"{os.getenv('DB_PORT')}",
+        'HOST':     f"{os.getenv('DB_HOST')}",
+        'PORT':     f"{os.getenv('DB_PORT')}",
     },
     'protheus': {
         'ENGINE': 'mssql',
-        'NAME': f"{os.getenv('PROTHEUS_DB_NAME')}",
-        'USER': f"{os.getenv('PROTHEUS_DB_USER')}",
+        'NAME':     f"{os.getenv('PROTHEUS_DB_NAME')}",
+        'USER':     f"{os.getenv('PROTHEUS_DB_USER')}",
         'PASSWORD': f"{os.getenv('PROTHEUS_DB_PASSWORD')}",
-        'HOST': f"{os.getenv('PROTHEUS_DB_HOST')}",
-        'PORT': f"{os.getenv('PROTHEUS_DB_PORT')}",
+        'HOST':     f"{os.getenv('PROTHEUS_DB_HOST')}",
+        'PORT':     f"{os.getenv('PROTHEUS_DB_PORT')}",
     },
 }
 
@@ -139,7 +140,6 @@ USE_I18N = True
 
 USE_TZ = True
 
-
 # Static files (CSS, JavaScript, Images)
 # https://docs.djangoproject.com/en/5.2/howto/static-files/
 
@@ -167,3 +167,10 @@ hoje = date.today().strftime("%Y-%m")
 
 LOGIN_REDIRECT_URL = f'/notas/?data_emissao_month={hoje}'
 LOGOUT_REDIRECT_URL = '/login'
+
+CACHES = {
+    "default": {
+        "BACKEND": "django.core.cache.backends.redis.RedisCache",
+        "LOCATION": f"redis://{os.getenv('REDIS_HOST')}:{os.getenv('REDIS_PORT')}",
+    }
+}

@@ -2,14 +2,40 @@
 {% block page_title %}Notas Fiscais - Análise de Margem{% endblock %}
 
 {% block content %}
+<link rel="stylesheet" href="https://cdn.datatables.net/responsive/2.5.0/css/responsive.dataTables.min.css">
 <style>
+    /* Customização do ícone de expansão (DataTables Responsive) */
+    table.dataTable.dtr-column>tbody>tr>td.dtr-control:before, 
+    table.dataTable.dtr-column>tbody>tr>th.dtr-control:before {
+        background-color: var(--verde-principal) !important;
+        border-radius: 4px !important;
+        box-shadow: none !important;
+        border: none !important;
+        font-family: "Font Awesome 6 Free";
+        content: "\f067" !important; /* fa-plus */
+        font-weight: 900;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        line-height: 1;
+        width: 1.4em !important;
+        height: 1.4em !important;
+        color: white;
+    }
+
+    table.dataTable.dtr-column>tbody>tr.parent>td.dtr-control:before, 
+    table.dataTable.dtr-column>tbody>tr.parent>th.dtr-control:before {
+        background-color: var(--vermelho-alerta) !important;
+        content: "\f068" !important; /* fa-minus */
+    }
+
     .detalhe-card {
         background: #ffffff;
-        border-left: 4px solid  #13162F;    
+        border-left: 4px solid #13162F;
         padding: 12px 16px;
         border-radius: 6px;
         height: 100%;
-        box-shadow: 0 2px 4px rgba(0,0,0,0.04);
+        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.04);
         border-top: 1px solid #e9ecef;
         border-right: 1px solid #e9ecef;
         border-bottom: 1px solid #e9ecef;
@@ -23,7 +49,7 @@
     /* Efeito hover para dar interatividade */
     .detalhe-card:hover {
         transform: translateY(-5px);
-        box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+        box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
     }
 
     .detalhe-titulo {
@@ -41,7 +67,8 @@
         font-size: 1rem;
         color: #212529;
         font-weight: 500;
-        word-break: break-word; /* Evita que textos muito grandes quebrem o card */
+        word-break: break-word;
+        /* Evita que textos muito grandes quebrem o card */
     }
 
     /* Cards e Containers */
@@ -89,7 +116,11 @@
     }
 
     /* Inputs e Selects */
-    .form-control, .form-select, select, input[type="text"], input[type="number"] {
+    .form-control,
+    .form-select,
+    select,
+    input[type="text"],
+    input[type="number"] {
         font-family: 'Poppins', sans-serif;
         padding: 8px 12px;
         border: 1px solid var(--cinza-borda);
@@ -100,7 +131,10 @@
         transition: all 0.3s ease;
     }
 
-    .form-control:focus, .form-select:focus, select:focus, input:focus {
+    .form-control:focus,
+    .form-select:focus,
+    select:focus,
+    input:focus {
         border-color: var(--verde-principal);
         outline: none;
         box-shadow: 0 0 0 3px rgba(0, 163, 79, 0.1);
@@ -141,7 +175,7 @@
     .btn-secondary-custom:hover {
         background-color: #e2e6ea;
     }
-    
+
     .btn-icon {
         background-color: var(--azul-escuro);
         color: var(--branco);
@@ -151,7 +185,7 @@
         cursor: pointer;
         transition: 0.2s;
     }
-    
+
     .btn-icon:hover {
         background-color: var(--verde-principal);
     }
@@ -170,16 +204,23 @@
         width: 100% !important;
     }
 
-    .icon-true { color: var(--verde-principal); font-size: 1.1rem; }
-    .icon-false { color: #dc3545; font-size: 1.1rem; }
-    
+    .icon-true {
+        color: var(--verde-principal);
+        font-size: 1.1rem;
+    }
+
+    .icon-false {
+        color: #dc3545;
+        font-size: 1.1rem;
+    }
+
     .custo-input {
         width: 100px;
         text-align: right;
         font-weight: 600;
         color: var(--azul-escuro);
     }
-    
+
     .celula-justificativa select {
         width: 180px;
     }
@@ -193,11 +234,14 @@
             box-shadow: none;
         }
 
-        table.dataTable thead { 
-            display: none !important; 
+        table.dataTable thead {
+            display: none !important;
         }
-        
-        table.dataTable, table.dataTable tbody, table.dataTable tr, table.dataTable td {
+
+        table.dataTable,
+        table.dataTable tbody,
+        table.dataTable tr,
+        table.dataTable td {
             display: block;
             width: 100% !important;
         }
@@ -225,9 +269,10 @@
             padding: 10px 0;
             border-bottom: 1px dashed var(--cinza-borda);
             text-align: right;
-            white-space: normal; /* Permite quebra de linha no mobile */
+            white-space: normal;
+            /* Permite quebra de linha no mobile */
         }
-        
+
         table.dataTable tbody td:last-child {
             border-bottom: none;
         }
@@ -243,11 +288,13 @@
 
         /* Lógica Accordion */
         table.dataTable tbody tr td:not(.col-principal) {
-            display: none !important; /* Adicionado !important */
+            display: none !important;
+            /* Adicionado !important */
         }
 
         table.dataTable tbody tr.expandido td {
-            display: flex !important; /* Adicionado !important */
+            display: flex !important;
+            /* Adicionado !important */
             animation: fadeInCard 0.3s ease-in-out;
         }
 
@@ -264,59 +311,86 @@
             transform: rotate(180deg);
         }
 
-        .custo-input, .celula-justificativa select {
+        .custo-input,
+        .celula-justificativa select {
             width: 140px;
             text-align: right;
         }
     }
 
     @keyframes fadeInCard {
-        from { opacity: 0; transform: translateY(-5px); }
-        to { opacity: 1; transform: translateY(0); }
+        from {
+            opacity: 0;
+            transform: translateY(-5px);
+        }
+
+        to {
+            opacity: 1;
+            transform: translateY(0);
+        }
     }
 </style>
 
 {% csrf_token %}
 
 <div class="filter-card">
-    <div class="filter-header">
-        <i class="fa-solid fa-sliders"></i> Filtros de Análise
+    <div class="filter-header" style="justify-content: space-between; align-items: center;">
+        <div>
+            <i class="fa-solid fa-sliders"></i> Filtros de Análise
+        </div>
+        <div>
+            <a href="{% url 'exportar_excel' %}?{{ request.GET.urlencode }}" class="btn-custom btn-secondary-custom" title="Exportar resultados para Excel">
+                <i class="fa-solid fa-file-excel"></i> Exportar Excel
+            </a>
+        </div>
     </div>
-    
+
     <form method="get" class="form-inline">
         <div class="filter-grid">
-            
+
             <div class="form-group">
                 <label for="data_emissao_month"><i class="fa-regular fa-calendar-alt"></i> Mês de Emissão</label>
                 <div style="display:flex; gap:4px; align-items:center;">
-                    <button type="button" id="prevMonth" class="btn-icon" title="Mês anterior"><i class="fa-solid fa-chevron-left"></i></button>
+                    <button type="button" id="prevMonth" class="btn-icon" title="Mês anterior"><i
+                            class="fa-solid fa-chevron-left"></i></button>
                     <select id="data_emissao_month" name="data_emissao_month" class="form-select" style="flex: 1;">
-                        <option value="">Todos</option>
                         {% for m in meses_disponiveis %}
-                            <option value="{{ m.value }}" {% if m.value == selected_month %}selected{% endif %}>{{ m.label }}</option>
+                        <option value="{{ m.value }}" {% if m.value == selected_month %}selected{% endif %}>{{ m.label }}
+                        </option>
                         {% endfor %}
                     </select>
-                    <button type="button" id="nextMonth" class="btn-icon" title="Próximo mês"><i class="fa-solid fa-chevron-right"></i></button>
+                    <button type="button" id="nextMonth" class="btn-icon" title="Próximo mês">
+                        <i class="fa-solid fa-chevron-right"></i>
+                    </button>
                 </div>
             </div>
 
             <div class="form-group">
-                {% if filiais %}
-                    <label for="filial"><i class="fa-solid fa-building"></i> Filial</label>
-                    <select id="filial" name="filial" class="form-select">
-                        <option value="">Todas</option>
+                <label><i class="fa-solid fa-building"></i> Filial</label>
+                <div class="dropdown">
+                    <button class="btn btn-secondary dropdown-toggle dropdown-filial" type="button"
+                        data-bs-toggle="dropdown" aria-expanded="false"
+                        style="background-color: var(--branco); color: var(--azul-escuro); border-color: var(--cinza-borda); width: 100%; justify-content: space-between; display: flex; align-items: center; padding: 8px 12px; font-size: 0.9rem;">
+                        Selecionar Filiais
+                    </button>
+                    <ul class="dropdown-menu w-100 p-2"
+                        style="max-height: 250px; overflow-y: auto; box-shadow: 0 4px 12px rgba(0,0,0,0.1);">
                         {% for f in filiais %}
-                            <option value="{{ f.filial }}" {% if f.filial == filial_selecionada %}selected{% endif %}>
-                                {{ f.filial }}{% if f.nome_filial %} - {{ f.nome_filial }}{% endif %}
-                            </option>
+                        <li>
+                            <div class="form-check">
+                                <input class="form-check-input filial-checkbox" type="checkbox" name="filial"
+                                    value="{{ f.filial }}" id="filial_{{ f.filial }}" {% if f.filial in filiais_selecionadas %}checked{% endif %}>
+                                <label class="form-check-label" for="filial_{{ f.filial }}"
+                                    style="font-size: 0.85rem; cursor: pointer;">
+                                    {{ f.filial }}{% if f.nome_filial %} - {{ f.nome_filial }}{% endif %}
+                                </label>
+                            </div>
+                        </li>
                         {% endfor %}
-                    </select>
-                {% else %}
-                    {{ filter.form.filial.label_tag }}
-                    {{ filter.form.filial }}
-                {% endif %}
+                    </ul>
+                </div>
             </div>
-            
+
             <div class="form-group">
                 <label><i class="fa-solid fa-file-invoice"></i> {{ filter.form.nota.label }}</label>
                 {{ filter.form.nota }}
@@ -326,12 +400,12 @@
                 <label><i class="fa-solid fa-boxes-stacked"></i> {{ filter.form.lote.label }}</label>
                 {{ filter.form.lote }}
             </div>
-            
+
             <div class="form-group">
                 <label><i class="fa-solid fa-arrow-down-short-wide"></i> {{ filter.form.margem_minima.label }}</label>
                 {{ filter.form.margem_minima }}
             </div>
-            
+
             <div class="form-group">
                 <label><i class="fa-solid fa-arrow-up-wide-short"></i> {{ filter.form.margem_maxima.label }}</label>
                 {{ filter.form.margem_maxima }}
@@ -352,23 +426,16 @@
                 {{ filter.form.tipo_produto }}
             </div>
 
-            <div class="form-group" style="display: flex; flex-direction: row; gap: 8px; align-items: flex-end;">
-                <button type="submit" class="btn-custom btn-primary-custom" style="flex: 1;">
-                    <i class="fa-solid fa-filter"></i> Aplicar
-                </button>
-                <a href="{% url 'lista_notas' %}" class="btn-custom btn-secondary-custom" title="Limpar Filtros">
-                    <i class="fa-solid fa-eraser"></i>
-                </a>
-            </div>
         </div>
     </form>
 </div>
-    
+
 <div class="table-container">
     <table id="tabelaNotas" class="display nowrap" style="width:100%">
         <thead>
             <tr>
-                <th>Filial</th> 
+                <th style="width: 30px;"></th> <!-- Coluna de expansão -->
+                <th>Filial</th>
                 <th>Nota</th>
                 <th>Emissão</th>
                 <th>Nº Pedido</th>
@@ -381,6 +448,8 @@
                 <th>Qtd</th>
                 <th>Vl. Contábil</th>
                 <th>Custo</th>
+                <th>Tabela Preço</th>
+                <th>Preço Tabela</th>
                 <th>Margem Bruta</th>
                 <th>Margem %</th>
                 <th>Estoque?</th>
@@ -398,127 +467,144 @@
                 <th>Justificativa</th>
             </tr>
         </thead>
-        <tbody> 
+        <tbody>
             {% for nota in object_list %}
-                {% if nota.cod_produto != 'E000H2P8' and nota.cod_produto != 'B0010046' %}
-                    <tr>
-                        <td data-label="Filial" class="text-center">{{ nota.filial }}</td>
-                        
-                        <td data-label="Nota" class="col-principal"><strong style="color: var(--azul-escuro);">{{ nota.nota }}</strong></td>
-                        
-                        <td data-label="Emissão">{{ nota.data_emissao|date:"d/m/Y" }}</td>
-                        <td data-label="Nº Pedido">{{ nota.no_pedido }}</td>
-                        <td data-label="Vendedor">{{ nota.nome_curto_vendedor | default:"-" }}</td>
-                        
-                        <td data-label="Cliente" class="col-principal">
-                            <span class="text-truncate" title="{{ nota.cod_cliente }} - {{ nota.cliente }}">
-                                {{ nota.cliente|default:"-" }}
-                            </span>
-                        </td>
-                        
-                        <td data-label="CFOP">
-                            <span class="text-truncate" title="{{ nota.cfop }} - {{ nota.cfop_descri }}">{{ nota.cfop }} - {{ nota.cfop_descri }}</span>
-                        </td>
-                        <td data-label="Tipo" class="text-center">
-                            <span class="badge" style="background-color: var(--verde-claro); color: var(--azul-escuro); padding: 4px 8px; border-radius: 4px; font-weight: 600;">
-                                {{ nota.tipo_produto }}
-                            </span>
-                        </td>
-                        
-                        <td data-label="Produto">
-                            <span class="text-truncate" title="{{ nota.cod_produto }} - {{ nota.produto }}">
-                                {{ nota.cod_produto }} - {{ nota.produto }}
-                            </span>
-                        </td>
-                        <td data-label="Lote">
-                            {% if nota.lote and nota.lote.strip %}
-                                <a data-bs-toggle="modal" data-bs-target="#modalOP"
-                                href="{% url 'lista_ops' nota.lote %}" 
-                                style="color: var(--azul-escuro); text-decoration: underline; font-weight: 600; transition: color 0.2s;" 
-                                onmouseover="this.style.color='var(--verde-principal)'" 
-                                onmouseout="this.style.color='var(--azul-escuro)'"
-                                title="Ver Ordens de Produção deste Lote">
-                                    {{ nota.lote }}
-                                </a>
-                            {% else %}
-                                -
-                            {% endif %}
-                        </td>
-                        <td data-label="Qtd" class="text-right">{{ nota.quantidade }}</td>
+            {% if nota.cod_produto != 'E000H2P8' and nota.cod_produto != 'B0010046' %}
+            <tr>
+                <td></td> <!-- Célula de expansão -->
+                <td data-label="Filial" class="text-center">{{ nota.filial }}</td>
 
-                        <td data-label="Vl. Contábil" class="text-right col-principal" style="font-weight:bold; color: var(--azul-escuro);">{{ nota.valor_contabil_formatado }}</td>
-                        
-                        <td data-label="Custo" class="text-right" style="font-weight:bold;">
-                            <input type="number" 
-                                step="0.01" 
-                                class="form-control custo-input nao-expande" 
-                                value="{{ nota.custo_mais_recente|default_if_none:'0'|stringformat:'.2f' }}" 
-                                data-original="{{ nota.ultimo_custo_valor|default_if_none:'0'|stringformat:'.2f' }}"
-                                data-chave="{{ nota.chave }}"
-                                onfocus="mostrarValorAntigo(this)"
-                                onchange="atualizarCusto(this)">
-                        </td>
-                        
-                        <td data-label="Margem Bruta" class="text-right celula-margem-bruta" style="font-weight:bold;">
-                            {% if nota.margem_bruta_formatada %}{{ nota.margem_bruta_formatada }}{% else %}-{% endif %}
-                        </td>
-                        
-                        <td data-label="Margem %" class="text-right celula-margem-pct col-principal" 
-                            style="font-weight:bold; color: {% if nota.margem_percentual != None and nota.margem_percentual < 27 %}var(--vermelho-alerta){% else %}var(--verde-principal){% endif %};">
-                            {% if nota.margem_percentual != None %}{{ nota.margem_percentual|floatformat:2 }}%{% else %}-{% endif %}
-                        </td>
-                        
-                        <td data-label="Estoque?" class="text-center">
-                            {% if nota.atualiza_estoque %}<i class="fa-solid fa-circle-check icon-true"></i>{% else %}<i class="fa-solid fa-circle-xmark icon-false"></i>{% endif %}
-                        </td>
-                        <td data-label="Duplicata?" class="text-center">
-                            {% if nota.gera_duplicata == 'S' or nota.gera_duplicata == True %}<i class="fa-solid fa-circle-check icon-true"></i>{% else %}<i class="fa-solid fa-circle-xmark icon-false"></i>{% endif %}
-                        </td>
-                        
-                        <td data-label="Armazém" class="text-center">{{ nota.armazem }}</td>
-                        <td data-label="Gp. Amar. CTB" class="text-center">{{ nota.grp_amar_ctb }}</td>
-                        <td data-label="UF" class="text-center"><strong>{{ nota.estado_destino }}</strong></td>
-                        
-                        <td data-label="Vl. Unit" class="text-right">{{ nota.valor_unitario_formatado }}</td>
-                        <td data-label="IPI" class="text-right">{{ nota.valor_ipi_formatado }}</td>
-                        <td data-label="Imp5" class="text-right">{{ nota.valor_imp5_formatado }}</td>
-                        <td data-label="Imp6" class="text-right">{{ nota.valor_imp6_formatado }}</td>
-                        <td data-label="Difal" class="text-right">{{ nota.valor_icms_difal_formatado }}</td>
-                        <td data-label="ICMS" class="text-right">{{ nota.valor_icms_formatado }}</td>
-                        
-                        <td data-label="Aliq %" class="text-right">{{ nota.aliq_icms }}</td>    
-                        
-                        <td data-label="Justificativa" class="text-right celula-justificativa">
-                            <select id="justificativa_{{ nota.id }}" 
-                                name="justificativa_nota_{{ nota.id }}" 
-                                data-chave="{{ nota.chave }}"
-                                onchange="atualizarJustificativa(this)"
-                                class="form-select nao-expande">
-                                
-                                {% if not nota.justificativa_atual or nota.justificativa_atual.texto != 'Limpar / Sem Justificativa' %}
-                                <option value="" {% if nota.justificativa_atual %} style="display:none;" {% endif %} disabled selected>Selecione...</option>
-                                {% endif %}
-                                
-                                {% for justificativa in lista_justificativas %}
-                                <option value="{{ justificativa.id }}" {% if nota.justificativa_atual.id == justificativa.id %} selected {% endif %}>
-                                    {{ justificativa.texto }}
-                                </option>
-                                {% endfor %}
-                            </select>
-                        </td>
-                    </tr>
-                {% endif %}
+                <td data-label="Nota" class="col-principal"><strong style="color: var(--azul-escuro);">{{ nota.nota }}</strong></td>
+
+                <td data-label="Emissão">{{ nota.data_emissao|date:"d/m/Y" }}</td>
+
+                <td data-label="Nº Pedido">{{ nota.no_pedido }}</td>
+
+                <td data-label="Vendedor">{{ nota.nome_curto_vendedor | default:"-" }}</td>
+
+                <td data-label="Cliente" class="col-principal">
+                    <span class="text-truncate" title="{{ nota.cod_cliente }}{{ nota.loja }} - {{ nota.cliente }}">
+                        {{ nota.cliente|default:"-" }}
+                    </span>
+                </td>
+
+                <td data-label="CFOP">
+                    <span class="text-truncate" title="{{ nota.cfop }} - {{ nota.cfop_descri }}">{{ nota.cfop }} - {{ nota.cfop_descri }}</span>
+                </td>
+
+                <td data-label="Tipo" class="text-center">
+                    <span class="badge"
+                        style="background-color: var(--verde-claro); color: var(--azul-escuro); padding: 4px 8px; border-radius: 4px; font-weight: 600;">
+                        {{ nota.tipo_produto }}
+                    </span>
+                </td>
+
+                <td data-label="Produto">
+                    <span class="text-truncate" title="{{ nota.cod_produto }} - {{ nota.produto }}">
+                        {{ nota.cod_produto }} - {{ nota.produto }}
+                    </span>
+                </td>
+
+                <td data-label="Lote">
+                    {% if nota.lote and nota.lote.strip %}
+                    <a href="javascript:void(0);" class="btn-abre-modal" data-url="{% url 'lista_ops' nota.lote %}"
+                        style="color: var(--azul-escuro); text-decoration: underline; font-weight: 600; transition: color 0.2s;"
+                        onmouseover="this.style.color='var(--verde-principal)'"
+                        onmouseout="this.style.color='var(--azul-escuro)'" title="Ver Ordens de Produção desta Nota">
+                        {{ nota.lote }}
+                    </a>
+                    {% else %}
+                    -
+                    {% endif %}
+                </td>
+
+                <td data-label="Qtd" class="text-right">{{ nota.quantidade }}</td>
+
+                <td data-label="Vl. Contábil" class="text-right col-principal"
+                    style="font-weight:bold; color: var(--azul-escuro);">{{ nota.valor_contabil_formatado }}</td>
+
+                <td data-label="Custo" class="text-right" style="font-weight:bold;">
+                    <input type="number" step="0.01" class="form-control custo-input nao-expande"
+                        value="{{ nota.custo_mais_recente|default_if_none:'0'|stringformat:'.2f' }}"
+                        data-original="{{ nota.ultimo_custo_valor|default_if_none:'0'|stringformat:'.2f' }}"
+                        data-chave="{{ nota.chave }}" onfocus="mostrarValorAntigo(this)"
+                        onchange="atualizarCusto(this)">
+                </td>
+
+                <td data-label="Tabela Preço" class="text-right">{{ nota.tabela_preco }}</td>
+
+                <td data-label="Preço Tabela" class="text-right">{{ nota.preco_tabela_formatado }}</td>
+
+                <td data-label="Margem Bruta" class="text-right celula-margem-bruta" style="font-weight:bold;">
+                    {% if nota.margem_bruta_formatada %}{{ nota.margem_bruta_formatada }}{% else %}-{% endif %}
+                </td>
+
+                <td data-label="Margem %" class="text-right celula-margem-pct col-principal"
+                    style="font-weight:bold; color: {% if nota.margem_percentual != None %}{% if nota.is_parceiro and nota.margem_percentual < 15 %}var(--vermelho-alerta){% elif not nota.is_parceiro and nota.margem_percentual < 27 %}var(--vermelho-alerta){% else %}var(--verde-principal){% endif %}{% else %}var(--verde-principal){% endif %};">
+                    {% if nota.margem_percentual != None %}{{ nota.margem_percentual|floatformat:2 }}%{% else %}-{%endif%}
+                </td>
+
+                <td data-label="Estoque?" class="text-center">
+                    {% if nota.atualiza_estoque %}<i class="fa-solid fa-circle-check icon-true"></i>{% else %}<i
+                        class="fa-solid fa-circle-xmark icon-false"></i>{% endif %}
+                </td>
+
+                <td data-label="Duplicata?" class="text-center">
+                    {% if nota.gera_duplicata == 'S' or nota.gera_duplicata == True %}<i
+                        class="fa-solid fa-circle-check icon-true"></i>{% else %}<i
+                        class="fa-solid fa-circle-xmark icon-false"></i>{% endif %}
+                </td>
+
+                <td data-label="Armazém" class="text-center">{{ nota.armazem }}</td>
+
+                <td data-label="Gp. Amar. CTB" class="text-center">{{ nota.grp_amar_ctb }}</td>
+
+                <td data-label="UF" class="text-center"><strong>{{ nota.estado_destino }}</strong></td>
+
+                <td data-label="Vl. Unit" class="text-right">{{ nota.valor_unitario_formatado }}</td>
+
+                <td data-label="IPI" class="text-right">{{ nota.valor_ipi_formatado }}</td>
+
+                <td data-label="Imp5" class="text-right">{{ nota.valor_imp5_formatado }}</td>
+
+                <td data-label="Imp6" class="text-right">{{ nota.valor_imp6_formatado }}</td>
+
+                <td data-label="Difal" class="text-right">{{ nota.valor_icms_difal_formatado }}</td>
+
+                <td data-label="ICMS" class="text-right">{{ nota.valor_icms_formatado }}</td>
+
+                <td data-label="Aliq %" class="text-right">{{ nota.aliq_icms }}</td>
+
+                <td data-label="Justificativa" class="text-right celula-justificativa">
+                    <select id="justificativa_{{ nota.id }}" name="justificativa_nota_{{ nota.id }}"
+                        data-chave="{{ nota.chave }}" onchange="atualizarJustificativa(this)"
+                        class="form-select nao-expande">
+
+                        {% if not nota.justificativa_atual or nota.justificativa_atual.texto != 'Limpar / Sem
+                        Justificativa' %}
+                        <option value="" {% if nota.justificativa_atual %} style="display:none;" {% endif %} disabled
+                            selected>Selecione...</option>
+                        {% endif %}
+
+                        {% for justificativa in lista_justificativas %}
+                        <option value="{{ justificativa.id }}" {% if nota.justificativa_atual.id == justificativa.id %}
+                            selected {% endif %}>
+                            {{ justificativa.texto }}
+                        </option>
+                        {% endfor %}
+                    </select>
+                </td>
+            </tr>
             {% endfor %}
         </tbody>
     </table>
-    {% include "notas/op_list.html" %}
 </div>
 
 <script src="https://cdn.datatables.net/1.13.6/js/jquery.dataTables.min.js"></script>
 <script src="https://cdn.datatables.net/responsive/2.5.0/js/dataTables.responsive.min.js"></script>
 
 <script>
-    $(document).ready( function () {
+    $(document).ready(function () {
         // Detecta se é celular/tablet ou computador
         var isMobile = window.innerWidth <= 992;
 
@@ -526,10 +612,12 @@
             language: {
                 url: '//cdn.datatables.net/plug-ins/1.13.6/i18n/pt-BR.json'
             },
-            
+
             // responsive: isMobile ? false : true, 
             responsive: isMobile ? false : {
                 details: {
+                    type: 'column',
+                    target: 0,
                     renderer: function (api, rowIdx, columns) {
                         var data = $.map(columns, function (col, i) {
                             // Gera o card apenas para as colunas que estão ocultas (hidden)
@@ -556,16 +644,21 @@
             info: false,
             searching: false,
             columnDefs: [
+                {
+                    className: 'dtr-control text-center',
+                    orderable: false,
+                    targets: 0
+                },
                 // 1. FORÇA essas colunas a irem para dentro do botão (+) no PC
-                { 
-                    targets: [7, 9, 10, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26], 
-                    className: 'none' 
+                {
+                    targets: [7, 8, 10, 11, 14, 15, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29], // Tipo, Lote, Qtd, Estoque?, Duplicata?, Armazém, Gp. Amar. CTB, UF, Vl. Unit, IPI, Imp5, Imp6, Difal, ICMS, Aliq %
+                    className: 'none'
                 },
                 // quero melhorar a visualização dessas outras colunas, ela esta como uma lista, quero que fique mais dinamica para deixar mais interativo para o usuario 
                 // 2. Trava as suas colunas preferidas SEMPRE na tela principal
-                { 
-                    targets: [0, 1, 2, 3, 4, 5, 8, 11, 12, 13, 14, 27], 
-                    className: 'all dt-head-nowrap' 
+                {
+                    targets: [1, 2, 3, 4, 5, 6, 9, 12, 13, 16, 17, 30], // Filial, Nota, Emissão, Nº Pedido, Vendedor, Cliente, Produto, Vl. Contábil, Custo, Margem Bruta, Margem %, Justificativa
+                    className: 'all dt-head-nowrap'
                 }
             ]
         });
@@ -576,7 +669,7 @@
         }
 
         // Lógica de sanfona para o Mobile
-        $('#tabelaNotas tbody').on('click', 'tr', function(e) {
+        $('#tabelaNotas tbody').on('click', 'tr', function (e) {
             if (window.innerWidth <= 992) {
                 // Impede o fechamento se o usuário estiver manipulando inputs ou selects
                 if ($(e.target).hasClass('nao-expande') || $(e.target).closest('.nao-expande').length > 0) {
@@ -587,20 +680,7 @@
         });
 
         // Navegação de Meses
-        $('#prevMonth').on('click', function() {
-            var sel = $('#data_emissao_month');
-            var options = sel.find('option').not('[value=""]');
-            if (options.length === 0) return;
-            var currentVal = sel.val();
-            var idx = options.index(options.filter('[value="' + currentVal + '"]'));
-            if (idx === -1) idx = 0; 
-            var newIdx = Math.max(0, idx - 1);
-            var newVal = $(options.get(newIdx)).val();
-            sel.val(newVal);
-            sel.closest('form').submit();
-        });
-
-        $('#nextMonth').on('click', function() {
+        $('#prevMonth').on('click', function () {
             var sel = $('#data_emissao_month');
             var options = sel.find('option').not('[value=""]');
             if (options.length === 0) return;
@@ -611,6 +691,58 @@
             var newVal = $(options.get(newIdx)).val();
             sel.val(newVal);
             sel.closest('form').submit();
+        });
+
+        $('#nextMonth').on('click', function () {
+            var sel = $('#data_emissao_month');
+            var options = sel.find('option').not('[value=""]');
+            if (options.length === 0) return;
+            var currentVal = sel.val();
+            var idx = options.index(options.filter('[value="' + currentVal + '"]'));
+            if (idx === -1) idx = 0;
+            var newIdx = Math.max(0, idx - 1);
+            var newVal = $(options.get(newIdx)).val();
+            sel.val(newVal);
+            sel.closest('form').submit();
+        });
+
+        // Lógica para controle do dropdown de filiais
+        let filiaisChanged = false;
+        function updateFilialButtonText() {
+            var checked = $('.filial-checkbox:checked').length;
+            var total = $('.filial-checkbox').length;
+            var btn = $('.dropdown-filial');
+            if (checked === 0 || checked === total) {
+                btn.html('Todas as Filiais');
+            } else {
+                btn.html(checked + ' filial(is) selecionada(s)');
+            }
+        }
+        $('.filial-checkbox').on('change', function() {
+            filiaisChanged = true;
+            updateFilialButtonText();
+        });
+        updateFilialButtonText();
+
+        $('.dropdown-menu').on('click', function (e) {
+            if ($(this).hasClass('dropdown-menu')) {
+                e.stopPropagation();
+            }
+        });
+
+        // Submissão automática dos formulários de filtro (dinâmicos)
+        $('.filter-grid input[type="text"], .filter-grid input[type="number"]').on('change', function() {
+            $(this).closest('form').submit();
+        });
+
+        $('.filter-grid select').on('change', function() {
+            $(this).closest('form').submit();
+        });
+
+        $('.dropdown').on('hidden.bs.dropdown', function () {
+            if (filiaisChanged) {
+                $(this).closest('form').submit();
+            }
         });
     });
 
@@ -637,30 +769,30 @@
                 'valor': novoValor
             })
         })
-        .then(response => response.json())
-        .then(data => {
-            inputElement.style.backgroundColor = "var(--branco)";
-            
-            if (data.success) {
-                if (celulaBruta) celulaBruta.innerText = data.margem_bruta;
-                if (celulaPct) celulaPct.innerText = data.margem_percentual;
-                
-                // Regras de Cor em tempo real
-                if (celulaBruta) {
-                    celulaBruta.style.color = parseFloat(data.margem_bruta) < 0 ? 'var(--vermelho-alerta)' : 'var(--verde-principal)';
+            .then(response => response.json())
+            .then(data => {
+                inputElement.style.backgroundColor = "var(--branco)";
+
+                if (data.success) {
+                    if (celulaBruta) celulaBruta.innerText = data.margem_bruta;
+                    if (celulaPct) celulaPct.innerText = data.margem_percentual;
+
+                    // Regras de Cor em tempo real
+                    if (celulaBruta) {
+                        celulaBruta.style.color = parseFloat(data.margem_bruta) < 0 ? 'var(--vermelho-alerta)' : 'var(--verde-principal)';
+                    }
+                    if (celulaPct) {
+                        const valorPct = parseFloat(String(data.margem_percentual).replace(',', '.'));
+                        celulaPct.style.color = valorPct < 27 ? 'var(--vermelho-alerta)' : 'var(--verde-principal)';
+                    }
+                } else {
+                    alert('Erro: ' + data.error);
                 }
-                if (celulaPct) {
-                    const valorPct = parseFloat(String(data.margem_percentual).replace(',', '.'));
-                    celulaPct.style.color = valorPct < 27 ? 'var(--vermelho-alerta)' : 'var(--verde-principal)';
-                }
-            } else {
-                alert('Erro: ' + data.error);
-            }
-        })
-        .catch(error => {
-            console.error('Erro:', error);
-            inputElement.style.backgroundColor = "#ffcccc";
-        });
+            })
+            .catch(error => {
+                console.error('Erro:', error);
+                inputElement.style.backgroundColor = "#ffcccc";
+            });
     }
 
     function atualizarJustificativa(inputElement) {
@@ -668,7 +800,7 @@
         const novaJustificativaId = inputElement.value;
         const csrfToken = document.querySelector('[name=csrfmiddlewaretoken]').value;
 
-        inputElement.disabled = true; 
+        inputElement.disabled = true;
 
         fetch('/api/atualizar-justificativa/', {
             method: 'POST',
@@ -681,26 +813,26 @@
                 'justificativa': novaJustificativaId
             })
         })
-        .then(response => response.json())
-        .then(data => {
-            inputElement.disabled = false;
+            .then(response => response.json())
+            .then(data => {
+                inputElement.disabled = false;
 
-            if (data.success) {
-                const optionVazia = inputElement.querySelector('option[value=""]');
-                if (optionVazia) {
-                    optionVazia.remove();
+                if (data.success) {
+                    const optionVazia = inputElement.querySelector('option[value=""]');
+                    if (optionVazia) {
+                        optionVazia.remove();
+                    }
+
+                    inputElement.style.border = "2px solid var(--verde-principal)";
+                    setTimeout(() => { inputElement.style.border = "1px solid var(--cinza-borda)"; }, 2000);
+                } else {
+                    alert('Erro: ' + data.error);
                 }
-
-                inputElement.style.border = "2px solid var(--verde-principal)";
-                setTimeout(() => { inputElement.style.border = "1px solid var(--cinza-borda)"; }, 2000);
-            } else {
-                alert('Erro: ' + data.error);
-            }
-        })
-        .catch(error => {
-            inputElement.disabled = false;
-            console.error('Erro:', error);
-        });
+            })
+            .catch(error => {
+                inputElement.disabled = false;
+                console.error('Erro:', error);
+            });
     }
 
     function mostrarValorAntigo(input) {
@@ -716,9 +848,58 @@
             novaColuna.style.color = '#6c757d';
             novaColuna.style.fontWeight = 'normal';
             novaColuna.innerHTML = `<i class="fa-solid fa-clock-rotate-left"></i> Valor Inicial: ${valorAntigo}`;
-            
+
             tdPai.appendChild(novaColuna);
         }
     }
+</script>
+<div class="modal fade" id="modalOP" tabindex="-1" aria-labelledby="modalOPLabel" aria-hidden="true">
+    <div class="modal-dialog modal-xl">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="modalOPLabel">Detalhes da Ordem de Produção</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body" id="conteudo-modal-op">
+                <div class="text-center">
+                    <div class="spinner-border text-primary" role="status">
+                        <span class="visually-hidden">Carregando...</span>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Fechar</button>
+            </div>
+        </div>
+    </div>
+</div>
+<script>
+    $(document).ready(function () {
+
+        $(document).on('click', '.btn-abre-modal', function (e) {
+            e.preventDefault(); // Evita que o link tente navegar
+
+            const url = $(this).attr('data-url');
+            const modalElement = document.getElementById('modalOP');
+            const modalOP = bootstrap.Modal.getOrCreateInstance(modalElement);
+            const containerConteudo = $('#conteudo-modal-op');
+
+            // Mostra o modal com o spinner
+            containerConteudo.html('<div class="text-center p-4"><div class="spinner-border text-primary" role="status"></div><p class="mt-2">Buscando Ordens de Produção...</p></div>');
+            modalOP.show();
+
+            // Faz a requisição AJAX
+            fetch(url)
+                .then(response => response.text())
+                .then(html => {
+                    // Injeta o HTML retornado pela view dentro do modal
+                    containerConteudo.html(html);
+                })
+                .catch(error => {
+                    containerConteudo.html('<div class="alert alert-danger text-center">Erro ao carregar os dados.</div>');
+                    console.error('Erro:', error);
+                });
+        });
+    });
 </script>
 {% endblock %}
