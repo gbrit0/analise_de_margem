@@ -195,7 +195,17 @@ class NotasListView(LoginRequiredMixin, FilterView, ListView):
         # Assumindo que o fetchall() retorna tuplas onde [0] é cod_cliente e [1] é loja.
         # (Se seu cursor retornar dicionários, use: c['cod_cliente'], c['loja'])
         set_parceiros = {(c[0], c[1]) for c in clientes_parceiros_raw}
-
+        
+        set_intercompany = {
+            ('44592860', '0001'), # Agrogera BA
+            ('04675878', '0001'), # BRG Matriz
+            ('44592860', '0002'), # Agrogera BA Filial GO
+            ('27379581', '0004'), # GRID MS - INOCENCIA
+            ('27379581', '0001'), # GRID GO
+            ('27379581', '0002'), # GRID MG
+            ('27379581', '0003'), # GRID PA
+        }
+        
         # 2. Verifica a lista de notas atual (object_list do ListView)
         # Se você usa um context_object_name diferente, troque 'object_list' pelo seu nome
         for nota in context['object_list']:
@@ -204,16 +214,28 @@ class NotasListView(LoginRequiredMixin, FilterView, ListView):
             if (nota.cod_cliente, nota.loja) in set_parceiros:
                 nota.is_parceiro = True
                 margem = Margem.objects.filter(chave=nota).last()
-                if margem.margem_bruta_percentual > 0.15 and margem.margem_bruta_percentual < 0.27:
-                    justificativa_nf = Nf_Has_Justificativa.objects.filter(nf=nota).last()
-                    if not justificativa_nf:
-                        Nf_Has_Justificativa.objects.create(
-                            nf=nota,
-                            justificativa=Justificativa.objects.get(texto='OK. Margem Parceiro.'),
-                            usuario=CustomUser.objects.get(id=2)
-                        )
+                if margem.margem_bruta_percentual < 0.27 :
+                    if margem.margem_bruta_percentual > 0.15:
+                        justificativa_nf = Nf_Has_Justificativa.objects.filter(nf=nota).last()
+                        if not justificativa_nf:
+                            Nf_Has_Justificativa.objects.create(
+                                nf=nota,
+                                justificativa=Justificativa.objects.get(texto='OK. Margem Parceiro.'),
+                                usuario=CustomUser.objects.get(id=2)
+                            )
+                    elif (nota.cod_cliente, nota.loja) in set_intercompany:
+                        nota.is_intercompany = True
+                        justificativa_nf = Nf_Has_Justificativa.objects.filter(nf=nota).last()
+                        if not justificativa_nf:
+                            Nf_Has_Justificativa.objects.create(
+                                nf=nota,
+                                justificativa=Justificativa.objects.get(texto='Venda Intercompany'),
+                                usuario=CustomUser.objects.get(id=2)
+                            )
+                        
             else:
                 nota.is_parceiro = False
+                nota.is_intercompany = False
 
         return context
     
