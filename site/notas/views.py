@@ -55,6 +55,7 @@ pool = PooledDB(
     uid=f'{os.getenv("PROTHEUS_DB_USER")}',
     pwd=f'{os.getenv("PROTHEUS_DB_PASSWORD")}'
 )
+
 pool_mysql = PooledDB(
     creator=pymysql,
     maxconnections=10, # Como vamos usar lotes, não precisamos de tantas conexões simultâneas

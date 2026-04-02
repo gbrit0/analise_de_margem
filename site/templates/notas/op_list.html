@@ -39,7 +39,7 @@
         </thead>
         <tbody>
             {% for op in linhas_op %}
-            <tr {% if op.tp_movimento=='010' %}class="table-warning" {% endif %}>
+            <tr {% if op.tp_movimento == '010' %}class="table-warning" {% endif %}>
                 <td>{{ op.filial }}</td>
                 <td>{{ op.produto }}</td>
                 <td>{{ op.descr_prod }}</td>
