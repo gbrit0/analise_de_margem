@@ -2,81 +2,60 @@
 
 O objetivo deste site é realizar uma implementação online da tabela de análise de margem que centralize as análises, permita a edição de custos, gere estatísticas, registre justificativas e seja rastreável.
 
-# Instalação
+## 🚀 Funcionalidades Principais
 
-Para instalar o projeto em um novo servidor siga os seguintes passos:
+- **Tabela de Notas e Análise de Margem:** Visualização de notas fiscais de venda com indicadores de margem.
+- **Gestão de Custos:** Atualização dinâmica de custos por nota/item, refletindo automaticamente na margem calculada.
+- **Registro de Justificativas:** Inserção e edição de justificativas para vendas com margens fora do padrão aprovado.
+- **Estatísticas e Dashboard:** Tela de dashboard centralizado (`/estatisticas/`) com visões por período, filial e justificativas de vendas.
+- **Exportação Interativa:** Exportação formatada para Excel refletindo fielmente os filtros aplicados pelo usuário no frontend, incluindo formatações condicionais e larguras de coluna ajustadas.
+- **Painel de Administração de Justificativas:** Interface customizada (`/justificativas/`) para criação e ativação/desativação de opções de justificativa.
+- **Rastreabilidade de Produção (OPs):** Visualização de Ordens de Produção associadas aos lotes.
 
-1 - Clone o repositório git: 
+## 🛠️ Stack Tecnológica
 
+- **Backend:** Python 3.10.12 + Django 5.2.10
+- **Banco de Dados Principal (Aplicação):** MySQL (`default`)
+- **Banco de Dados ERP (Integração):** SQL Server (`protheus`)
+- **Cache Múltiplo:** Redis 
+- **Frontend:** HTML, CSS, JavaScript (com bibliotecas como DataTables e AJAX via Fetch API).
+- **Exportação para Excel:** `openpyxl`
+
+## 📂 Estrutura do Projeto
+
+- `setup/`: Configurações principais do Django (`settings.py`, `urls.py`).
+- `notas/`: App principal contendo os modelos e lógicas de negócios sobre Notas, Custos, Margens, Ordens de Produção (OPs) e Justificativas.
+- `users/`: App para controle customizado de usuários e autenticação.
+- `templates/`: Arquivos HTML do projeto contendo as interfaces de tabelas, dashboards e formulários.
+- `static/`: Recursos estáticos como CSS, scripts JS, imagens.
+
+## ⚙️ Instalação e Configuração
+
+1. Clone o repositório e crie um ambiente virtual:
 ```bash
-git clone https://github.com/gbrit0/analise_de_margem.git
+python -m venv venv
+source venv/bin/activate  # ou venv\\Scripts\\activate no Windows
 ```
 
-2 - Acesse o repositório clonado, crie o ambiente virtual e instale as dependências:
-
+2. Instale as dependências:
 ```bash
-cd analise_de_margem/site
-python3 -m venv venv
-source venv/bin/activate
 pip install -r requirements.txt
 ```
 
-3 - Copie o arquivo [.env.example](/.env.example) e altere os valores de exemplo para valores reais:
+3. Configure o arquivo `.env`:
+Copie `.env.example` para `.env` e preencha as variáveis de banco de dados (MySQL e MSSQL/Protheus) e as portas do Redis.
 
-```bash
-cp .env.example .env
-```
-
-4 - Realize as migrações do django:
-
+4. Execute as migrações:
 ```bash
 python manage.py makemigrations
-python manage.py migrate 
+python manage.py migrate
 ```
 
-5 - Crie o superusuário:
-
-```bash
-python manage.py createsuperuser
-# Preencha os dados solicitados
-```
-
-6 - Inicialize o projeto:
-
+5. Rode o servidor de desenvolvimento:
 ```bash
 python manage.py runserver
 ```
 
-7 - Crie o usuário do systema
-
-Com a aplicação rodando acesse o /admin, logue com o superuser criado anteriormente e crie um novo usuário system. Esse usuário será destinado para execuçoes padrão, como um bot, dentro do site e seu id deve ser id=2.
-
-8 - Após a cração do usuário o sistema encontra-se pronto para ter dados carregados:
-
-```bash
-python manage.py sync_protheus
-```
-
-9 - Rodar novamente a aplicação
-
-Após realizar a carga inicial dos dados, rodar novamente o servidor.
-
-```bash
-python manage.py runserver
-```
-
-Nesse ponto a aplicação estará funcional apesar de ser altamente recomendado subir a aplicação por meio de um wsgi como uvicorn ou gunicorn.
-
-10 - Agendamento da sincronização do banco ao Protheus
-
-A tabela de Notas desta aplicação é alimentada por query direta ao banco do Protheus de modo que é necessário adicionar uma regra de crontab que periodicamente chame o script de sincronização:
-
-```bash
-crontab -e
-```
-
-E em seguida adicione o seguinte texto ao final do arquivo:
-
-```bash
-*/15 * * * 1-5 /path/to/venv/bin/python manage.py sync_protheus # Altere /path/to/venv para o caminho real da instalação do projeto
-```
+## 🔐 Integração e Acessos
+- Integração de dados de faturamento e custos vem diretamente da base Protheus configurada.
+- Restrições de acesso (exemplo: admin customizado de justificativas) são validadas através da modelagem de `CustomUser`.
