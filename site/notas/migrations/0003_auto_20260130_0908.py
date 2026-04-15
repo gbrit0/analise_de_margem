@@ -11,6 +11,7 @@ def criar_justificativas_padrao(apps, schema_editor):
         Justificativa(texto='Refaturado com Valor Correto'),
         Justificativa(texto='Desconto aplicado para concluir a venda'),
         Justificativa(texto='Venda Cancelada'),
+        Justificativa(texto='Venda Intercompany'),
     ])
     
 class Migration(migrations.Migration):

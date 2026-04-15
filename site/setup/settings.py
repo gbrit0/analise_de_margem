@@ -37,7 +37,7 @@ ALLOWED_HOSTS = [
 ]
 
 CORS_ALLOWED_ORIGINS = [
-    'http://brg.datasetsolucoes.com.br:30035',
+    'http://brg.datasetsolucoes.com.br:7040',
     'http://172.49.49.6:8000',
     "https://margem.brggeradores.com.br"
 ]
@@ -177,6 +177,6 @@ CACHES = {
 }
 
 
-SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
-CSRF_COOKIE_SECURE = True
-SESSION_COOKIE_SECURE = True
+# SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
+# CSRF_COOKIE_SECURE = True
+# SESSION_COOKIE_SECURE = True
