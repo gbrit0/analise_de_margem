@@ -167,6 +167,7 @@ hoje = date.today().strftime("%Y-%m")
 
 LOGIN_REDIRECT_URL = f'/notas/?data_emissao_month={hoje}'
 LOGOUT_REDIRECT_URL = '/login'
+LOGIN_URL = '/login/' 
 
 CACHES = {
     "default": {
