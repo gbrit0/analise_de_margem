@@ -603,6 +603,7 @@ def justificativa_save(request):
         if j_id:
             justificativa = Justificativa.objects.get(id=j_id)
             justificativa.texto = texto
+            justificativa.usuario = CustomUser.objects.get(id=request.user.id)
             justificativa.save()
         else:
             Justificativa.objects.create(texto=texto, usuario=request.user)

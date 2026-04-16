@@ -3,9 +3,8 @@
 -- =========================================================
 
 SELECT
-    DISTINCT TRIM(D2_FILIAL) + TRIM(D2_DOC) + TRIM(D2_SERIE) + TRIM(D2_CLIENTE) + TRIM(D2_LOJA) + TRIM(D2_ITEM) AS [chave],
     TRIM(D2_FILIAL) AS [filial],
-    TRIM(M0_FILIAL) AS [nome_filial],
+    TRIM(D2_FILIAL) + TRIM(D2_DOC) + TRIM(D2_SERIE) + TRIM(D2_CLIENTE) + TRIM(D2_LOJA) + TRIM(D2_ITEM) AS [chave],
     LTRIM(D2_DOC, 0) AS [nota],
     D2_PEDIDO AS [no_pedido],
     TRIM(A3_NOME) AS [vendedor],
@@ -18,7 +17,6 @@ SELECT
     TRIM(B1_COD) AS [cod_produto],
     TRIM(SUBSTRING(B1_DESC, 1, 50)) AS [produto],
     TRIM(B1_TIPO) AS [tipo_produto],
-    TRIM(X5.X5_DESCRI) AS [desc_tipo_produto],
     TRIM(D2_LOCAL) + ' - ' + TRIM(NNR_DESCRI) AS [armazem],
     TRIM(F2_CLIENTE) AS [cod_cliente],
     TRIM(F2_LOJA) AS [loja],
