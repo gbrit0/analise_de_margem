@@ -22,12 +22,13 @@ class NotaFilter(django_filters.FilterSet):
     margem_maxima = NumberFilter(field_name='margem_percentual', lookup_expr='lte', label='Margem % máxima')
 
     nota = CharFilter(field_name='nota', lookup_expr='icontains', label='Número da nota')
+    cliente = CharFilter(method='filter_cliente', label='Cliente (nome ou código)')
     
     class Meta:
         model = Nota
         fields = [
             'nota', 'grp_amar_ctb', 'produto', 'cod_produto', 'tipo_produto',
-            'classificacao_produto', 'lote', 'cfop'
+            'classificacao_produto', 'lote', 'cfop', 'cliente'
         ]
 
     def filter_produto(self, queryset, name, value):
@@ -36,6 +37,14 @@ class NotaFilter(django_filters.FilterSet):
             return queryset
         return queryset.filter(
             Q(produto__icontains=value) | Q(cod_produto__icontains=value)
+        )
+
+    def filter_cliente(self, queryset, name, value):
+        """Filtra notas cujo nome do cliente OU código contenham o valor informado."""
+        if not value:
+            return queryset
+        return queryset.filter(
+            Q(cliente__icontains=value) | Q(cod_cliente__icontains=value)
         )
 
     def filter_by_month(self, queryset, name, value):
