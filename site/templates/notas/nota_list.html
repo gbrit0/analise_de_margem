@@ -98,7 +98,7 @@
     /* Grid de Filtros */
     .filter-grid {
         display: grid;
-        grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+        grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
         gap: 16px;
         align-items: end;
     }
@@ -370,8 +370,8 @@
                 <div class="dropdown">
                     <button class="btn btn-secondary dropdown-toggle dropdown-filial" type="button"
                         data-bs-toggle="dropdown" aria-expanded="false"
-                        style="background-color: var(--branco); color: var(--azul-escuro); border-color: var(--cinza-borda); width: 100%; justify-content: space-between; display: flex; align-items: center; padding: 8px 12px; font-size: 0.9rem;">
-                        Selecionar Filiais
+                        style="background-color: var(--branco); color: var(--azul-escuro); border-color: var(--cinza-borda); width: 100%; display: flex; justify-content: space-between; align-items: center; padding: 8px 12px; font-size: 0.9rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">
+                        <span class="text-truncate" style="max-width: 90%;">Selecionar Filiais</span>
                     </button>
                     <ul class="dropdown-menu w-100 p-2"
                         style="max-height: 250px; overflow-y: auto; box-shadow: 0 4px 12px rgba(0,0,0,0.1);">
@@ -383,6 +383,42 @@
                                 <label class="form-check-label" for="filial_{{ f.filial }}"
                                     style="font-size: 0.85rem; cursor: pointer;">
                                     {{ f.filial }}{% if f.nome_filial %} - {{ f.nome_filial }}{% endif %}
+                                </label>
+                            </div>
+                        </li>
+                        {% endfor %}
+                    </ul>
+                </div>
+            </div>
+            
+            <div class="form-group">
+                <label><i class="fa-solid fa-comment-dots"></i> Justificativa</label>
+                <div class="dropdown">
+                    <button class="btn btn-secondary dropdown-toggle dropdown-justificativa" type="button"
+                        data-bs-toggle="dropdown" aria-expanded="false"
+                        style="background-color: var(--branco); color: var(--azul-escuro); border-color: var(--cinza-borda); width: 100%; display: flex; justify-content: space-between; align-items: center; padding: 8px 12px; font-size: 0.9rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">
+                        <span class="text-truncate" style="max-width: 90%;">Selecionar Justificativas</span>
+                    </button>
+                    <ul class="dropdown-menu w-100 p-2"
+                        style="max-height: 250px; overflow-y: auto; box-shadow: 0 4px 12px rgba(0,0,0,0.1);">
+                        <li>
+                            <div class="form-check">
+                                <input class="form-check-input justificativa-checkbox" type="checkbox" name="justificativa_filtro"
+                                    value="None" id="just_none" {% if 'None' in justificativas_selecionadas %}checked{% endif %}>
+                                <label class="form-check-label" for="just_none"
+                                    style="font-size: 0.85rem; cursor: pointer;">
+                                    Sem Justificativa cadastrada
+                                </label>
+                            </div>
+                        </li>
+                        {% for j in lista_justificativas %}
+                        <li>
+                            <div class="form-check">
+                                <input class="form-check-input justificativa-checkbox" type="checkbox" name="justificativa_filtro"
+                                    value="{{ j.id }}" id="just_{{ j.id }}" {% if j.id|stringformat:"s" in justificativas_selecionadas %}checked{% endif %}>
+                                <label class="form-check-label" for="just_{{ j.id }}"
+                                    style="font-size: 0.85rem; cursor: pointer;">
+                                    {{ j.texto }}
                                 </label>
                             </div>
                         </li>
@@ -708,16 +744,17 @@
             sel.closest('form').submit();
         });
 
-        // Lógica para controle do dropdown de filiais
+        // Lógica para controle do dropdown de filiais e justificativas
         let filiaisChanged = false;
         function updateFilialButtonText() {
             var checked = $('.filial-checkbox:checked').length;
             var total = $('.filial-checkbox').length;
-            var btn = $('.dropdown-filial');
+            var btn = $('.dropdown-filial span');
+            if (btn.length === 0) btn = $('.dropdown-filial').html('<span class="text-truncate" style="max-width: 90%;"></span>').find('span');
             if (checked === 0 || checked === total) {
-                btn.html('Todas as Filiais');
+                btn.text('Todas as Filiais');
             } else {
-                btn.html(checked + ' filial(is) selecionada(s)');
+                btn.text(checked + ' selecionada(s)');
             }
         }
         $('.filial-checkbox').on('change', function() {
@@ -725,6 +762,24 @@
             updateFilialButtonText();
         });
         updateFilialButtonText();
+
+        let justificativasChanged = false;
+        function updateJustificativaButtonText() {
+            var checked = $('.justificativa-checkbox:checked').length;
+            var total = $('.justificativa-checkbox').length;
+            var btn = $('.dropdown-justificativa span');
+            if (btn.length === 0) btn = $('.dropdown-justificativa').html('<span class="text-truncate" style="max-width: 90%;"></span>').find('span');
+            if (checked === 0 || checked === total) {
+                btn.text('Todas as Justificativas');
+            } else {
+                btn.text(checked + ' selecionada(s)');
+            }
+        }
+        $('.justificativa-checkbox').on('change', function() {
+            justificativasChanged = true;
+            updateJustificativaButtonText();
+        });
+        updateJustificativaButtonText();
 
         $('.dropdown-menu').on('click', function (e) {
             if ($(this).hasClass('dropdown-menu')) {
@@ -742,7 +797,7 @@
         });
 
         $('.dropdown').on('hidden.bs.dropdown', function () {
-            if (filiaisChanged) {
+            if (filiaisChanged || justificativasChanged) {
                 $(this).closest('form').submit();
             }
         });

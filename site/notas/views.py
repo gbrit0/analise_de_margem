@@ -135,6 +135,21 @@ class NotasListView(LoginRequiredMixin, FilterView, ListView):
         if filiais_selecionadas:
             queryset = queryset.filter(filial__in=filiais_selecionadas)
             
+        justificativas_selecionadas = self.request.GET.getlist('justificativa_filtro')
+        if justificativas_selecionadas:
+            queries = Q()
+            ids = []
+            for j in justificativas_selecionadas:
+                if j == 'None':
+                    queries |= Q(justificativa__isnull=True)
+                else:
+                    ids.append(j)
+            
+            if ids:
+                queries |= Q(justificativa__in=ids)
+            
+            queryset = queryset.filter(queries)
+            
         return queryset.order_by('-data_emissao')
     
     def get_context_data(self, **kwargs):
@@ -166,6 +181,9 @@ class NotasListView(LoginRequiredMixin, FilterView, ListView):
         filiais_selecionadas = self.request.GET.getlist('filial')
         context['filiais_selecionadas'] = filiais_selecionadas
         
+        justificativas_selecionadas = self.request.GET.getlist('justificativa_filtro')
+        context['justificativas_selecionadas'] = justificativas_selecionadas
+
         # Se não veio valor no GET, tenta preencher com mês atual (se houver dados),
         # caso contrário preenche com o mês mais recente disponível.
         if not selected:
