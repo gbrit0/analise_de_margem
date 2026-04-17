@@ -5,14 +5,15 @@
 <link rel="stylesheet" href="https://cdn.datatables.net/responsive/2.5.0/css/responsive.dataTables.min.css">
 <style>
     /* Customização do ícone de expansão (DataTables Responsive) */
-    table.dataTable.dtr-column>tbody>tr>td.dtr-control:before, 
+    table.dataTable.dtr-column>tbody>tr>td.dtr-control:before,
     table.dataTable.dtr-column>tbody>tr>th.dtr-control:before {
         background-color: var(--verde-principal) !important;
         border-radius: 4px !important;
         box-shadow: none !important;
         border: none !important;
         font-family: "Font Awesome 6 Free";
-        content: "\f067" !important; /* fa-plus */
+        content: "\f067" !important;
+        /* fa-plus */
         font-weight: 900;
         display: inline-flex;
         align-items: center;
@@ -23,10 +24,11 @@
         color: white;
     }
 
-    table.dataTable.dtr-column>tbody>tr.parent>td.dtr-control:before, 
+    table.dataTable.dtr-column>tbody>tr.parent>td.dtr-control:before,
     table.dataTable.dtr-column>tbody>tr.parent>th.dtr-control:before {
         background-color: var(--vermelho-alerta) !important;
-        content: "\f068" !important; /* fa-minus */
+        content: "\f068" !important;
+        /* fa-minus */
     }
 
     .detalhe-card {
@@ -339,7 +341,8 @@
             <i class="fa-solid fa-sliders"></i> Filtros de Análise
         </div>
         <div>
-            <a href="{% url 'exportar_excel' %}?{{ request.GET.urlencode }}" class="btn-custom btn-secondary-custom" title="Exportar resultados para Excel">
+            <a href="{% url 'exportar_excel' %}?{{ request.GET.urlencode }}" class="btn-custom btn-secondary-custom"
+                title="Exportar resultados para Excel">
                 <i class="fa-solid fa-file-excel"></i> Exportar Excel
             </a>
         </div>
@@ -390,7 +393,7 @@
                     </ul>
                 </div>
             </div>
-            
+
             <div class="form-group">
                 <label><i class="fa-solid fa-comment-dots"></i> Justificativa</label>
                 <div class="dropdown">
@@ -403,8 +406,8 @@
                         style="max-height: 250px; overflow-y: auto; box-shadow: 0 4px 12px rgba(0,0,0,0.1);">
                         <li>
                             <div class="form-check">
-                                <input class="form-check-input justificativa-checkbox" type="checkbox" name="justificativa_filtro"
-                                    value="None" id="just_none" {% if 'None' in justificativas_selecionadas %}checked{% endif %}>
+                                <input class="form-check-input justificativa-checkbox" type="checkbox"
+                                    name="justificativa_filtro" value="None" id="just_none" {% if 'None' in justificativas_selecionadas %}checked{% endif %}>
                                 <label class="form-check-label" for="just_none"
                                     style="font-size: 0.85rem; cursor: pointer;">
                                     Sem Justificativa cadastrada
@@ -414,8 +417,8 @@
                         {% for j in lista_justificativas %}
                         <li>
                             <div class="form-check">
-                                <input class="form-check-input justificativa-checkbox" type="checkbox" name="justificativa_filtro"
-                                    value="{{ j.id }}" id="just_{{ j.id }}" {% if j.id|stringformat:"s" in justificativas_selecionadas %}checked{% endif %}>
+                                <input class="form-check-input justificativa-checkbox" type="checkbox"
+                                    name="justificativa_filtro" value="{{ j.id }}" id="just_{{ j.id }}" {% if j.id|stringformat:"s" in justificativas_selecionadas %}checked{% endif %}>
                                 <label class="form-check-label" for="just_{{ j.id }}"
                                     style="font-size: 0.85rem; cursor: pointer;">
                                     {{ j.texto }}
@@ -549,7 +552,6 @@
                 <td data-label="Lote">
                     {% if nota.lote and nota.lote.strip %}
                     <a href="javascript:void(0);" class="btn-abre-modal" data-url="{% url 'lista_ops' nota.lote %}"
-                        
                         style="color: var(--azul-escuro); text-decoration: underline; font-weight: 600; transition: color 0.2s;"
                         onmouseover="this.style.color='var(--verde-principal)'"
                         onmouseout="this.style.color='var(--azul-escuro)'" title="Ver Ordens de Produção desta Nota">
@@ -583,7 +585,7 @@
 
                 <td data-label="Margem %" class="text-right celula-margem-pct col-principal"
                     style="font-weight:bold; color: 
-                    {% if nota.margem_percentual != None %}{% if nota.is_parceiro and nota.is_intercompany %}var(--verde-principal){% elif nota.margem_percentual < 15 %}var(--vermelho-alerta){% elif not nota.is_parceiro and nota.margem_percentual < 27 %}var(--vermelho-alerta){% else %}var(--verde-principal){% endif %}{% else %}var(--verde-principal){% endif %};">
+                    {% if nota.margem_percentual != None %}{% if nota.is_parceiro and nota.is_intercompany %}var(--verde-principal){% elif nota.margem_percentual|floatformat:2 < 15 %}var(--vermelho-alerta){% elif not nota.is_parceiro and nota.margem_percentual|floatformat:2 < 27 %}var(--vermelho-alerta){% else %}var(--verde-principal){% endif %}{% else %}var(--verde-principal){% endif %};">
                     {% if nota.margem_percentual != None %}{{ nota.margem_percentual|floatformat:2 }}%{% else %}-{%endif%}
                 </td>
 
@@ -630,8 +632,7 @@
                         {% endif %}
 
                         {% for justificativa in lista_justificativas %}
-                        <option value="{{ justificativa.id }}" {% if nota.justificativa_atual.id == justificativa.id %}
-                            selected {% endif %}>
+                        <option value="{{ justificativa.id }}" {% if nota.justificativa_atual.id == justificativa.id %} selected {% endif %}>
                             {{ justificativa.texto }}
                         </option>
                         {% endfor %}
@@ -762,7 +763,7 @@
                 btn.text(checked + ' selecionada(s)');
             }
         }
-        $('.filial-checkbox').on('change', function() {
+        $('.filial-checkbox').on('change', function () {
             filiaisChanged = true;
             updateFilialButtonText();
         });
@@ -780,7 +781,7 @@
                 btn.text(checked + ' selecionada(s)');
             }
         }
-        $('.justificativa-checkbox').on('change', function() {
+        $('.justificativa-checkbox').on('change', function () {
             justificativasChanged = true;
             updateJustificativaButtonText();
         });
@@ -793,11 +794,11 @@
         });
 
         // Submissão automática dos formulários de filtro (dinâmicos)
-        $('.filter-grid input[type="text"], .filter-grid input[type="number"]').on('change', function() {
+        $('.filter-grid input[type="text"], .filter-grid input[type="number"]').on('change', function () {
             $(this).closest('form').submit();
         });
 
-        $('.filter-grid select').on('change', function() {
+        $('.filter-grid select').on('change', function () {
             $(this).closest('form').submit();
         });
 

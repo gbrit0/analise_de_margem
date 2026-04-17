@@ -41,7 +41,8 @@ SELECT DISTINCT
     D2_DIFAL AS [vlr_icms_difal],
     D2_VALICM AS [valor_icms],
     D2_PICM AS [aliq_icms],
-    D2.R_E_C_N_O_ as [recno]
+    D2.R_E_C_N_O_ as [recno],
+    C5.C5_COMENT AS [comentario]
 
 FROM SD2010 AS D2 -- Itens de Venda da NF
 
@@ -114,6 +115,13 @@ FROM SD2010 AS D2 -- Itens de Venda da NF
     	DA0.D_E_L_E_T_ <> '*'
     	AND DA0.DA0_CODTAB = A1.A1_TABELA
     	-- AND DA0.DA0_FILIAL = A1.A1_FILIAL
+
+    LEFT JOIN SC5010 AS C5 ON
+    	C5.D_E_L_E_T_ <> '*'
+    	AND C5_FILIAL = D2_FILIAL
+    	AND C5_NOTA = D2_DOC
+    	AND C5_SERIE = D2_SERIE
+
 WHERE
     D2.D_E_L_E_T_ <> '*'
     AND D2_EMISSAO >= 20250901 -- AND 20250930
