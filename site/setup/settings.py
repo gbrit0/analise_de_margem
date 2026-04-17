@@ -28,18 +28,19 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 SECRET_KEY = 'django-insecure-ch!@ntcoyc$y3(d4mt_pf=8h_=u7z%_bcld+8jcu@!dzea%&%!'
 
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = True # os.getenv('DEBUG')
+DEBUG = False # os.getenv('DEBUG')
 
 ALLOWED_HOSTS = [
     'brg.datasetsolucoes.com.br',
     '172.49.49.6',
-    'margem.brggeradores.com.br'
+    'margem.brggeradores.com.br',
+    "https://margem.brggeradores.com.br",
 ]
 
 CORS_ALLOWED_ORIGINS = [
-    'http://brg.datasetsolucoes.com.br:7040',
+    'http://brg.datasetsolucoes.com.br:30035',
     'http://172.49.49.6:8000',
-    "https://margem.brggeradores.com.br"
+    "https://margem.brggeradores.com.br",
 ]
 
 # Application definition
@@ -177,6 +178,6 @@ CACHES = {
 }
 
 
-# SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
-# CSRF_COOKIE_SECURE = True
-# SESSION_COOKIE_SECURE = True
+SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
+CSRF_COOKIE_SECURE = os.getenv('SESSION_COOKIE_SECURE', 'False')
+SESSION_COOKIE_SECURE = os.getenv('SESSION_COOKIE_SECURE', 'False')
