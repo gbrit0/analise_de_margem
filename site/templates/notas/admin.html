@@ -136,17 +136,32 @@
 {% csrf_token %}
 
 <div class="main-content">
-    <div class="admin-card">
-        <div class="admin-header">
-            <div class="admin-title">
-                <i class="fa-solid fa-list-check"></i> Gerenciar Justificativas
-            </div>
-            <button class="btn-custom btn-primary-custom" onclick="abrirModalNova()">
-                <i class="fa-solid fa-plus"></i> Nova Justificativa
-            </button>
-        </div>
-        
-        <div class="table-container">
+    <ul class="nav nav-tabs mb-4" id="adminTabs" role="tablist">
+        <li class="nav-item" role="presentation">
+            <button class="nav-link active" id="gerenciar-tab" data-bs-toggle="tab" data-bs-target="#gerenciar" type="button" role="tab" style="color: var(--azul-escuro); font-weight: 500;"><i class="fa-solid fa-list-check"></i> Gerenciar Justificativas</button>
+        </li>
+        <li class="nav-item" role="presentation">
+            <button class="nav-link" id="justificativas-log-tab" data-bs-toggle="tab" data-bs-target="#justificativas" type="button" role="tab" style="color: var(--azul-escuro); font-weight: 500;"><i class="fa-solid fa-clock-rotate-left"></i> Log de Justificativas</button>
+        </li>
+        <li class="nav-item" role="presentation">
+            <button class="nav-link" id="comentarios-log-tab" data-bs-toggle="tab" data-bs-target="#comentarios" type="button" role="tab" style="color: var(--azul-escuro); font-weight: 500;"><i class="fa-solid fa-comments"></i> Log de Comentários</button>
+        </li>
+    </ul>
+
+    <div class="tab-content" id="adminTabsContent">
+        <!-- Tab 1: Gerenciar Justificativas -->
+        <div class="tab-pane fade show active" id="gerenciar" role="tabpanel">
+            <div class="admin-card">
+                <div class="admin-header">
+                    <div class="admin-title">
+                        <i class="fa-solid fa-list-check"></i> Gerenciar Justificativas
+                    </div>
+                    <button class="btn-custom btn-primary-custom" onclick="abrirModalNova()">
+                        <i class="fa-solid fa-plus"></i> Nova Justificativa
+                    </button>
+                </div>
+                
+                <div class="table-container">
             <table id="tabelaJustificativas" class="display nowrap" style="width:100%">
                 <thead>
                     <tr>
@@ -186,6 +201,74 @@
                     {% endfor %}
                 </tbody>
             </table>
+        </div> <!-- /table-container -->
+            </div> <!-- /admin-card -->
+        </div> <!-- /tab-pane -->
+
+        <!-- Tab 2: Log de Justificativas -->
+        <div class="tab-pane fade" id="justificativas" role="tabpanel">
+            <div class="admin-card">
+                <div class="admin-header">
+                    <div class="admin-title">
+                        <i class="fa-solid fa-clock-rotate-left"></i> Histórico de Justificativas nas Notas
+                    </div>
+                </div>
+                <div class="table-container">
+                    <table id="tabelaLogJustificativas" class="display nowrap" style="width:100%">
+                        <thead>
+                            <tr>
+                                <th>Data/Hora</th>
+                                <th>Usuário</th>
+                                <th>Nota / Cliente</th>
+                                <th>Justificativa Associada</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for log in logs_justificativas %}
+                            <tr>
+                                <td>{{ log.data_cadastro|date:"d/m/Y H:i:s" }}</td>
+                                <td>{{ log.usuario.first_name }} {{ log.usuario.last_name }}</td>
+                                <td>{{ log.nf.nota }} - {{ log.nf.cliente }}</td>
+                                <td>{{ log.justificativa.texto }}</td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <!-- Tab 3: Log de Comentários -->
+        <div class="tab-pane fade" id="comentarios" role="tabpanel">
+            <div class="admin-card">
+                <div class="admin-header">
+                    <div class="admin-title">
+                        <i class="fa-solid fa-comments"></i> Histórico de Comentários nas Notas
+                    </div>
+                </div>
+                <div class="table-container">
+                    <table id="tabelaLogComentarios" class="display nowrap" style="width:100%">
+                        <thead>
+                            <tr>
+                                <th>Data/Hora</th>
+                                <th>Usuário</th>
+                                <th>Nota / Cliente</th>
+                                <th>Comentário Salvo</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for log in logs_comentarios %}
+                            <tr>
+                                <td>{{ log.data_cadastro|date:"d/m/Y H:i:s" }}</td>
+                                <td>{{ log.usuario.first_name }} {{ log.usuario.last_name }}</td>
+                                <td>{{ log.nf.nota }} - {{ log.nf.cliente }}</td>
+                                <td>{{ log.comentario|default:"(Campo Limpo)" }}</td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
         </div>
     </div>
 </div>
@@ -230,6 +313,23 @@
             columnDefs: [
                 { targets: 3, orderable: false }
             ]
+        });
+
+        $('#tabelaLogJustificativas, #tabelaLogComentarios').DataTable({
+            language: {
+                url: '//cdn.datatables.net/plug-ins/1.13.6/i18n/pt-BR.json'
+            },
+            ordering: true,
+            order: [[0, "desc"]],
+            info: true,
+            paging: true,
+            pageLength: 25,
+            lengthMenu: [10, 25, 50, 100]
+        });
+
+        // Recalcular as colunas do DataTable sempre que uma aba for clicada/exibida
+        $('button[data-bs-toggle="tab"]').on('shown.bs.tab', function (e) {
+            $.fn.dataTable.tables({ visible: true, api: true }).columns.adjust();
         });
     });
 

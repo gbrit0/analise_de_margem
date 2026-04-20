@@ -594,9 +594,13 @@ def op_list_view(request, lote):
     
     for op in linhas_op:
         if op.get('custo') is not None:
+            op['custo_raw'] = f"{float(op['custo']):.2f}"
             op['custo'] = locale.currency(op['custo'], grouping=True)
         if op.get('custo_2') is not None:
+            op['custo_2_raw'] = f"{float(op['custo_2']):.2f}"
             op['custo_2'] = locale.currency(op['custo_2'], grouping=True)
+        if op.get('quant_2') is not None:
+            op['quant_2_raw'] = f"{float(op['quant_2']):.2f}"
 
         if op.get('c_contabil') is None:
             op['c_contabil'] = '-'
@@ -627,7 +631,16 @@ def justificativa_admin_view(request):
         selected = atual
         
     justificativas = Justificativa.objects.all().order_by('-ativo', '-data_cadastro')
-    return render(request, 'notas/admin.html', {'justificativas': justificativas, 'selected_month': selected})
+    
+    logs_justificativas = Nf_Has_Justificativa.objects.all().select_related('usuario', 'nf', 'justificativa').order_by('-data_cadastro')[:200]
+    logs_comentarios = Log_Comentario.objects.all().select_related('usuario', 'nf').order_by('-data_cadastro')[:200]
+    
+    return render(request, 'notas/admin.html', {
+        'justificativas': justificativas, 
+        'logs_justificativas': logs_justificativas,
+        'logs_comentarios': logs_comentarios,
+        'selected_month': selected
+    })
 
 @login_required
 @require_POST
@@ -931,7 +944,9 @@ def exportar_op_excel(request, lote):
         ('descricao_tm', 'Desc. TM'),
         ('unidade', 'Unidade'),
         ('quantidade', 'Quantidade'),
+        ('quant_2', 'Quantidade 2'),
         ('custo', 'Custo'),
+        ('custo_2', 'Custo 2'),
         ('ord_producao', 'Ord. Produção'),
         ('lote', 'Lote'),
         ('os_ass_tecn', 'OS Ass. Tecn.'),

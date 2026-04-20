@@ -1,5 +1,7 @@
 <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
-    <h5 style="margin: 0; color: var(--azul-escuro);"><i class="fa-solid fa-industry"></i> Ordens de Produção (Lote: {{ lote }})</h5>
+    <h5 style="margin: 0; color: var(--azul-escuro);"><i class="fa-solid fa-industry"></i> Ordens de Produção (Lote: {{ lote }}) 
+        <span class="badge" style="background-color: var(--verde-principal); font-size: 0.9rem; margin-left: 10px;">Custo Final: <span id="custoFinalLabel">R$ 0,00</span></span>
+    </h5>
     <a href="{% url 'exportar_op_excel' lote=lote %}" target="_parent" class="btn btn-sm btn-success" style="background-color: var(--verde-principal); border: none;" title="Exportar para Excel">
         <i class="fa-solid fa-file-excel"></i> Exportar
     </a>
@@ -16,11 +18,11 @@
                 <th>Desc. TM</th>
                 <th>Unidade</th>
                 <th>Quantidade</th>
-                <!-- <th>Quant. 2</th> -->
+                <th class="text-nowrap text-center">Quant. 2</th>
                 <th>Custo</th>
                 <!-- <th>Preço Tabela</th>
                 <th>Tabela Preço</th> -->
-                <!-- <th>Custo 2</th> -->
+                <th class="text-nowrap text-center">Custo 2</th>
                 <th>Ord. Produção</th>
                 <th>Lote</th>
                 <th>OS Ass. Tecn.</th>
@@ -54,11 +56,15 @@
                 <td>{{ op.descricao_tm }}</td>
                 <td>{{ op.unidade }}</td>
                 <td>{{ op.quantidade }}</td>
-                <!-- <td>{{ op.quant_2 }}</td> -->
+                <td>
+                    <input type="number" step="0.01" class="form-control form-control-sm quant2-input" value="{{ op.quant_2_raw|default:'0.00' }}" style="width: 100px; text-align: right;">
+                </td>
                 <td>{{ op.custo }}</td>
                 <!-- <td>{{ op.preco_tabela }}</td>
                 <td>{{ op.tabela_preco }}</td> -->
-                <!-- <td>{{ op.custo_2 }}</td> -->
+                <td>
+                    <input type="number" step="0.01" class="form-control form-control-sm custo2-input" value="{{ op.custo_2_raw |default:'0.00' }}" style="width: 100px; text-align: right;">
+                </td>
                 <td>{{ op.ord_producao }}</td>
                 <td>{{ op.lote }}</td>
                 <td>{{ op.os_ass_tecn }}</td>
@@ -88,3 +94,27 @@
         </tbody>
     </table>
 </div>
+
+<script>
+    function formatCurrency(value) {
+        return value.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+    }
+    
+    function calcularCustoFinal() {
+        let total = 0;
+        document.querySelectorAll('.custo2-input').forEach(function(input) {
+            let val = parseFloat(input.value);
+            if (!isNaN(val)) {
+                total += val;
+            }
+        });
+        document.getElementById('custoFinalLabel').textContent = formatCurrency(total);
+    }
+    
+    document.querySelectorAll('.custo2-input').forEach(function(input) {
+        input.addEventListener('input', calcularCustoFinal);
+    });
+    
+    // Calcula o valor inicial
+    calcularCustoFinal();
+</script>
