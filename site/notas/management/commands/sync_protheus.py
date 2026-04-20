@@ -80,7 +80,7 @@ class Command(BaseCommand):
                     quantidade=quantidade, tabela_preco=tabela_preco, preco_tabela=preco_tabela,
                     valor_contabil=valor_contabil, valor_unitario=valor_unitario, valor_ipi=valor_ipi,
                     valor_imp5=valor_imp5, valor_imp6=valor_imp6, valor_icms_difal=valor_icms_difal,
-                    valor_icms=valor_icms, aliq_icms=aliq_icms, recno=recno
+                    valor_icms=valor_icms, aliq_icms=aliq_icms, recno=recno, comentario=comentario
                 )
 
                 if chave not in chaves_existentes:

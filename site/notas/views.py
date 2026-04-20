@@ -5,7 +5,8 @@ from .models import (
     Nota, 
     Custo, 
     Margem, 
-    Nf_Has_Justificativa, 
+    Nf_Has_Justificativa,
+    Log_Comentario,
     OP
 )
 
@@ -323,6 +324,30 @@ def atualizar_custo_api(request):
         raise e
         # return JsonResponse({'error': str(e)}, status=500)
     
+@login_required
+@require_POST
+def atualizar_comentario_api(request):
+    try:
+        data = json.loads(request.body)
+        nota_chave = data.get('chave')
+        novo_comentario = data.get('comentario')
+
+        nota = get_object_or_404(Nota, pk=nota_chave)
+        nota.comentario = novo_comentario
+        nota.save(update_fields=['comentario'])
+
+        Log_Comentario.objects.create(
+            nf=nota,
+            comentario=novo_comentario,
+            usuario=request.user
+        )
+
+        return JsonResponse({'success': True})
+
+    except Exception as e:
+        return JsonResponse({'success': False, 'error': str(e)}, status=500)
+
+
 @login_required
 @require_POST
 def atualizar_justificativa_api(request):

@@ -509,6 +509,7 @@
                 <th>ICMS</th>
                 <th>Aliq %</th>
                 <th>Justificativa</th>
+                <th>Comentário</th>
             </tr>
         </thead>
         <tbody>
@@ -638,6 +639,13 @@
                         {% endfor %}
                     </select>
                 </td>
+
+                <td data-label="Comentário" class="text-center">
+                    <textarea class="form-control nao-expande" rows="1"
+                        data-chave="{{ nota.chave }}" 
+                        onchange="atualizarComentario(this)"
+                        style="font-size: 0.85rem; resize: vertical; min-width: 150px;">{{ nota.comentario|default_if_none:"" }}</textarea>
+                </td>
             </tr>
             {% endfor %}
         </tbody>
@@ -695,7 +703,7 @@
                 },
                 // 1. FORÇA essas colunas a irem para dentro do botão (+) no PC
                 {
-                    targets: [7, 8, 10, 11, 14, 15, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29], // Tipo, Lote, Qtd, Estoque?, Duplicata?, Armazém, Gp. Amar. CTB, UF, Vl. Unit, IPI, Imp5, Imp6, Difal, ICMS, Aliq %
+                    targets: [7, 8, 10, 11, 14, 15, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30], // Tipo, Lote, Qtd, Estoque?, Duplicata?, Armazém, Gp. Amar. CTB, UF, Vl. Unit, IPI, Imp5, Imp6, Difal, ICMS, Aliq %
                     className: 'none'
                 },
                 // quero melhorar a visualização dessas outras colunas, ela esta como uma lista, quero que fique mais dinamica para deixar mais interativo para o usuario 
@@ -895,6 +903,40 @@
             .catch(error => {
                 inputElement.disabled = false;
                 console.error('Erro:', error);
+            });
+    }
+
+    function atualizarComentario(inputElement) {
+        const chave = inputElement.getAttribute('data-chave');
+        const novoComentario = inputElement.value;
+        const csrfToken = document.querySelector('[name=csrfmiddlewaretoken]').value;
+
+        inputElement.style.backgroundColor = "var(--cinza-fundo)";
+
+        fetch('/api/atualizar-comentario/', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': csrfToken
+            },
+            body: JSON.stringify({
+                'chave': chave,
+                'comentario': novoComentario
+            })
+        })
+            .then(response => response.json())
+            .then(data => {
+                inputElement.style.backgroundColor = "var(--branco)";
+                if (data.success) {
+                    inputElement.style.border = "2px solid var(--verde-principal)";
+                    setTimeout(() => { inputElement.style.border = "1px solid var(--cinza-borda)"; }, 2000);
+                } else {
+                    alert('Erro: ' + data.error);
+                }
+            })
+            .catch(error => {
+                console.error('Erro:', error);
+                inputElement.style.backgroundColor = "#ffcccc";
             });
     }
 

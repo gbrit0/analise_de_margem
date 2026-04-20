@@ -44,6 +44,7 @@ class Nota(models.Model):
     aliq_icms = models.DecimalField(max_digits=5, decimal_places=2)
     recno = models.BigIntegerField()
     delete = models.BooleanField(default=False)
+    comentario = models.TextField(default=None, blank=True, null=True)
     
     class Meta():
         verbose_name = "Nota"
@@ -148,6 +149,16 @@ class Nf_Has_Justificativa(models.Model):
     justificativa = models.ForeignKey(to=Justificativa, on_delete=models.PROTECT)
     data_cadastro = models.DateTimeField(auto_now=True)
     usuario = models.ForeignKey(to=CustomUser, on_delete=models.PROTECT, default=2)
+
+class Log_Comentario(models.Model):
+    nf = models.ForeignKey(to=Nota, on_delete=models.PROTECT)
+    comentario = models.TextField(null=True, blank=True)
+    data_cadastro = models.DateTimeField(auto_now=True)
+    usuario = models.ForeignKey(to=CustomUser, on_delete=models.PROTECT, default=2)
+
+    class Meta():
+        verbose_name = "Log de Comentário"
+        verbose_name_plural = "Logs de Comentário"
 
 
 class Margem(models.Model):

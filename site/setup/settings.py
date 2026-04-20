@@ -28,7 +28,7 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 SECRET_KEY = 'django-insecure-ch!@ntcoyc$y3(d4mt_pf=8h_=u7z%_bcld+8jcu@!dzea%&%!'
 
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = False # os.getenv('DEBUG')
+DEBUG = os.getenv('DEBUG')
 
 ALLOWED_HOSTS = [
     'brg.datasetsolucoes.com.br',
@@ -178,6 +178,6 @@ CACHES = {
 }
 
 
-SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
-CSRF_COOKIE_SECURE = os.getenv('SESSION_COOKIE_SECURE', 'False')
-SESSION_COOKIE_SECURE = os.getenv('SESSION_COOKIE_SECURE', 'False')
+# SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
+# CSRF_COOKIE_SECURE = os.getenv('CSRF_COOKIE_SECURE', 'False')
+# SESSION_COOKIE_SECURE = os.getenv('SESSION_COOKIE_SECURE', 'False')
