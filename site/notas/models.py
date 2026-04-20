@@ -231,5 +231,16 @@ class OP(models.Model):
             return '-'
         else:
             return self.desc_centro_de_custo
-        
-        
+
+class Custo2_OP(models.Model):
+    op = models.ForeignKey(to=OP, on_delete=models.CASCADE)
+    valor = models.DecimalField(max_digits=18, decimal_places=2)
+    data_cadastro = models.DateTimeField(auto_now=True)
+    usuario = models.ForeignKey(to=CustomUser, on_delete=models.PROTECT, default=2)
+
+    class Meta:
+        verbose_name = "Histórico Custo 2 OP"
+        verbose_name_plural = "Históricos Custo 2 OP"
+
+    def __str__(self):
+        return str(self.valor)

@@ -6,7 +6,8 @@ from .models import (
     Nf_Has_Justificativa, 
     Margem, 
     OP, 
-    Log_Comentario
+    Log_Comentario,
+    Custo2_OP
 )
 
 class CustomJustificativasAdmin(admin.ModelAdmin):
@@ -81,7 +82,10 @@ class CustomLogComentarioAdmin(admin.ModelAdmin):
     list_display_links = ['nf', 'comentario', 'data_cadastro', 'usuario']
     search_fields = ['nf', 'comentario', 'data_cadastro', 'usuario']
     
-
+class CustomCusto2_OPAdmin(admin.ModelAdmin):
+    list_display = ['id', 'op', 'valor', 'data_cadastro', 'usuario']
+    list_display_links = ['id', 'op', 'valor', 'data_cadastro', 'usuario']
+    search_fields = ['id', 'op__id_op', 'valor', 'usuario__username']
 
 admin.site.register(Justificativa, CustomJustificativasAdmin)
 admin.site.register(Nota, CustomNotasAdmin)
@@ -90,3 +94,4 @@ admin.site.register(Nf_Has_Justificativa, CustomNf_Has_JustificativaAdmin)
 admin.site.register(Margem, CustomMargemAdmin)
 admin.site.register(OP, CustomOPAdmin)
 admin.site.register(Log_Comentario, CustomLogComentarioAdmin)
+admin.site.register(Custo2_OP, CustomCusto2_OPAdmin)

@@ -13,7 +13,8 @@ from notas.views import (
     justificativa_toggle_status,
     exportar_excel,
     exportar_estatisticas_excel,
-    exportar_op_excel
+    exportar_op_excel,
+    atualizar_custo2_op_api
 )
 
 from django.contrib.auth.decorators import login_required
@@ -22,6 +23,7 @@ from .models import Nota, OP, Justificativa
 urlpatterns = [
     path('notas/', login_required(NotasListView.as_view(model=Nota)), name='lista_notas'),
     path('api/atualizar-custo/', atualizar_custo_api, name='api_atualizar_custo'),
+    path('api/atualizar-custo2-op/', atualizar_custo2_op_api, name='api_atualizar_custo2_op'),
     path('api/atualizar-justificativa/', atualizar_justificativa_api, name='api_atualizar_justificativa'),
     path('api/atualizar-comentario/', atualizar_comentario_api, name='api_atualizar_comentario'),
     path('estatisticas/', dashboard_view, name='estatisticas'),

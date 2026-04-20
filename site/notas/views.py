@@ -7,7 +7,8 @@ from .models import (
     Margem, 
     Nf_Has_Justificativa,
     Log_Comentario,
-    OP
+    OP,
+    Custo2_OP
 )
 
 from users.models import CustomUser
@@ -323,6 +324,39 @@ def atualizar_custo_api(request):
     except Exception as e:
         raise e
         # return JsonResponse({'error': str(e)}, status=500)
+
+@login_required
+@require_POST
+def atualizar_custo2_op_api(request):
+    try:
+        data = json.loads(request.body)
+        id_op = data.get('id_op')
+        novo_valor = data.get('valor')
+        
+        if not id_op or novo_valor is None:
+            return JsonResponse({'error': 'Dados inválidos'}, status=400)
+
+        valor_decimal = Decimal(str(novo_valor).replace(',', '.'))
+        
+        op_obj = OP.objects.filter(id_op=id_op).first()
+        if not op_obj:
+            return JsonResponse({'error': 'OP não encontrada'}, status=404)
+        
+        Custo2_OP.objects.create(
+            op=op_obj,
+            valor=valor_decimal,
+            usuario=request.user if request.user else CustomUser.objects.get(id=2)
+        )
+        
+        # O histórico também salva na tabela principal OP para ser fácil resgatar depois
+        op_obj.custo_2 = valor_decimal
+        op_obj.save(update_fields=['custo_2'])
+        
+        return JsonResponse({
+            'success': True,
+        })
+    except Exception as e:
+        return JsonResponse({'error': str(e)}, status=500)
     
 @login_required
 @require_POST
@@ -591,12 +625,72 @@ def op_list_view(request, lote):
             cursor.execute(query_ops, lote)
             colunas = [coluna[0] for coluna in cursor.description]
             linhas_op = [dict(zip(colunas, linha)) for linha in cursor.fetchall()]
+
+    if linhas_op:
+        existing_ops = {o.id_op: o for o in OP.objects.prefetch_related('custo2_op_set').filter(lote=lote)}
+        ops_to_create = []
+        ops_to_update = []
+        
+        update_fields = [c for c in colunas if c != 'id_op']
+        
+        for op in linhas_op:
+            lote_str = str(op.get('lote') or '').strip()
+            ord_str = str(op.get('ord_producao') or '').strip()
+            seq_str = str(op.get('sequencial') or '').strip()
+            tm_str = str(op.get('tp_movimento') or '').strip()
+            
+            id_op_unico = f"{lote_str}_{ord_str}_{seq_str}_{tm_str}"
+            op['id_op'] = id_op_unico
+            
+            op_data = {k: v for k, v in op.items() if k in update_fields}
+            
+            for decimal_field in ['quantidade', 'quant_2', 'custo', 'custo_2']:
+                if op_data.get(decimal_field) is None:
+                    op_data[decimal_field] = 0
+                    op[decimal_field] = 0
+
+            if id_op_unico in existing_ops:
+                obj = existing_ops[id_op_unico]
+                has_custo2_history = obj.pk is not None and obj.custo2_op_set.exists()
+                if has_custo2_history:
+                    op['custo_2'] = obj.custo_2
+                    op_data.pop('custo_2', None)
+
+                for k, v in op_data.items():
+                    setattr(obj, k, v)
+                obj._update_fields = [f for f in update_fields if f in op_data]
+                ops_to_update.append(obj)
+            else:
+                op_data['id_op'] = id_op_unico
+                ops_to_create.append(OP(**op_data))
+                existing_ops[id_op_unico] = ops_to_create[-1]
+
+        if ops_to_create:
+            OP.objects.bulk_create(ops_to_create, batch_size=500)
+
+        if ops_to_update:
+            from collections import defaultdict
+            grupos = defaultdict(list)
+            for obj in ops_to_update:
+                campos = tuple(getattr(obj, '_update_fields', update_fields))
+                grupos[campos].append(obj)
+            for campos, grupo in grupos.items():
+                OP.objects.bulk_update(grupo, list(campos), batch_size=500)
     
     for op in linhas_op:
         if op.get('custo') is not None:
             op['custo_raw'] = f"{float(op['custo']):.2f}"
             op['custo'] = locale.currency(op['custo'], grouping=True)
         if op.get('custo_2') is not None:
+            # Retrieve latest historical custo_2 if exists
+            try:
+                op_obj = OP.objects.filter(id_op=op['id_op']).first()
+                if op_obj:
+                    latest_custo2 = op_obj.custo2_op_set.order_by('-id').first()
+                    if latest_custo2:
+                        op['custo_2'] = latest_custo2.valor
+            except Exception:
+                pass
             op['custo_2_raw'] = f"{float(op['custo_2']):.2f}"
             op['custo_2'] = locale.currency(op['custo_2'], grouping=True)
         if op.get('quant_2') is not None:
@@ -930,6 +1024,18 @@ def exportar_op_excel(request, lote):
             cursor.execute(query_ops, lote)
             colunas = [coluna[0] for coluna in cursor.description]
             linhas_op = [dict(zip(colunas, linha)) for linha in cursor.fetchall()]
+
+    if linhas_op:
+        existing_ops = {o.id_op: o for o in OP.objects.prefetch_related('custo2_op_set').filter(lote=lote)}
+        for op in linhas_op:
+            lote_str = str(op.get('lote') or '').strip()
+            ord_str = str(op.get('ord_producao') or '').strip()
+            seq_str = str(op.get('sequencial') or '').strip()
+            tm_str = str(op.get('tp_movimento') or '').strip()
+            id_op_unico = f"{lote_str}_{ord_str}_{seq_str}_{tm_str}"
+            
+            if id_op_unico in existing_ops and existing_ops[id_op_unico].custo2_op_set.exists():
+                op['custo_2'] = existing_ops[id_op_unico].custo_2
 
     wb = Workbook()
     ws = wb.active
