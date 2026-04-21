@@ -244,3 +244,15 @@ class Custo2_OP(models.Model):
 
     def __str__(self):
         return str(self.valor)
+    
+    
+class MesBloqueado(models.Model):
+    mes_ano = models.CharField(max_length=7, unique=True, help_text="Formato: YYYY-MM")
+    bloqueado = models.BooleanField(default=False)
+    data_atualizacao = models.DateTimeField(auto_now=True)
+
+class LogBloqueioMes(models.Model):
+    mes_ano = models.CharField(max_length=7)
+    acao = models.CharField(max_length=20) # 'BLOQUEADO' ou 'DESBLOQUEADO'
+    usuario = models.ForeignKey('users.CustomUser', on_delete=models.SET_NULL, null=True)
+    data_cadastro = models.DateTimeField(auto_now_add=True)

@@ -269,8 +269,8 @@
                     {% if request.user.is_superuser %}
                     <a href="{% url 'admin_justificativas' %}"
                         class="app-nav__link {% if request.resolver_match.url_name == 'admin_justificativas' %}active{% endif %}"
-                        title="Gerenciar Justificativas">
-                        <i class="fa-solid fa-user-shield"></i> Justificativas
+                        title="Gerenciar aplicação">
+                        <i class="fa-solid fa-user-shield"></i> Administração
                     </a>
                     {% endif %}
                 </li>

@@ -8,7 +8,9 @@ from .models import (
     Nf_Has_Justificativa,
     Log_Comentario,
     OP,
-    Custo2_OP
+    Custo2_OP,
+    MesBloqueado,
+    LogBloqueioMes
 )
 
 from users.models import CustomUser
@@ -276,8 +278,20 @@ def atualizar_custo_api(request):
         # 2. Busca a Nota
         nota = get_object_or_404(Nota, pk=nota_chave)
 
+        # Validação de Bloqueio do Mês
+        mes_ano_nota = nota.data_emissao.strftime("%Y-%m")
+        mes_status = MesBloqueado.objects.filter(mes_ano=mes_ano_nota).first()
+        if mes_status and mes_status.bloqueado:
+            return JsonResponse({'error': f'Mês {mes_ano_nota} fechado para edição.'}, status=403)
+        
+        # 3. Verifica regra de bloqueio: se a nota pertence a mês anterior e hoje é > 03, impede atualização
+        nota_month = nota.data_emissao.month
+        nota_year = nota.data_emissao.year
+        today = datetime.date.today()
+        # Se a data da nota está em mês/ano anterior ao atual e hoje é após o dia 3, bloqueia
+        if (today.year, today.month) > (nota_year, nota_month) and today.day > 3:
+            return JsonResponse({'error': 'Atualização de custo bloqueada após fechamento do dia 03'}, status=403)
         # 3. Cria um NOVO registro de custo (preservando histórico)
-        # Assumindo que você tem o request.user disponível. Se não, defina um usuário padrão ou trate isso.
         custo = Custo.objects.create(
             chave=nota,
             valor=valor_custo_decimal,
@@ -391,6 +405,12 @@ def atualizar_justificativa_api(request):
         nova_justificativa_id = data.get('justificativa')
 
         nota = get_object_or_404(Nota, pk=nota_chave)
+        
+        # Validação de Bloqueio do Mês
+        mes_ano_nota = nota.data_emissao.strftime("%Y-%m")
+        mes_status = MesBloqueado.objects.filter(mes_ano=mes_ano_nota).first()
+        if mes_status and mes_status.bloqueado:
+            return JsonResponse({'success': False, 'error': f'Mês {mes_ano_nota} fechado para edição.'}, status=403)
 
         # 1. Buscamos a justificativa que o usuário clicou
         justificativa = get_object_or_404(Justificativa, id=nova_justificativa_id)
@@ -729,10 +749,37 @@ def justificativa_admin_view(request):
     logs_justificativas = Nf_Has_Justificativa.objects.all().select_related('usuario', 'nf', 'justificativa').order_by('-data_cadastro')[:200]
     logs_comentarios = Log_Comentario.objects.all().select_related('usuario', 'nf').order_by('-data_cadastro')[:200]
     
+    meses_bloqueados = MesBloqueado.objects.all().order_by('-mes_ano')
+    logs_bloqueio = LogBloqueioMes.objects.select_related('usuario').order_by('-data_cadastro')[:200]
+    meses_qs = Nota.objects.annotate(
+        year=ExtractYear('data_emissao'),
+        month=ExtractMonth('data_emissao')
+    ).values('year', 'month').distinct().order_by('-year', '-month')
+
+    status_por_mes = {
+        item.mes_ano: item for item in meses_bloqueados
+    }
+    meses_gerenciaveis = []
+
+    for item in meses_qs:
+        ano = int(item['year'])
+        mes = int(item['month'])
+        mes_ano = f"{ano}-{mes:02d}"
+        status = status_por_mes.get(mes_ano)
+        meses_gerenciaveis.append({
+            'mes_ano': mes_ano,
+            'label': f"{mes:02d}/{ano}",
+            'bloqueado': status.bloqueado if status else False,
+            'data_atualizacao': status.data_atualizacao if status else None,
+        })
+    
     return render(request, 'notas/admin.html', {
         'justificativas': justificativas, 
         'logs_justificativas': logs_justificativas,
         'logs_comentarios': logs_comentarios,
+        'meses_bloqueados': meses_bloqueados,
+        'meses_gerenciaveis': meses_gerenciaveis,
+        'logs_bloqueio': logs_bloqueio,
         'selected_month': selected
     })
 
@@ -777,7 +824,38 @@ def justificativa_toggle_status(request):
         return JsonResponse({'success': True, 'ativo': justificativa.ativo})
     except Exception as e:
         return JsonResponse({'success': False, 'error': str(e)}, status=500)
-    
+   
+
+@login_required
+@require_POST
+def toggle_bloqueio_mes_api(request):
+    """Nova View para gerenciar o bloqueio de meses"""
+    if not request.user.is_superuser:
+        return JsonResponse({'success': False, 'error': 'Acesso negado'}, status=403)
+        
+    try:
+        data = json.loads(request.body)
+        mes_ano = data.get('mes_ano') # Formato: YYYY-MM
+        
+        if not mes_ano:
+            return JsonResponse({'success': False, 'error': 'Mês não fornecido'}, status=400)
+            
+        mes_status, created = MesBloqueado.objects.get_or_create(mes_ano=mes_ano)
+        mes_status.bloqueado = not mes_status.bloqueado
+        mes_status.save()
+        
+        acao_str = 'BLOQUEADO' if mes_status.bloqueado else 'DESBLOQUEADO'
+        
+        LogBloqueioMes.objects.create(
+            mes_ano=mes_ano,
+            acao=acao_str,
+            usuario=request.user
+        )
+        
+        return JsonResponse({'success': True, 'bloqueado': mes_status.bloqueado, 'mes': mes_ano})
+    except Exception as e:
+        return JsonResponse({'success': False, 'error': str(e)}, status=500)
+ 
 
 @login_required
 def exportar_excel(request):

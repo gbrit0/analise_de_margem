@@ -131,6 +131,41 @@
         outline: none;
         box-shadow: 0 0 0 3px rgba(0, 163, 79, 0.1);
     }
+
+    .admin-grid {
+        display: grid;
+        grid-template-columns: 1.4fr 1fr;
+        gap: 24px;
+    }
+
+    .month-actions {
+        display: flex;
+        gap: 8px;
+        align-items: center;
+    }
+
+    .month-chip {
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        padding: 8px 12px;
+        border-radius: 999px;
+        background: var(--cinza-fundo);
+        color: var(--azul-escuro);
+        font-weight: 500;
+    }
+
+    .table-empty-state {
+        padding: 32px 16px;
+        text-align: center;
+        color: #6c757d;
+    }
+
+    @media (max-width: 991.98px) {
+        .admin-grid {
+            grid-template-columns: 1fr;
+        }
+    }
 </style>
 
 {% csrf_token %}
@@ -145,6 +180,9 @@
         </li>
         <li class="nav-item" role="presentation">
             <button class="nav-link" id="comentarios-log-tab" data-bs-toggle="tab" data-bs-target="#comentarios" type="button" role="tab" style="color: var(--azul-escuro); font-weight: 500;"><i class="fa-solid fa-comments"></i> Log de Comentários</button>
+        </li>
+        <li class="nav-item" role="presentation">
+            <button class="nav-link" id="meses-bloqueados-tab" data-bs-toggle="tab" data-bs-target="#meses-bloqueados" type="button" role="tab" style="color: var(--azul-escuro); font-weight: 500;"><i class="fa-solid fa-calendar-xmark"></i> Meses Bloqueados</button>
         </li>
     </ul>
 
@@ -270,6 +308,119 @@
                 </div>
             </div>
         </div>
+
+        <div class="tab-pane fade" id="meses-bloqueados" role="tabpanel">
+            <div class="admin-grid">
+                <div class="admin-card">
+                    <div class="admin-header">
+                        <div class="admin-title">
+                            <i class="fa-solid fa-calendar-xmark"></i> Gerenciar Meses Bloqueados
+                        </div>
+                    </div>
+                    <div class="table-container">
+                        <table id="tabelaMesesBloqueados" class="display nowrap" style="width:100%">
+                            <thead>
+                                <tr>
+                                    <th>Mês</th>
+                                    <th class="text-center">Status</th>
+                                    <th>Última Atualização</th>
+                                    <th class="text-right">Ações</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for mes in meses_gerenciaveis %}
+                                <tr id="mes-row-{{ mes.mes_ano }}">
+                                    <td data-order="{{ mes.mes_ano }}">
+                                        <span class="month-chip">
+                                            <i class="fa-regular fa-calendar"></i>
+                                            <span>{{ mes.label }}</span>
+                                        </span>
+                                    </td>
+                                    <td class="text-center">
+                                        <span
+                                            class="status-badge {% if mes.bloqueado %}status-inativo{% else %}status-ativo{% endif %}"
+                                            id="mes-status-badge-{{ mes.mes_ano }}"
+                                        >
+                                            {% if mes.bloqueado %}Bloqueado{% else %}Liberado{% endif %}
+                                        </span>
+                                    </td>
+                                    <td id="mes-update-{{ mes.mes_ano }}">
+                                        {% if mes.data_atualizacao %}
+                                            {{ mes.data_atualizacao|date:"d/m/Y H:i:s" }}
+                                        {% else %}
+                                            -
+                                        {% endif %}
+                                    </td>
+                                    <td class="text-right">
+                                        <button
+                                            class="btn-custom {% if mes.bloqueado %}btn-primary-custom{% else %}btn-danger-custom{% endif %}"
+                                            id="mes-toggle-btn-{{ mes.mes_ano }}"
+                                            onclick="toggleBloqueioMes('{{ mes.mes_ano }}')"
+                                        >
+                                            <i class="fa-solid {% if mes.bloqueado %}fa-lock-open{% else %}fa-lock{% endif %}"></i>
+                                            <span id="mes-toggle-text-{{ mes.mes_ano }}">
+                                                {% if mes.bloqueado %}Desbloquear{% else %}Bloquear{% endif %}
+                                            </span>
+                                        </button>
+                                    </td>
+                                </tr>
+                                {% empty %}
+                                <tr>
+                                    <td class="table-empty-state">Nenhum mês disponível</td>
+                                    <td class="table-empty-state">-</td>
+                                    <td class="table-empty-state">-</td>
+                                    <td class="table-empty-state">-</td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <div class="admin-card">
+                    <div class="admin-header">
+                        <div class="admin-title">
+                            <i class="fa-solid fa-clock-rotate-left"></i> Log de Bloqueios
+                        </div>
+                    </div>
+                    <div class="table-container">
+                        <table id="tabelaLogBloqueios" class="display nowrap" style="width:100%">
+                            <thead>
+                                <tr>
+                                    <th>Data/Hora</th>
+                                    <th>Mês</th>
+                                    <th>Ação</th>
+                                    <th>Usuário</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for log in logs_bloqueio %}
+                                <tr>
+                                    <td>{{ log.data_cadastro|date:"d/m/Y H:i:s" }}</td>
+                                    <td>{{ log.mes_ano|slice:"5:7" }}/{{ log.mes_ano|slice:":4" }}</td>
+                                    <td>{{ log.acao }}</td>
+                                    <td>
+                                        {% if log.usuario %}
+                                            {{ log.usuario.first_name }} {{ log.usuario.last_name }}
+                                        {% else %}
+                                            -
+                                        {% endif %}
+                                    </td>
+                                </tr>
+                                {% empty %}
+                                <tr>
+                                    <td class="table-empty-state">Ainda não há histórico</td>
+                                    <td class="table-empty-state">-</td>
+                                    <td class="table-empty-state">-</td>
+                                    <td class="table-empty-state">-</td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
     </div>
 </div>
 
@@ -315,7 +466,7 @@
             ]
         });
 
-        $('#tabelaLogJustificativas, #tabelaLogComentarios').DataTable({
+        $('#tabelaLogJustificativas, #tabelaLogComentarios, #tabelaLogBloqueios').DataTable({
             language: {
                 url: '//cdn.datatables.net/plug-ins/1.13.6/i18n/pt-BR.json'
             },
@@ -325,6 +476,21 @@
             paging: true,
             pageLength: 25,
             lengthMenu: [10, 25, 50, 100]
+        });
+
+        $('#tabelaMesesBloqueados').DataTable({
+            language: {
+                url: '//cdn.datatables.net/plug-ins/1.13.6/i18n/pt-BR.json'
+            },
+            ordering: true,
+            order: [[0, "desc"]],
+            info: true,
+            paging: true,
+            pageLength: 12,
+            lengthMenu: [12, 25, 50, 100],
+            columnDefs: [
+                { targets: 3, orderable: false }
+            ]
         });
 
         // Recalcular as colunas do DataTable sempre que uma aba for clicada/exibida
@@ -421,6 +587,53 @@
                     btn.innerHTML = '<i class="fa-solid fa-check"></i>';
                     btn.title = "Ativar";
                 }
+            } else {
+                alert('Erro: ' + data.error);
+            }
+        })
+        .catch(error => {
+            console.error('Erro:', error);
+            alert('Erro de comunicação do servidor.');
+        });
+    }
+
+    function toggleBloqueioMes(mesAno) {
+        const csrfToken = document.querySelector('[name=csrfmiddlewaretoken]').value;
+
+        fetch('{% url "api_mes_bloqueado_toggle" %}', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': csrfToken
+            },
+            body: JSON.stringify({
+                'mes_ano': mesAno
+            })
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                const badge = document.getElementById(`mes-status-badge-${mesAno}`);
+                const button = document.getElementById(`mes-toggle-btn-${mesAno}`);
+                const text = document.getElementById(`mes-toggle-text-${mesAno}`);
+                const update = document.getElementById(`mes-update-${mesAno}`);
+
+                if (data.bloqueado) {
+                    badge.className = 'status-badge status-inativo';
+                    badge.innerText = 'Bloqueado';
+                    button.className = 'btn-custom btn-primary-custom';
+                    button.innerHTML = '<i class="fa-solid fa-lock-open"></i> <span id="mes-toggle-text-' + mesAno + '">Desbloquear</span>';
+                } else {
+                    badge.className = 'status-badge status-ativo';
+                    badge.innerText = 'Liberado';
+                    button.className = 'btn-custom btn-danger-custom';
+                    button.innerHTML = '<i class="fa-solid fa-lock"></i> <span id="mes-toggle-text-' + mesAno + '">Bloquear</span>';
+                }
+
+                const agora = new Date();
+                update.innerText = agora.toLocaleString('pt-BR');
+
+                location.reload();
             } else {
                 alert('Erro: ' + data.error);
             }

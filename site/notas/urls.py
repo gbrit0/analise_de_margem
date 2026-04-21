@@ -11,6 +11,7 @@ from notas.views import (
     justificativa_admin_view,
     justificativa_save,
     justificativa_toggle_status,
+    toggle_bloqueio_mes_api,
     exportar_excel,
     exportar_estatisticas_excel,
     exportar_op_excel,
@@ -33,6 +34,7 @@ urlpatterns = [
     path('justificativas/', justificativa_admin_view, name='admin_justificativas'),
     path('api/justificativa/salvar/', justificativa_save, name='api_justificativa_salvar'),
     path('api/justificativa/toggle/', justificativa_toggle_status, name='api_justificativa_toggle'),
+    path('api/mes-bloqueado/toggle/', toggle_bloqueio_mes_api, name='api_mes_bloqueado_toggle'),
     path('exportar/', exportar_excel, name='exportar_excel'),
     path('exportar-estatisticas/', exportar_estatisticas_excel, name='exportar_estatisticas_excel'),
 ]

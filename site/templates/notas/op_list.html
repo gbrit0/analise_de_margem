@@ -6,43 +6,74 @@
         <i class="fa-solid fa-file-excel"></i> Exportar
     </a>
 </div>
+
+<style>
+    #op-table thead th {
+        cursor: pointer;
+        user-select: none;
+        white-space: nowrap;
+        position: relative;
+        padding-right: 20px;
+    }
+    #op-table thead th:hover {
+        background-color: rgba(0, 0, 0, 0.07);
+    }
+    #op-table thead th .sort-icon {
+        position: absolute;
+        right: 5px;
+        top: 50%;
+        transform: translateY(-50%);
+        font-size: 0.7rem;
+        opacity: 0.35;
+        transition: opacity 0.15s;
+    }
+    #op-table thead th.sort-asc .sort-icon,
+    #op-table thead th.sort-desc .sort-icon {
+        opacity: 1;
+        color: var(--verde-principal, #198754);
+    }
+    #op-table thead th.sort-asc .sort-icon::after  { content: ' ▲'; }
+    #op-table thead th.sort-desc .sort-icon::after { content: ' ▼'; }
+    #op-table thead th:not(.sort-asc):not(.sort-desc) .sort-icon::after { content: ' ⇅'; }
+</style>
+
 <div class="table-responsive">
-    <table class="table table-bordered table-striped table-hover">
+    <table id="op-table" class="table table-bordered table-striped table-hover">
         <thead>
             <tr>
-                <th>Filial</th>
-                <th>Produto</th>
-                <th>Descr. Produto</th>
-                <th>Armazém</th>
-                <th>Tp. Mov.</th>
-                <th>Desc. TM</th>
-                <th>Unidade</th>
-                <th>Quantidade</th>
-                <th class="text-nowrap text-center">Quant. 2</th>
-                <th>Custo</th>
+                <th data-col="0">Filial <span class="sort-icon"></span></th>
+                <th data-col="1">Produto <span class="sort-icon"></span></th>
+                <th data-col="2">Descr. Produto <span class="sort-icon"></span></th>
+                <th data-col="3">Armazém <span class="sort-icon"></span></th>
+                <th data-col="4">Tp. Mov. <span class="sort-icon"></span></th>
+                <th data-col="5">Desc. TM <span class="sort-icon"></span></th>
+                <th data-col="6">Unidade <span class="sort-icon"></span></th>
+                <th data-col="7" data-type="number">Quantidade <span class="sort-icon"></span></th>
+                <th data-col="8" data-type="number" class="text-nowrap text-center">Quant. 2 <span class="sort-icon"></span></th>
+                <th data-col="9" data-type="number">Custo <span class="sort-icon"></span></th>
                 <!-- <th>Preço Tabela</th>
                 <th>Tabela Preço</th> -->
-                <th class="text-nowrap text-center">Custo 2</th>
-                <th>Ord. Produção</th>
-                <th>Lote</th>
-                <th>OS Ass. Tecn.</th>
-                <th>Grupo</th>
-                <th>Desc. Grupo</th>
-                <th>Tipo RE/DE</th>
-                <th>Ext. Texto</th>
-                <th>Documento</th>
-                <th>Dt. Emissão</th>
-                <th>C. Contábil</th>
-                <th>Desc. Conta</th>
-                <th>Centro Custo</th>
-                <th>Desc. C.Custo</th>
-                <th>Parc./Total</th>
-                <th>Estornado</th>
-                <th>Sequencial</th>
-                <th>Tipo</th>
-                <th>Usuário</th>
-                <th>Nr. S.A.</th>
-                <th>Item S.A.</th>
+                <th data-col="10" data-type="number" class="text-nowrap text-center">Custo 2 <span class="sort-icon"></span></th>
+                <th data-col="11">Ord. Produção <span class="sort-icon"></span></th>
+                <th data-col="12">Lote <span class="sort-icon"></span></th>
+                <th data-col="13">OS Ass. Tecn. <span class="sort-icon"></span></th>
+                <th data-col="14">Grupo <span class="sort-icon"></span></th>
+                <th data-col="15">Desc. Grupo <span class="sort-icon"></span></th>
+                <th data-col="16">Tipo RE/DE <span class="sort-icon"></span></th>
+                <th data-col="17">Ext. Texto <span class="sort-icon"></span></th>
+                <th data-col="18">Documento <span class="sort-icon"></span></th>
+                <th data-col="19">Dt. Emissão <span class="sort-icon"></span></th>
+                <th data-col="20">C. Contábil <span class="sort-icon"></span></th>
+                <th data-col="21">Desc. Conta <span class="sort-icon"></span></th>
+                <th data-col="22">Centro Custo <span class="sort-icon"></span></th>
+                <th data-col="23">Desc. C.Custo <span class="sort-icon"></span></th>
+                <th data-col="24">Parc./Total <span class="sort-icon"></span></th>
+                <th data-col="25">Estornado <span class="sort-icon"></span></th>
+                <th data-col="26" data-type="number">Sequencial <span class="sort-icon"></span></th>
+                <th data-col="27">Tipo <span class="sort-icon"></span></th>
+                <th data-col="28">Usuário <span class="sort-icon"></span></th>
+                <th data-col="29">Nr. S.A. <span class="sort-icon"></span></th>
+                <th data-col="30">Item S.A. <span class="sort-icon"></span></th>
             </tr>
         </thead>
         <tbody>
@@ -88,7 +119,7 @@
             </tr>
             {% empty %}
             <tr>
-                <td colspan="30">Nenhuma OP encontrada para este lote.</td>
+                <td colspan="31">Nenhuma OP encontrada para este lote.</td>
             </tr>
             {% endfor %}
         </tbody>
@@ -96,30 +127,29 @@
 </div>
 
 <script>
+    /* ── Formatação ── */
     function formatCurrency(value) {
         return value.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
     }
-    
+
+    /* ── Custo Final ── */
     function calcularCustoFinal() {
         let total = 0;
         document.querySelectorAll('.custo2-input').forEach(function(input) {
             let val = parseFloat(input.value);
-            if (!isNaN(val)) {
-                total += val;
-            }
+            if (!isNaN(val)) total += val;
         });
         document.getElementById('custoFinalLabel').textContent = formatCurrency(total);
     }
-    
+
+    /* ── Atualizar Custo 2 via API ── */
     function atualizarCusto2OP(event) {
         let input = event.target;
         let id_op = input.getAttribute('data-id-op');
         let novo_valor = input.value;
-        
+
         let csrftoken = document.querySelector('[name=csrfmiddlewaretoken]')?.value;
-        if (!csrftoken) {
-            csrftoken = getCookie('csrftoken');
-        }
+        if (!csrftoken) csrftoken = getCookie('csrftoken');
 
         fetch("{% url 'api_atualizar_custo2_op' %}", {
             method: 'POST',
@@ -127,14 +157,11 @@
                 'Content-Type': 'application/json',
                 'X-CSRFToken': csrftoken
             },
-            body: JSON.stringify({
-                'id_op': id_op,
-                'valor': novo_valor
-            })
+            body: JSON.stringify({ 'id_op': id_op, 'valor': novo_valor })
         })
         .then(response => response.json())
         .then(data => {
-            if(data.success) {
+            if (data.success) {
                 input.style.backgroundColor = '#d4edda';
                 setTimeout(() => { input.style.backgroundColor = ''; }, 2000);
             } else {
@@ -161,12 +188,83 @@
         }
         return cookieValue;
     }
-    
+
+    /* ── Ordenação de colunas ── */
+    (function () {
+        const table = document.getElementById('op-table');
+        if (!table) return;
+
+        let sortColIndex = null;
+        let sortAsc = true;
+
+        /**
+         * Extrai o valor de uma célula para comparação.
+         * Para colunas com input, usa o valor do input.
+         */
+        function getCellValue(row, colIndex, isNumeric) {
+            const cell = row.cells[colIndex];
+            if (!cell) return isNumeric ? 0 : '';
+            const input = cell.querySelector('input');
+            const raw = input ? input.value : cell.textContent.trim();
+            if (isNumeric) {
+                // Aceita tanto ponto quanto vírgula como separador decimal
+                const n = parseFloat(raw.replace(',', '.'));
+                return isNaN(n) ? 0 : n;
+            }
+            return raw.toLowerCase();
+        }
+
+        function sortTable(th) {
+            const colIndex = parseInt(th.getAttribute('data-col'), 10);
+            const isNumeric = th.getAttribute('data-type') === 'number';
+
+            // Alterna direção se a mesma coluna for clicada novamente
+            if (sortColIndex === colIndex) {
+                sortAsc = !sortAsc;
+            } else {
+                sortColIndex = colIndex;
+                sortAsc = true;
+            }
+
+            // Atualiza classes visuais nos headers
+            table.querySelectorAll('thead th').forEach(h => {
+                h.classList.remove('sort-asc', 'sort-desc');
+            });
+            th.classList.add(sortAsc ? 'sort-asc' : 'sort-desc');
+
+            // Ordena as linhas
+            const tbody = table.tBodies[0];
+            const rows = Array.from(tbody.querySelectorAll('tr'));
+
+            // Preserva linhas de "empty" (colspan) no lugar
+            const dataRows = rows.filter(r => r.cells.length > 1);
+            const emptyRows = rows.filter(r => r.cells.length <= 1);
+
+            dataRows.sort((a, b) => {
+                const va = getCellValue(a, colIndex, isNumeric);
+                const vb = getCellValue(b, colIndex, isNumeric);
+                if (va < vb) return sortAsc ? -1 : 1;
+                if (va > vb) return sortAsc ? 1 : -1;
+                return 0;
+            });
+
+            // Reinserir linhas na ordem correta
+            [...dataRows, ...emptyRows].forEach(row => tbody.appendChild(row));
+        }
+
+        table.querySelectorAll('thead th[data-col]').forEach(th => {
+            th.addEventListener('click', () => sortTable(th));
+        });
+    })();
+
+    /* ── Eventos dos inputs ── */
     document.querySelectorAll('.custo2-input').forEach(function(input) {
         input.addEventListener('input', calcularCustoFinal);
         input.addEventListener('change', atualizarCusto2OP);
+        // Impede propagação do clique para não disparar a ordenação da coluna
+        input.addEventListener('click', e => e.stopPropagation());
     });
-    
+
     // Calcula o valor inicial
     calcularCustoFinal();
 </script>
