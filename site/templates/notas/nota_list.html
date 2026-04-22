@@ -720,6 +720,11 @@
             table.page.len(rowsCount).draw(false);
         }
 
+        // Exibir valor original de todos os custos sem precisar clicar
+        $('.custo-input').each(function () {
+            mostrarValorAntigo(this);
+        });
+        
         // Lógica de sanfona para o Mobile
         $('#tabelaNotas tbody').on('click', 'tr', function (e) {
             if (window.innerWidth <= 992) {
@@ -943,6 +948,9 @@
     function mostrarValorAntigo(input) {
         const tdPai = input.closest('td');
         const valorAntigo = input.getAttribute('data-original');
+        
+        // não exibe se não houver valor original definido
+        if (!valorAntigo && valorAntigo !== '0') return;
 
         if (!tdPai.querySelector('.valor-historico')) {
             const novaColuna = document.createElement('span');

@@ -291,6 +291,11 @@ def atualizar_custo_api(request):
         # Se a data da nota está em mês/ano anterior ao atual e hoje é após o dia 3, bloqueia
         if (today.year, today.month) > (nota_year, nota_month) and today.day > 3:
             return JsonResponse({'error': 'Atualização de custo bloqueada após fechamento do dia 03'}, status=403)
+        
+        if Custo.objects.filter(chave=nota).exists():
+            if not request.user.is_superuser:
+                return JsonResponse({'success': False, 'error': 'Custo já cadastrado. Somente administradores podem alterar.'}, status=403)
+
         # 3. Cria um NOVO registro de custo (preservando histórico)
         custo = Custo.objects.create(
             chave=nota,
@@ -412,18 +417,22 @@ def atualizar_justificativa_api(request):
         if mes_status and mes_status.bloqueado:
             return JsonResponse({'success': False, 'error': f'Mês {mes_ano_nota} fechado para edição.'}, status=403)
 
+        if Nf_Has_Justificativa.objects.filter(nf=nota).exists():
+            if not request.user.is_superuser:
+                return JsonResponse({'success': False, 'error': 'Justificativa já cadastrada. Somente administradores podem alterar.'}, status=403)
+
         # 1. Buscamos a justificativa que o usuário clicou
         justificativa = get_object_or_404(Justificativa, id=nova_justificativa_id)
 
         # 2. VERIFICAÇÃO: Se o texto for 'Limpar / Sem Justificativa', 
         # nós apenas deletamos e retornamos.
-        if 'Limpar' in justificativa.texto:
-            Nf_Has_Justificativa.objects.filter(nf=nota).delete()
-            return JsonResponse({'success': True, 'action': 'cleared'})
+        # if 'Limpar' in justificativa.texto:
+        #     Nf_Has_Justificativa.objects.filter(nf=nota).delete()
+        #     return JsonResponse({'success': True, 'action': 'cleared'})
 
         # 3. Se NÃO for limpar, primeiro limpamos o que tinha antes (para não duplicar)
         # e depois criamos a nova relação
-        Nf_Has_Justificativa.objects.filter(nf=nota).delete()
+        # Nf_Has_Justificativa.objects.filter(nf=nota).delete()
         
         Nf_Has_Justificativa.objects.create(
             usuario=request.user,

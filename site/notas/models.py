@@ -45,6 +45,7 @@ class Nota(models.Model):
     recno = models.BigIntegerField()
     delete = models.BooleanField(default=False)
     comentario = models.TextField(default=None, blank=True, null=True)
+    custo_editado = models.BooleanField(default=False) 
     
     class Meta():
         verbose_name = "Nota"
