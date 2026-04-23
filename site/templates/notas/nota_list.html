@@ -1002,7 +1002,7 @@
             modalOP.show();
 
             // Faz a requisição AJAX
-            fetch(url)
+            fetch(url, { cache: 'no-store' })
                 .then(response => response.text())
                 .then(html => {
                     // Injeta o HTML retornado pela view dentro do modal

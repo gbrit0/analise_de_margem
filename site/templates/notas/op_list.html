@@ -134,6 +134,7 @@
 </div>
 
 <script>
+(function() {
     /* ── Helper: pega código do produto da URL (último segmento) ── */
     function getCodProdutoFromUrl() {
         try {
@@ -337,7 +338,7 @@
         });
     })();
 
-        /* ── Eventos dos inputs ── */
+    /* ── Eventos dos inputs ── */
     document.querySelectorAll('.custo2-input').forEach(function(input) {
         input.addEventListener('input', calcularCustoFinal);
 
@@ -367,4 +368,6 @@
     aplicarReadonlyProdutoAlvo(codProdutoAlvo);
     ajustarCusto2ParaProdutoAlvo(codProdutoAlvo, false);
     calcularCustoFinal();
+
+})();
 </script>
