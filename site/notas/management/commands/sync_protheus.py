@@ -9,8 +9,14 @@ from users.models import CustomUser
 from dbutils.pooled_db import PooledDB
 from setup import settings
 
+def setup_protheus_connection(conn):
+    conn.setdecoding(pyodbc.SQL_CHAR, encoding='cp1252')
+    conn.setdecoding(pyodbc.SQL_WCHAR, encoding='cp1252')
+    conn.setdecoding(pyodbc.SQL_WMETADATA, encoding='cp1252')
+    
 pool = PooledDB(
     creator=pyodbc,
+    # setsession=[setup_protheus_connection],
     maxconnections=10, # Como vamos usar lotes, não precisamos de tantas conexões simultâneas
     mincached=2,
     blocking=True,
@@ -41,7 +47,7 @@ class Command(BaseCommand):
         try:
             with pool.connection() as conn:
                 with conn.cursor() as cursor:
-                    cursor.execute(query_notas)
+                    cursor.execute(str(query_notas))
                     rows_notas = cursor.fetchall()
             
             self.stdout.write(f"{len(rows_notas)} notas encontradas no Protheus. Processando...")
