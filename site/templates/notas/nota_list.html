@@ -552,7 +552,7 @@
 
                 <td data-label="Lote">
                     {% if nota.lote and nota.lote.strip %}
-                    <a href="javascript:void(0);" class="btn-abre-modal" data-url="{% url 'lista_ops' nota.lote %}"
+                    <a href="javascript:void(0);" class="btn-abre-modal" data-url="{% url 'lista_ops' nota.lote nota.cod_produto %}"
                         style="color: var(--azul-escuro); text-decoration: underline; font-weight: 600; transition: color 0.2s;"
                         onmouseover="this.style.color='var(--verde-principal)'"
                         onmouseout="this.style.color='var(--azul-escuro)'" title="Ver Ordens de Produção desta Nota">

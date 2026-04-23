@@ -54,12 +54,22 @@ class Command(BaseCommand):
             data_corte = date(2026, 2, 1)
             cfops_especiais = {'5101', '6101', '5116', '6116', '6107'}
 
+            # Regra de bloqueio de atualização:
+            # se for após dia 3, não atualizar notas do mês/ano anterior ao atual
+            hoje = date.today()
+            if hoje.month == 1:
+                mes_anterior = 12
+                ano_mes_anterior = hoje.year - 1
+            else:
+                mes_anterior = hoje.month - 1
+                ano_mes_anterior = hoje.year
+            bloquear_atualizacao_mes_anterior = hoje.day > 3
+
             notas_para_criar = {}
             notas_para_atualizar = {}
             custos_para_criar = {}
             margens_para_criar = {}
-            # lotes_unicos = set()
-            # relacao_lote_nota = {} 
+            notas_ignoradas_regra_data = 0
 
             for row in rows_notas:
                 chave, filial, nome_filial, nota, item, no_pedido, vendedor, data_emissao, lote, cfop, cfop_descri, atualiza_estoque, gera_duplicata, cod_produto, produto, tipo_produto, desc_tipo_produto, armazem, cod_cliente, loja, cliente, grp_amar_ctb, classificacao_produto, estado_destino, quantidade, tabela_preco, preco_tabela, valor_contabil, custo_valor, valor_unitario, valor_ipi, valor_imp5, valor_imp6, valor_icms_difal, valor_icms, aliq_icms, recno, comentario = row
@@ -104,6 +114,15 @@ class Command(BaseCommand):
                     )
                     margens_para_criar[chave] = margem_obj
                 else:
+                    if (
+                        bloquear_atualizacao_mes_anterior
+                        and data_emissao
+                        and data_emissao.month == mes_anterior
+                        and data_emissao.year == ano_mes_anterior
+                    ):
+                        notas_ignoradas_regra_data += 1
+                        continue
+
                     notas_para_atualizar[chave] = nota_obj
 
             # 4. Executa as operações em lote no Django
@@ -124,6 +143,10 @@ class Command(BaseCommand):
                     Nota.objects.bulk_update(notas_para_atualizar.values(), campos_update, batch_size=1000)
 
             self.stdout.write("Notas salvas. Buscando OPs no Protheus...")
+            if notas_ignoradas_regra_data:
+                self.stdout.write(
+                    f"{notas_ignoradas_regra_data} notas ignoradas pela regra de bloqueio (mês/ano anterior após dia 3)."
+                )
 
             todas_ops_dict = {}
             

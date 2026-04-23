@@ -645,7 +645,7 @@ def dados_vendas_api(request):
 
 @login_required
 # @cache_page(60 * 15)
-def op_list_view(request, lote):
+def op_list_view(request, lote, cod_produto):
     with open(f'{settings.BASE_DIR}/notas/management/commands/querys/buscaOPs.sql', 'r') as f:
         query_ops = f.read()
         
@@ -732,7 +732,7 @@ def op_list_view(request, lote):
             op['centro_custo'] = '-'
             op['desc_centro_de_custo'] = '-'
             
-    return render(request, 'notas/op_list.html', {'linhas_op': linhas_op, 'lote': lote})
+    return render(request, 'notas/op_list.html', {'linhas_op': linhas_op, 'lote': lote, 'cod_produto': cod_produto})
 
 class JustificativaListView(LoginRequiredMixin, FilterView, ListView):
     login_url = 'login/'

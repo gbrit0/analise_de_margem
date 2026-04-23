@@ -94,7 +94,14 @@
                 <!-- <td>{{ op.preco_tabela }}</td>
                 <td>{{ op.tabela_preco }}</td> -->
                 <td>
-                    <input type="number" step="0.01" class="form-control form-control-sm custo2-input" data-id-op="{{ op.id_op }}" value="{{ op.custo_2_raw |default:'0.00' }}" style="width: 100px; text-align: right;">
+                    <input
+                        type="number"
+                        step="0.01"
+                        class="form-control form-control-sm custo2-input"
+                        data-id-op="{{ op.id_op }}"
+                        data-produto="{{ op.produto }}"
+                        value="{{ op.custo_2_raw |default:'0.00' }}"
+                        style="width: 100px; text-align: right;">
                 </td>
                 <td>{{ op.ord_producao }}</td>
                 <td>{{ op.lote }}</td>
@@ -127,19 +134,92 @@
 </div>
 
 <script>
-    /* ── Formatação ── */
+    /* ── Helper: pega código do produto da URL (último segmento) ── */
+    function getCodProdutoFromUrl() {
+        try {
+            const parts = window.location.pathname.replace(/\/$/, '').split('/');
+            const last = parts[parts.length - 1];
+            return last || null;
+        } catch (e) {
+            return null;
+        }
+    }
+
     function formatCurrency(value) {
         return value.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
     }
 
-    /* ── Custo Final ── */
+    function parseDecimal(value) {
+        if (value == null) return 0;
+        const n = parseFloat(String(value).replace(',', '.'));
+        return isNaN(n) ? 0 : n;
+    }
+
+    function getProdutoFromRow(row) {
+        return String(row?.cells?.[1]?.textContent || '').trim();
+    }
+
+    // cod_produto vindo da view (fallback URL)
+    const codProdutoAlvo = "{{ cod_produto|default:''|escapejs }}".trim() || getCodProdutoFromUrl();
+
+    /* ── Custo Final (exclui o produto-alvo) ── */
     function calcularCustoFinal() {
         let total = 0;
-        document.querySelectorAll('.custo2-input').forEach(function(input) {
-            let val = parseFloat(input.value);
-            if (!isNaN(val)) total += val;
+
+        document.querySelectorAll('#op-table tbody tr').forEach(function(row) {
+            if (row.cells.length <= 1) return; // linha "empty"
+
+            const produto = getProdutoFromRow(row);
+            if (codProdutoAlvo && produto === codProdutoAlvo) return; // exclui alvo
+
+            const input = row.querySelector('.custo2-input');
+            if (!input) return;
+
+            total += parseDecimal(input.value);
         });
+
         document.getElementById('custoFinalLabel').textContent = formatCurrency(total);
+    }
+
+    /* ── Ajusta custo2 do produto-alvo para a soma dos demais produtos ── */
+    function ajustarCusto2ParaProdutoAlvo(codProduto, persistir = false) {
+        if (!codProduto) return;
+
+        const rows = Array.from(document.querySelectorAll('#op-table tbody tr')).filter(r => r.cells.length > 1);
+        if (!rows.length) return;
+
+        let somaDemais = 0;
+        const inputsAlvo = [];
+
+        rows.forEach(row => {
+            const produto = getProdutoFromRow(row);
+            const input = row.querySelector('.custo2-input');
+            if (!input) return;
+
+            const valor = parseDecimal(input.value);
+
+            if (produto === codProduto) {
+                inputsAlvo.push(input);
+            } else {
+                somaDemais += valor;
+            }
+        });
+
+        const novoValor = somaDemais.toFixed(2);
+
+        inputsAlvo.forEach(input => {
+            if (input.value !== novoValor) {
+                input.value = novoValor;
+                input.style.backgroundColor = '#e2f0d9';
+                setTimeout(() => { input.style.backgroundColor = ''; }, 900);
+
+                if (persistir) {
+                    atualizarCusto2OP({ target: input });
+                }
+            }
+        });
+
+        calcularCustoFinal();
     }
 
     /* ── Atualizar Custo 2 via API ── */
@@ -257,14 +337,34 @@
         });
     })();
 
-    /* ── Eventos dos inputs ── */
+        /* ── Eventos dos inputs ── */
     document.querySelectorAll('.custo2-input').forEach(function(input) {
         input.addEventListener('input', calcularCustoFinal);
-        input.addEventListener('change', atualizarCusto2OP);
-        // Impede propagação do clique para não disparar a ordenação da coluna
+
+        input.addEventListener('change', function(evt) {
+            if (input.readOnly) return; // bloqueia edição manual do produto-alvo
+            atualizarCusto2OP(evt);
+            ajustarCusto2ParaProdutoAlvo(codProdutoAlvo, true);
+        });
+
         input.addEventListener('click', e => e.stopPropagation());
     });
 
-    // Calcula o valor inicial
+    function aplicarReadonlyProdutoAlvo(codProduto) {
+        if (!codProduto) return;
+
+        document.querySelectorAll('.custo2-input').forEach(input => {
+            const produto = String(input.getAttribute('data-produto') || '').trim();
+            if (produto === codProduto) {
+                input.readOnly = true;
+                input.classList.add('bg-light');
+                input.title = 'Valor calculado automaticamente';
+            }
+        });
+    }
+
+    // Inicialização
+    aplicarReadonlyProdutoAlvo(codProdutoAlvo);
+    ajustarCusto2ParaProdutoAlvo(codProdutoAlvo, false);
     calcularCustoFinal();
 </script>

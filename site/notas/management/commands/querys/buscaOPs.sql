@@ -8,13 +8,13 @@ SELECT
     TRIM(D3_UM) unidade,
     D3_QUANT quantidade,
     CASE 
-        WHEN TRIM(D3_TM) = '010' OR TRIM(CT1_DESC01) = 'PRODUTOS INTERMEDIARIOS' THEN 0 
+        WHEN TRIM(D3_TM) = '010' THEN 0 
         WHEN SUBSTRING(D3_CF, 1, 2) = 'RE' THEN D3_QUANT 
         ELSE D3_QUANT * -1 
     END quant_2,
     D3_CUSTO1 custo,
     CASE 
-        WHEN TRIM(D3_TM) = '010' OR TRIM(CT1_DESC01) = 'PRODUTOS INTERMEDIARIOS' THEN 0 
+        WHEN TRIM(D3_TM) = '010' THEN 0 
         WHEN SUBSTRING(D3_CF, 1, 2) = 'RE' THEN (D3_CUSTO1) 
         ELSE (D3_CUSTO1) * -1 
     END custo_2,
