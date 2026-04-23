@@ -653,86 +653,99 @@ def op_list_view(request, lote, cod_produto):
         with conn.cursor() as cursor:
             cursor.execute(query_ops, lote)
             colunas = [coluna[0] for coluna in cursor.description]
-            linhas_op = [dict(zip(colunas, linha)) for linha in cursor.fetchall()]
+            linhas_op = []
+            for linha in cursor.fetchall():
+                d = dict(zip(colunas, linha))
+                for k, v in d.items():
+                    if isinstance(v, str):
+                        d[k] = v.strip()
+                linhas_op.append(d)
 
-    if linhas_op:
-        existing_ops = {o.id_op: o for o in OP.objects.prefetch_related('custo2_op_set').filter(lote=lote)}
-        ops_to_create = []
-        ops_to_update = []
-        
-        update_fields = [c for c in colunas if c != 'id_op']
-        
-        for op in linhas_op:
-            lote_str = str(op.get('lote') or '').strip()
-            ord_str = str(op.get('ord_producao') or '').strip()
-            seq_str = str(op.get('sequencial') or '').strip()
-            tm_str = str(op.get('tp_movimento') or '').strip()
-            
-            id_op_unico = f"{lote_str}_{ord_str}_{seq_str}_{tm_str}"
-            op['id_op'] = id_op_unico
-            
-            op_data = {k: v for k, v in op.items() if k in update_fields}
-            
-            for decimal_field in ['quantidade', 'quant_2', 'custo', 'custo_2']:
-                if op_data.get(decimal_field) is None:
-                    op_data[decimal_field] = 0
-                    op[decimal_field] = 0
-
-            if id_op_unico in existing_ops:
-                obj = existing_ops[id_op_unico]
-                has_custo2_history = obj.pk is not None and obj.custo2_op_set.exists()
-                if has_custo2_history:
-                    op['custo_2'] = obj.custo_2
-                    op_data.pop('custo_2', None)
-
-                for k, v in op_data.items():
-                    setattr(obj, k, v)
-                obj._update_fields = [f for f in update_fields if f in op_data]
-                ops_to_update.append(obj)
-            else:
-                op_data['id_op'] = id_op_unico
-                ops_to_create.append(OP(**op_data))
-                existing_ops[id_op_unico] = ops_to_create[-1]
-
-        if ops_to_create:
-            OP.objects.bulk_create(ops_to_create, batch_size=500)
-
-        if ops_to_update:
-            from collections import defaultdict
-            grupos = defaultdict(list)
-            for obj in ops_to_update:
-                campos = tuple(getattr(obj, '_update_fields', update_fields))
-                grupos[campos].append(obj)
-            for campos, grupo in grupos.items():
-                OP.objects.bulk_update(grupo, list(campos), batch_size=500)
+            arvore_json = json.dumps(construir_arvore_producao(linhas_op), default=str)
+    return render(request, 'notas/op_list.html', {
+        'arvore_json': arvore_json,
+        'lote': lote,
+        'cod_produto': cod_produto
+    })
     
-    for op in linhas_op:
-        if op.get('custo') is not None:
-            op['custo_raw'] = f"{float(op['custo']):.2f}"
-            op['custo'] = locale.currency(op['custo'], grouping=True)
-        if op.get('custo_2') is not None:
-            # Retrieve latest historical custo_2 if exists
-            try:
-                op_obj = OP.objects.filter(id_op=op['id_op']).first()
-                if op_obj:
-                    latest_custo2 = op_obj.custo2_op_set.order_by('-id').first()
-                    if latest_custo2:
-                        op['custo_2'] = latest_custo2.valor
-            except Exception:
-                pass
-            op['custo_2_raw'] = f"{float(op['custo_2']):.2f}"
-            op['custo_2'] = locale.currency(op['custo_2'], grouping=True)
-        if op.get('quant_2') is not None:
-            op['quant_2_raw'] = f"{float(op['quant_2']):.2f}"
-
-        if op.get('c_contabil') is None:
-            op['c_contabil'] = '-'
-            op['descricao_da_conta'] = '-'
-        if op.get('centro_custo') is None:
-            op['centro_custo'] = '-'
-            op['desc_centro_de_custo'] = '-'
+    # if linhas_op:
+    #     existing_ops = {o.id_op: o for o in OP.objects.prefetch_related('custo2_op_set').filter(lote=lote)}
+    #     ops_to_create = []
+    #     ops_to_update = []
+        
+    #     update_fields = [c for c in colunas if c != 'id_op']
+        
+    #     for op in linhas_op:
+    #         lote_str = str(op.get('lote') or '').strip()
+    #         ord_str = str(op.get('ord_producao') or '').strip()
+    #         seq_str = str(op.get('sequencial') or '').strip()
+    #         tm_str = str(op.get('tp_movimento') or '').strip()
             
-    return render(request, 'notas/op_list.html', {'linhas_op': linhas_op, 'lote': lote, 'cod_produto': cod_produto})
+    #         id_op_unico = f"{lote_str}_{ord_str}_{seq_str}_{tm_str}"
+    #         op['id_op'] = id_op_unico
+            
+    #         op_data = {k: v for k, v in op.items() if k in update_fields}
+            
+    #         for decimal_field in ['quantidade', 'quant_2', 'custo', 'custo_2']:
+    #             if op_data.get(decimal_field) is None:
+    #                 op_data[decimal_field] = 0
+    #                 op[decimal_field] = 0
+
+    #         if id_op_unico in existing_ops:
+    #             obj = existing_ops[id_op_unico]
+    #             has_custo2_history = obj.pk is not None and obj.custo2_op_set.exists()
+    #             if has_custo2_history:
+    #                 op['custo_2'] = obj.custo_2
+    #                 op_data.pop('custo_2', None)
+
+    #             for k, v in op_data.items():
+    #                 setattr(obj, k, v)
+    #             obj._update_fields = [f for f in update_fields if f in op_data]
+    #             ops_to_update.append(obj)
+    #         else:
+    #             op_data['id_op'] = id_op_unico
+    #             ops_to_create.append(OP(**op_data))
+    #             existing_ops[id_op_unico] = ops_to_create[-1]
+
+    #     if ops_to_create:
+    #         OP.objects.bulk_create(ops_to_create, batch_size=500)
+
+    #     if ops_to_update:
+    #         from collections import defaultdict
+    #         grupos = defaultdict(list)
+    #         for obj in ops_to_update:
+    #             campos = tuple(getattr(obj, '_update_fields', update_fields))
+    #             grupos[campos].append(obj)
+    #         for campos, grupo in grupos.items():
+    #             OP.objects.bulk_update(grupo, list(campos), batch_size=500)
+    
+    # for op in linhas_op:
+    #     if op.get('custo') is not None:
+    #         op['custo_raw'] = f"{float(op['custo']):.2f}"
+    #         op['custo'] = locale.currency(op['custo'], grouping=True)
+    #     if op.get('custo_2') is not None:
+    #         # Retrieve latest historical custo_2 if exists
+    #         try:
+    #             op_obj = OP.objects.filter(id_op=op['id_op']).first()
+    #             if op_obj:
+    #                 latest_custo2 = op_obj.custo2_op_set.order_by('-id').first()
+    #                 if latest_custo2:
+    #                     op['custo_2'] = latest_custo2.valor
+    #         except Exception:
+    #             pass
+    #         op['custo_2_raw'] = f"{float(op['custo_2']):.2f}"
+    #         op['custo_2'] = locale.currency(op['custo_2'], grouping=True)
+    #     if op.get('quant_2') is not None:
+    #         op['quant_2_raw'] = f"{float(op['quant_2']):.2f}"
+
+    #     if op.get('c_contabil') is None:
+    #         op['c_contabil'] = '-'
+    #         op['descricao_da_conta'] = '-'
+    #     if op.get('centro_custo') is None:
+    #         op['centro_custo'] = '-'
+    #         op['desc_centro_de_custo'] = '-'
+            
+    # return render(request, 'notas/op_list.html', {'linhas_op': linhas_op, 'lote': lote, 'cod_produto': cod_produto})
 
 class JustificativaListView(LoginRequiredMixin, FilterView, ListView):
     login_url = 'login/'
@@ -1228,3 +1241,67 @@ def exportar_op_excel(request, lote):
     response['Content-Disposition'] = f'attachment; filename="OPs_lote_{lote}.xlsx"'
     wb.save(response)
     return response
+
+def construir_arvore_producao(flat_data):
+    ops = {}
+    produtos_consumidos = set()
+
+    # 1. Agrupar os dados por OP
+    for row in flat_data:
+        op_id = row['ord_producao']
+        if op_id not in ops:
+            ops[op_id] = {'pai': None, 'filhos': []}
+
+        # Se for movimento de produção (010), é o produto resultante da OP
+        if row['tp_movimento'] == '010':
+            ops[op_id]['pai'] = row
+        else:
+            # É componente consumido
+            ops[op_id]['filhos'].append(row)
+            produtos_consumidos.add(row['produto'])
+
+    # 2. Descobrir quem é o Root (Produto Final)
+    # O Root é o 'pai' de alguma OP cujo código de produto NÃO está na lista de produtos consumidos
+    root_op = None
+    for op_id, dados in ops.items():
+        if dados['pai'] and dados['pai']['produto'] not in produtos_consumidos:
+            root_op = op_id
+            break
+
+    # 3. Função Recursiva para montar a árvore e somar os custos corretamente
+    def montar_no(op_id):
+        if op_id not in ops or not ops[op_id]['pai']:
+            return None
+
+        no_atual = ops[op_id]['pai'].copy()
+        no_atual['filhos'] = []
+        custo_total = 0
+
+        for filho_flat in ops[op_id]['filhos']:
+            # Verifica se este filho tem a sua própria OP de fabricação na lista
+            # (Ou seja, se ele é um subconjunto e não uma matéria-prima pura)
+            op_do_filho = next((k for k, v in ops.items() if v['pai'] and v['pai']['produto'] == filho_flat['produto']), None)
+
+            if op_do_filho:
+                # É um subconjunto, desce na recursão
+                no_filho_processado = montar_no(op_do_filho)
+                custo_total += no_filho_processado['custo_calculado']
+                no_atual['filhos'].append(no_filho_processado)
+            else:
+                # É uma folha (matéria-prima final, ex: parafuso, cabo, mão de obra)
+                filho_processado = filho_flat.copy()
+                # Aqui o custo é o unitário * quantidade
+                custo_calculado_folha = float(filho_flat.get('custo_2', 0))
+                filho_processado['custo_calculado'] = custo_calculado_folha
+                filho_processado['is_leaf'] = True
+                
+                custo_total += custo_calculado_folha
+                no_atual['filhos'].append(filho_processado)
+
+        no_atual['custo_calculado'] = custo_total
+        no_atual['is_leaf'] = False
+        return no_atual
+
+    # Monta a árvore a partir do produto principal
+    arvore = montar_no(root_op) if root_op else {}
+    return arvore

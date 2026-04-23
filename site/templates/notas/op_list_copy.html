@@ -1,0 +1,373 @@
+<div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
+    <h5 style="margin: 0; color: var(--azul-escuro);"><i class="fa-solid fa-industry"></i> Ordens de Produção (Lote: {{ lote }}) 
+        <span class="badge" style="background-color: var(--verde-principal); font-size: 0.9rem; margin-left: 10px;">Custo Final: <span id="custoFinalLabel">R$ 0,00</span></span>
+    </h5>
+    <a href="{% url 'exportar_op_excel' lote=lote %}" target="_parent" class="btn btn-sm btn-success" style="background-color: var(--verde-principal); border: none;" title="Exportar para Excel">
+        <i class="fa-solid fa-file-excel"></i> Exportar
+    </a>
+</div>
+
+<style>
+    #op-table thead th {
+        cursor: pointer;
+        user-select: none;
+        white-space: nowrap;
+        position: relative;
+        padding-right: 20px;
+    }
+    #op-table thead th:hover {
+        background-color: rgba(0, 0, 0, 0.07);
+    }
+    #op-table thead th .sort-icon {
+        position: absolute;
+        right: 5px;
+        top: 50%;
+        transform: translateY(-50%);
+        font-size: 0.7rem;
+        opacity: 0.35;
+        transition: opacity 0.15s;
+    }
+    #op-table thead th.sort-asc .sort-icon,
+    #op-table thead th.sort-desc .sort-icon {
+        opacity: 1;
+        color: var(--verde-principal, #198754);
+    }
+    #op-table thead th.sort-asc .sort-icon::after  { content: ' ▲'; }
+    #op-table thead th.sort-desc .sort-icon::after { content: ' ▼'; }
+    #op-table thead th:not(.sort-asc):not(.sort-desc) .sort-icon::after { content: ' ⇅'; }
+</style>
+
+<div class="table-responsive">
+    <table id="op-table" class="table table-bordered table-striped table-hover">
+        <thead>
+            <tr>
+                <th data-col="0">Filial <span class="sort-icon"></span></th>
+                <th data-col="1">Produto <span class="sort-icon"></span></th>
+                <th data-col="2">Descr. Produto <span class="sort-icon"></span></th>
+                <th data-col="3">Armazém <span class="sort-icon"></span></th>
+                <th data-col="4">Tp. Mov. <span class="sort-icon"></span></th>
+                <th data-col="5">Desc. TM <span class="sort-icon"></span></th>
+                <th data-col="6">Unidade <span class="sort-icon"></span></th>
+                <th data-col="7" data-type="number">Quantidade <span class="sort-icon"></span></th>
+                <th data-col="8" data-type="number" class="text-nowrap text-center">Quant. 2 <span class="sort-icon"></span></th>
+                <th data-col="9" data-type="number">Custo <span class="sort-icon"></span></th>
+                <!-- <th>Preço Tabela</th>
+                <th>Tabela Preço</th> -->
+                <th data-col="10" data-type="number" class="text-nowrap text-center">Custo 2 <span class="sort-icon"></span></th>
+                <th data-col="11">Ord. Produção <span class="sort-icon"></span></th>
+                <th data-col="12">Lote <span class="sort-icon"></span></th>
+                <th data-col="13">OS Ass. Tecn. <span class="sort-icon"></span></th>
+                <th data-col="14">Grupo <span class="sort-icon"></span></th>
+                <th data-col="15">Desc. Grupo <span class="sort-icon"></span></th>
+                <th data-col="16">Tipo RE/DE <span class="sort-icon"></span></th>
+                <th data-col="17">Ext. Texto <span class="sort-icon"></span></th>
+                <th data-col="18">Documento <span class="sort-icon"></span></th>
+                <th data-col="19">Dt. Emissão <span class="sort-icon"></span></th>
+                <th data-col="20">C. Contábil <span class="sort-icon"></span></th>
+                <th data-col="21">Desc. Conta <span class="sort-icon"></span></th>
+                <th data-col="22">Centro Custo <span class="sort-icon"></span></th>
+                <th data-col="23">Desc. C.Custo <span class="sort-icon"></span></th>
+                <th data-col="24">Parc./Total <span class="sort-icon"></span></th>
+                <th data-col="25">Estornado <span class="sort-icon"></span></th>
+                <th data-col="26" data-type="number">Sequencial <span class="sort-icon"></span></th>
+                <th data-col="27">Tipo <span class="sort-icon"></span></th>
+                <th data-col="28">Usuário <span class="sort-icon"></span></th>
+                <th data-col="29">Nr. S.A. <span class="sort-icon"></span></th>
+                <th data-col="30">Item S.A. <span class="sort-icon"></span></th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for op in linhas_op %}
+            <tr {% if op.tp_movimento == '010' %}class="table-warning" {% endif %}>
+                <td>{{ op.filial }}</td>
+                <td>{{ op.produto }}</td>
+                <td>{{ op.descr_prod }}</td>
+                <td>{{ op.armazem }}</td>
+                <td>{{ op.tp_movimento }}</td>
+                <td>{{ op.descricao_tm }}</td>
+                <td>{{ op.unidade }}</td>
+                <td>{{ op.quantidade }}</td>
+                <td>
+                    <input type="number" step="0.01" class="form-control form-control-sm quant2-input" value="{{ op.quant_2_raw|default:'0.00' }}" style="width: 100px; text-align: right;">
+                </td>
+                <td>{{ op.custo }}</td>
+                <!-- <td>{{ op.preco_tabela }}</td>
+                <td>{{ op.tabela_preco }}</td> -->
+                <td>
+                    <input
+                        type="number"
+                        step="0.01"
+                        class="form-control form-control-sm custo2-input"
+                        data-id-op="{{ op.id_op }}"
+                        data-produto="{{ op.produto }}"
+                        value="{{ op.custo_2_raw |default:'0.00' }}"
+                        style="width: 100px; text-align: right;">
+                </td>
+                <td>{{ op.ord_producao }}</td>
+                <td>{{ op.lote }}</td>
+                <td>{{ op.os_ass_tecn }}</td>
+                <td>{{ op.grupo }}</td>
+                <td>{{ op.descricao_grupo }}</td>
+                <td>{{ op.tipo_re_de }}</td>
+                <td>{{ op.ext_texto }}</td>
+                <td>{{ op.documento }}</td>
+                <td>{{ op.dt_emissao }}</td>
+                <td>{{ op.c_contabil }}</td>
+                <td>{{ op.descricao_da_conta }}</td>
+                <td>{{ op.centro_custo }}</td>
+                <td>{{ op.desc_centro_de_custo }}</td>
+                <td>{{ op.parc_total }}</td>
+                <td>{{ op.estornado }}</td>
+                <td>{{ op.sequencial }}</td>
+                <td>{{ op.tipo }}</td>
+                <td>{{ op.usuario }}</td>
+                <td>{{ op.nr_s_a }}</td>
+                <td>{{ op.item_s_a }}</td>
+            </tr>
+            {% empty %}
+            <tr>
+                <td colspan="31">Nenhuma OP encontrada para este lote.</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+
+<script>
+(function() {
+    /* ── Helper: pega código do produto da URL (último segmento) ── */
+    function getCodProdutoFromUrl() {
+        try {
+            const parts = window.location.pathname.replace(/\/$/, '').split('/');
+            const last = parts[parts.length - 1];
+            return last || null;
+        } catch (e) {
+            return null;
+        }
+    }
+
+    function formatCurrency(value) {
+        return value.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+    }
+
+    function parseDecimal(value) {
+        if (value == null) return 0;
+        const n = parseFloat(String(value).replace(',', '.'));
+        return isNaN(n) ? 0 : n;
+    }
+
+    function getProdutoFromRow(row) {
+        return String(row?.cells?.[1]?.textContent || '').trim();
+    }
+
+    // cod_produto vindo da view (fallback URL)
+    const codProdutoAlvo = "{{ cod_produto|default:''|escapejs }}".trim() || getCodProdutoFromUrl();
+
+    /* ── Custo Final (exclui o produto-alvo) ── */
+    function calcularCustoFinal() {
+        let total = 0;
+
+        document.querySelectorAll('#op-table tbody tr').forEach(function(row) {
+            if (row.cells.length <= 1) return; // linha "empty"
+
+            const produto = getProdutoFromRow(row);
+            if (codProdutoAlvo && produto === codProdutoAlvo) return; // exclui alvo
+
+            const input = row.querySelector('.custo2-input');
+            if (!input) return;
+
+            total += parseDecimal(input.value);
+        });
+
+        document.getElementById('custoFinalLabel').textContent = formatCurrency(total);
+    }
+
+    /* ── Ajusta custo2 do produto-alvo para a soma dos demais produtos ── */
+    function ajustarCusto2ParaProdutoAlvo(codProduto, persistir = false) {
+        if (!codProduto) return;
+
+        const rows = Array.from(document.querySelectorAll('#op-table tbody tr')).filter(r => r.cells.length > 1);
+        if (!rows.length) return;
+
+        let somaDemais = 0;
+        const inputsAlvo = [];
+
+        rows.forEach(row => {
+            const produto = getProdutoFromRow(row);
+            const input = row.querySelector('.custo2-input');
+            if (!input) return;
+
+            const valor = parseDecimal(input.value);
+
+            if (produto === codProduto) {
+                inputsAlvo.push(input);
+            } else {
+                somaDemais += valor;
+            }
+        });
+
+        const novoValor = somaDemais.toFixed(2);
+
+        inputsAlvo.forEach(input => {
+            if (input.value !== novoValor) {
+                input.value = novoValor;
+                input.style.backgroundColor = '#e2f0d9';
+                setTimeout(() => { input.style.backgroundColor = ''; }, 900);
+
+                if (persistir) {
+                    atualizarCusto2OP({ target: input });
+                }
+            }
+        });
+
+        calcularCustoFinal();
+    }
+
+    /* ── Atualizar Custo 2 via API ── */
+    function atualizarCusto2OP(event) {
+        let input = event.target;
+        let id_op = input.getAttribute('data-id-op');
+        let novo_valor = input.value;
+
+        let csrftoken = document.querySelector('[name=csrfmiddlewaretoken]')?.value;
+        if (!csrftoken) csrftoken = getCookie('csrftoken');
+
+        fetch("{% url 'api_atualizar_custo2_op' %}", {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': csrftoken
+            },
+            body: JSON.stringify({ 'id_op': id_op, 'valor': novo_valor })
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                input.style.backgroundColor = '#d4edda';
+                setTimeout(() => { input.style.backgroundColor = ''; }, 2000);
+            } else {
+                alert("Erro ao atualizar o custo 2 da OP: " + data.error);
+            }
+        })
+        .catch(error => {
+            console.error('Erro:', error);
+            alert("Erro de conexão ao atualizar o custo.");
+        });
+    }
+
+    function getCookie(name) {
+        let cookieValue = null;
+        if (document.cookie && document.cookie !== '') {
+            const cookies = document.cookie.split(';');
+            for (let i = 0; i < cookies.length; i++) {
+                const cookie = cookies[i].trim();
+                if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                    cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                    break;
+                }
+            }
+        }
+        return cookieValue;
+    }
+
+    /* ── Ordenação de colunas ── */
+    (function () {
+        const table = document.getElementById('op-table');
+        if (!table) return;
+
+        let sortColIndex = null;
+        let sortAsc = true;
+
+        /**
+         * Extrai o valor de uma célula para comparação.
+         * Para colunas com input, usa o valor do input.
+         */
+        function getCellValue(row, colIndex, isNumeric) {
+            const cell = row.cells[colIndex];
+            if (!cell) return isNumeric ? 0 : '';
+            const input = cell.querySelector('input');
+            const raw = input ? input.value : cell.textContent.trim();
+            if (isNumeric) {
+                // Aceita tanto ponto quanto vírgula como separador decimal
+                const n = parseFloat(raw.replace(',', '.'));
+                return isNaN(n) ? 0 : n;
+            }
+            return raw.toLowerCase();
+        }
+
+        function sortTable(th) {
+            const colIndex = parseInt(th.getAttribute('data-col'), 10);
+            const isNumeric = th.getAttribute('data-type') === 'number';
+
+            // Alterna direção se a mesma coluna for clicada novamente
+            if (sortColIndex === colIndex) {
+                sortAsc = !sortAsc;
+            } else {
+                sortColIndex = colIndex;
+                sortAsc = true;
+            }
+
+            // Atualiza classes visuais nos headers
+            table.querySelectorAll('thead th').forEach(h => {
+                h.classList.remove('sort-asc', 'sort-desc');
+            });
+            th.classList.add(sortAsc ? 'sort-asc' : 'sort-desc');
+
+            // Ordena as linhas
+            const tbody = table.tBodies[0];
+            const rows = Array.from(tbody.querySelectorAll('tr'));
+
+            // Preserva linhas de "empty" (colspan) no lugar
+            const dataRows = rows.filter(r => r.cells.length > 1);
+            const emptyRows = rows.filter(r => r.cells.length <= 1);
+
+            dataRows.sort((a, b) => {
+                const va = getCellValue(a, colIndex, isNumeric);
+                const vb = getCellValue(b, colIndex, isNumeric);
+                if (va < vb) return sortAsc ? -1 : 1;
+                if (va > vb) return sortAsc ? 1 : -1;
+                return 0;
+            });
+
+            // Reinserir linhas na ordem correta
+            [...dataRows, ...emptyRows].forEach(row => tbody.appendChild(row));
+        }
+
+        table.querySelectorAll('thead th[data-col]').forEach(th => {
+            th.addEventListener('click', () => sortTable(th));
+        });
+    })();
+
+    /* ── Eventos dos inputs ── */
+    document.querySelectorAll('.custo2-input').forEach(function(input) {
+        input.addEventListener('input', calcularCustoFinal);
+
+        input.addEventListener('change', function(evt) {
+            if (input.readOnly) return; // bloqueia edição manual do produto-alvo
+            atualizarCusto2OP(evt);
+            ajustarCusto2ParaProdutoAlvo(codProdutoAlvo, true);
+        });
+
+        input.addEventListener('click', e => e.stopPropagation());
+    });
+
+    function aplicarReadonlyProdutoAlvo(codProduto) {
+        if (!codProduto) return;
+
+        document.querySelectorAll('.custo2-input').forEach(input => {
+            const produto = String(input.getAttribute('data-produto') || '').trim();
+            if (produto === codProduto) {
+                input.readOnly = true;
+                input.classList.add('bg-light');
+                input.title = 'Valor calculado automaticamente';
+            }
+        });
+    }
+
+    // Inicialização
+    aplicarReadonlyProdutoAlvo(codProdutoAlvo);
+    ajustarCusto2ParaProdutoAlvo(codProdutoAlvo, false);
+    calcularCustoFinal();
+
+})();
+</script>

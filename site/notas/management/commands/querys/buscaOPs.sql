@@ -78,10 +78,11 @@ WHERE
         WHERE 
             D_E_L_E_T_ <> '*' 
             AND D3_ESTORNO <> 'S' 
-            AND TRIM(D3_LOTECTL) = ?
+            AND TRIM(D3_LOTECTL) = '7288'
     )
 
     AND D3_ESTORNO <> 'S'
+    and D3_COD = 'E0010035'
 
 ORDER BY
     D3_OP, D3_TM, D3_CUSTO1 DESC, TRIM(B1_DESC)
