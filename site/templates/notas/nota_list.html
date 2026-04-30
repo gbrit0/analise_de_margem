@@ -227,6 +227,36 @@
         width: 180px;
     }
 
+    .comentario-editor {
+        display: flex;
+        align-items: flex-start;
+        gap: 8px;
+        min-width: 260px;
+    }
+
+    .comentario-editor textarea {
+        flex: 1;
+        min-width: 150px;
+        font-size: 0.85rem;
+        resize: vertical;
+    }
+
+    .btn-salvar-comentario {
+        padding: 8px 12px;
+        white-space: nowrap;
+        min-height: 38px;
+    }
+
+    .comentario-status {
+        display: inline-flex;
+        align-items: center;
+        min-width: 48px;
+        min-height: 38px;
+        font-size: 0.75rem;
+        color: var(--verde-principal);
+        font-weight: 600;
+    }
+
     /* --- RESPONSIVIDADE EM CARDS EXPANSSÍVEIS (Mobile) --- */
     @media (max-width: 992px) {
         .table-container {
@@ -317,6 +347,12 @@
         .celula-justificativa select {
             width: 140px;
             text-align: right;
+        }
+
+        .comentario-editor {
+            justify-content: flex-end;
+            min-width: 0;
+            width: 100%;
         }
     }
 
@@ -641,10 +677,15 @@
                 </td>
 
                 <td data-label="Comentário" class="text-center">
-                    <textarea class="form-control nao-expande" rows="1"
-                        data-chave="{{ nota.chave }}" 
-                        onchange="atualizarComentario(this)"
-                        style="font-size: 0.85rem; resize: vertical; min-width: 150px;">{{ nota.comentario|default_if_none:"" }}</textarea>
+                    <div class="comentario-editor nao-expande">
+                        <textarea class="form-control comentario-input nao-expande" rows="1"
+                            data-chave="{{ nota.chave }}">{{ nota.comentario|default_if_none:"" }}</textarea>
+                        <button type="button" class="btn-custom btn-primary-custom btn-salvar-comentario nao-expande"
+                            onclick="atualizarComentario(this)" title="Salvar comentário">
+                            <i class="fa-solid fa-floppy-disk"></i> Salvar
+                        </button>
+                        <span class="comentario-status" aria-live="polite"></span>
+                    </div>
                 </td>
             </tr>
             {% endfor %}
@@ -820,6 +861,12 @@
                 $(this).closest('form').submit();
             }
         });
+
+        $('.comentario-input').on('input', function () {
+            const editor = this.closest('.comentario-editor');
+            const status = editor ? editor.querySelector('.comentario-status') : null;
+            if (status) status.textContent = '';
+        });
     });
 
     // --- Funções AJAX ---
@@ -911,12 +958,21 @@
             });
     }
 
-    function atualizarComentario(inputElement) {
+    function atualizarComentario(triggerElement) {
+        const editor = triggerElement.closest('.comentario-editor');
+        const inputElement = editor ? editor.querySelector('.comentario-input') : triggerElement;
+        const botaoSalvar = editor ? editor.querySelector('.btn-salvar-comentario') : null;
+        const status = editor ? editor.querySelector('.comentario-status') : null;
         const chave = inputElement.getAttribute('data-chave');
         const novoComentario = inputElement.value;
         const csrfToken = document.querySelector('[name=csrfmiddlewaretoken]').value;
 
         inputElement.style.backgroundColor = "var(--cinza-fundo)";
+        if (botaoSalvar) {
+            botaoSalvar.disabled = true;
+            botaoSalvar.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Salvando';
+        }
+        if (status) status.textContent = '';
 
         fetch('/api/atualizar-comentario/', {
             method: 'POST',
@@ -932,8 +988,13 @@
             .then(response => response.json())
             .then(data => {
                 inputElement.style.backgroundColor = "var(--branco)";
+                if (botaoSalvar) {
+                    botaoSalvar.disabled = false;
+                    botaoSalvar.innerHTML = '<i class="fa-solid fa-floppy-disk"></i> Salvar';
+                }
                 if (data.success) {
                     inputElement.style.border = "2px solid var(--verde-principal)";
+                    if (status) status.textContent = 'Salvo';
                     setTimeout(() => { inputElement.style.border = "1px solid var(--cinza-borda)"; }, 2000);
                 } else {
                     alert('Erro: ' + data.error);
@@ -942,6 +1003,11 @@
             .catch(error => {
                 console.error('Erro:', error);
                 inputElement.style.backgroundColor = "#ffcccc";
+                if (botaoSalvar) {
+                    botaoSalvar.disabled = false;
+                    botaoSalvar.innerHTML = '<i class="fa-solid fa-floppy-disk"></i> Salvar';
+                }
+                if (status) status.textContent = '';
             });
     }
 
