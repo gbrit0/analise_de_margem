@@ -589,6 +589,58 @@ def dados_vendas_api(request):
         
     estatisticas_justificativas.sort(key=lambda x: x['contagem'], reverse=True)
 
+    estatisticas_vendedores_qs = queryset.values('vendedor').annotate(
+        total_vendas=Sum('valor_contabil'),
+        margem_total=Sum(subquery_margem),
+        custo_total=Sum(subquery_custo),
+        qtd_notas=Count('chave')
+    ).order_by('-total_vendas')
+
+    estatisticas_vendedores = []
+    for item in estatisticas_vendedores_qs:
+        total_vendedor = item['total_vendas'] or Decimal('0.0')
+        margem_vendedor = item['margem_total'] or Decimal('0.0')
+        custo_vendedor = item['custo_total'] or Decimal('0.0')
+        margem_percentual_vendedor = 0
+        if total_vendedor:
+            margem_percentual_vendedor = (margem_vendedor / total_vendedor) * 100
+
+        estatisticas_vendedores.append({
+            'vendedor': item['vendedor'] or 'Sem vendedor',
+            'qtd_notas': item['qtd_notas'],
+            'total_vendas': float(total_vendedor),
+            'custo_total': float(custo_vendedor),
+            'margem_total': float(margem_vendedor),
+            'margem_percentual': round(float(margem_percentual_vendedor), 2)
+        })
+
+    top_vendedores = [item['vendedor'] for item in estatisticas_vendedores_qs[:5] if item['vendedor']]
+    estatisticas_vendedores_periodo = []
+    if top_vendedores:
+        estatisticas_vendedores_periodo_qs = queryset.filter(
+            vendedor__in=top_vendedores
+        ).annotate(
+            mes=TruncMonth('data_emissao')
+        ).values('mes', 'vendedor').annotate(
+            total_vendas=Sum('valor_contabil'),
+            margem_total=Sum(subquery_margem)
+        ).order_by('mes', 'vendedor')
+
+        for item in estatisticas_vendedores_periodo_qs:
+            total_vendedor_periodo = item['total_vendas'] or Decimal('0.0')
+            margem_vendedor_periodo = item['margem_total'] or Decimal('0.0')
+            margem_percentual_periodo = 0
+            if total_vendedor_periodo:
+                margem_percentual_periodo = (margem_vendedor_periodo / total_vendedor_periodo) * 100
+
+            estatisticas_vendedores_periodo.append({
+                'mes': item['mes'].strftime('%b/%Y'),
+                'vendedor': item['vendedor'] or 'Sem vendedor',
+                'total_vendas': float(total_vendedor_periodo),
+                'margem_total': float(margem_vendedor_periodo),
+                'margem_percentual': round(float(margem_percentual_periodo), 2)
+            })
+
     queryset = queryset.annotate(
         mes=TruncMonth('data_emissao')
     ).values('mes').annotate(
@@ -612,7 +664,9 @@ def dados_vendas_api(request):
         'margem_percentual': margem_percentual,
         'margem_total': margem_total,
         'custo_total': custo_total,
-        'estatisticas_justificativas': estatisticas_justificativas
+        'estatisticas_justificativas': estatisticas_justificativas,
+        'estatisticas_vendedores': estatisticas_vendedores,
+        'estatisticas_vendedores_periodo': estatisticas_vendedores_periodo
     })
     
 
@@ -1065,13 +1119,42 @@ def exportar_estatisticas_excel(request):
             margens[i],
             (margens_pct[i] / 100.0) if margens_pct[i] is not None else 0
         ])
+
+# Aba 3: Estatísticas Vendedores
+    ws3 = wb.create_sheet(title="Estatísticas Por Vendedor")
+    cols3 = ['Vendedor', 'Qtd Notas', 'Faturamento', 'Custo Total', 'Margem Total', 'Margem Percentual']
+    ws3.append(cols3)
+
+    for item in dados_json.get('estatisticas_vendedores', []):
+        ws3.append([
+            item['vendedor'],
+            item['qtd_notas'],
+            item['total_vendas'],
+            item['custo_total'],
+            item['margem_total'],
+            item['margem_percentual'] / 100.0
+        ])
+
+# Aba 4: Evolução Vendedores
+    ws4 = wb.create_sheet(title="Evolução Por Vendedor")
+    cols4 = ['Mês', 'Vendedor', 'Faturamento', 'Margem Total', 'Margem Percentual']
+    ws4.append(cols4)
+
+    for item in dados_json.get('estatisticas_vendedores_periodo', []):
+        ws4.append([
+            item['mes'],
+            item['vendedor'],
+            item['total_vendas'],
+            item['margem_total'],
+            item['margem_percentual'] / 100.0
+        ])
     
 # Aplicar formato
     fmt_header_fill = PatternFill(start_color="D9E1F2", end_color="D9E1F2", fill_type="solid")
     fmt_header_font = Font(bold=True)
     fmt_border = Border(left=Side(style='thin'), right=Side(style='thin'), top=Side(style='thin'), bottom=Side(style='thin'))
     
-    for ws, cols in [(ws1, cols1), (ws2, cols2)]:
+    for ws, cols in [(ws1, cols1), (ws2, cols2), (ws3, cols3), (ws4, cols4)]:
         # Formatar cabeçalho
         for cell in ws[1]:
             cell.font = fmt_header_font
@@ -1081,7 +1164,7 @@ def exportar_estatisticas_excel(request):
         for col_idx, col_name in enumerate(cols, 1):
             col_name_lower = str(col_name).lower()
             num_format = None
-            if any(x in col_name_lower for x in ['valor_', 'custo', 'vlr_', 'margem_bruta', 'faturamento']):
+            if any(x in col_name_lower for x in ['valor_', 'custo', 'vlr_', 'margem_bruta', 'margem total', 'faturamento']):
                 num_format = 'R$ #,##0.00'
             elif any(x in col_name_lower for x in ['percent', 'aliquota', 'diff_percentual', 'representatividade', 'abaixo margem']):
                 num_format = '0.00%'

@@ -158,6 +158,43 @@
         gap: 10px;
     }
 
+    .bi-table-wrapper {
+        margin-top: 22px;
+        overflow-x: auto;
+    }
+
+    .bi-table {
+        width: 100%;
+        border-collapse: collapse;
+        font-size: 0.88rem;
+        color: var(--azul-escuro);
+    }
+
+    .bi-table th,
+    .bi-table td {
+        padding: 10px 12px;
+        border-bottom: 1px solid var(--cinza-borda);
+        white-space: nowrap;
+    }
+
+    .bi-table th {
+        background: var(--cinza-fundo);
+        font-weight: 600;
+        text-align: left;
+    }
+
+    .bi-table td:not(:first-child),
+    .bi-table th:not(:first-child) {
+        text-align: right;
+    }
+
+    .empty-state {
+        color: #6c757d;
+        padding: 18px 0 4px;
+        text-align: center;
+        font-size: 0.9rem;
+    }
+
     /* Responsividade */
     @media (max-width: 768px) {
         .chart-card {
@@ -266,15 +303,88 @@
             <canvas id="graficoJustificativas"></canvas>
         </div>
     </div>
+
+    <div class="chart-card">
+        <div class="chart-card-title">
+            <i class="fa-solid fa-chart-line" style="color: var(--verde-principal);"></i>
+            Evolução da Margem % por Vendedor
+        </div>
+
+        <div style="position: relative; height: 360px; width: 100%;">
+            <canvas id="graficoEvolucaoVendedores"></canvas>
+        </div>
+    </div>
+
+    <div class="chart-card">
+        <div class="chart-card-title">
+            <i class="fa-solid fa-user-tie" style="color: var(--verde-principal);"></i>
+            Resumo de Margens por Vendedor
+        </div>
+
+        <div style="position: relative; height: 380px; width: 100%;">
+            <canvas id="graficoVendedores"></canvas>
+        </div>
+
+        <div class="bi-table-wrapper">
+            <table class="bi-table">
+                <thead>
+                    <tr>
+                        <th>Vendedor</th>
+                        <th>Notas</th>
+                        <th>Faturamento</th>
+                        <th>Custo</th>
+                        <th>Margem</th>
+                        <th>Margem %</th>
+                    </tr>
+                </thead>
+                <tbody id="tabelaVendedores"></tbody>
+            </table>
+            <div id="semDadosVendedores" class="empty-state" style="display: none;">Nenhum dado encontrado para os filtros selecionados.</div>
+        </div>
+    </div>
 </div>
 
 <script>
     let graficoFatPeriodo;
     let graficoJustificativasChart;
+    let graficoVendedoresChart;
+    let graficoEvolucaoVendedoresChart;
 
     // Seta as fontes globais do Chart.js para usar a fonte do seu painel
     Chart.defaults.font.family = "'Poppins', sans-serif";
     Chart.defaults.color = '#6c757d';
+
+    const formatarMoeda = new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' });
+    const formatarPercentual = new Intl.NumberFormat('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+
+    function atualizarTabelaVendedores(vendedores) {
+        const tbody = document.getElementById('tabelaVendedores');
+        const empty = document.getElementById('semDadosVendedores');
+        tbody.innerHTML = '';
+
+        if (!vendedores.length) {
+            empty.style.display = 'block';
+            return;
+        }
+
+        empty.style.display = 'none';
+        vendedores.forEach(item => {
+            const tr = document.createElement('tr');
+            [
+                item.vendedor,
+                item.qtd_notas,
+                formatarMoeda.format(item.total_vendas),
+                formatarMoeda.format(item.custo_total),
+                formatarMoeda.format(item.margem_total),
+                `${formatarPercentual.format(item.margem_percentual)}%`
+            ].forEach(value => {
+                const td = document.createElement('td');
+                td.textContent = value;
+                tr.appendChild(td);
+            });
+            tbody.appendChild(tr);
+        });
+    }
 
     function atualizarDashboard() {
         const loading = document.getElementById('loadingIndicator');
@@ -295,6 +405,16 @@
                 const just_ctx = document.getElementById('graficoJustificativas').getContext('2d');
                 if (graficoJustificativasChart) {
                     graficoJustificativasChart.destroy();
+                }
+
+                const vendedorCtx = document.getElementById('graficoVendedores').getContext('2d');
+                if (graficoVendedoresChart) {
+                    graficoVendedoresChart.destroy();
+                }
+
+                const evolucaoVendedorCtx = document.getElementById('graficoEvolucaoVendedores').getContext('2d');
+                if (graficoEvolucaoVendedoresChart) {
+                    graficoEvolucaoVendedoresChart.destroy();
                 }
 
 
@@ -424,6 +544,205 @@
                     });
                 }
 
+                const vendedores = dados.estatisticas_vendedores || [];
+                atualizarTabelaVendedores(vendedores);
+                const vendedoresGrafico = vendedores.slice(0, 15);
+                const evolucaoVendedores = dados.estatisticas_vendedores_periodo || [];
+                const coresVendedores = ['#00A34F', '#0E6FC4', '#D9420F', '#13162F', '#7A5C00'];
+                const vendedoresEvolucaoLabels = [...new Set(evolucaoVendedores.map(item => item.vendedor))];
+
+                graficoEvolucaoVendedoresChart = new Chart(evolucaoVendedorCtx, {
+                    type: 'line',
+                    data: {
+                        labels: dados.labels,
+                        datasets: vendedoresEvolucaoLabels.map((vendedor, index) => ({
+                            label: vendedor,
+                            data: dados.labels.map(label => {
+                                const ponto = evolucaoVendedores.find(item => item.vendedor === vendedor && item.mes === label);
+                                return ponto ? ponto.margem_percentual : null;
+                            }),
+                            borderColor: coresVendedores[index % coresVendedores.length],
+                            backgroundColor: coresVendedores[index % coresVendedores.length],
+                            borderWidth: 3,
+                            pointBackgroundColor: '#FFFFFF',
+                            pointBorderColor: coresVendedores[index % coresVendedores.length],
+                            pointBorderWidth: 2,
+                            pointRadius: 4,
+                            pointHoverRadius: 6,
+                            fill: false,
+                            tension: 0.35,
+                            spanGaps: true
+                        }))
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        interaction: {
+                            mode: 'index',
+                            intersect: false,
+                        },
+                        plugins: {
+                            legend: {
+                                position: 'top',
+                                labels: {
+                                    usePointStyle: true,
+                                    padding: 20,
+                                    font: { weight: '500' }
+                                }
+                            },
+                            tooltip: {
+                                backgroundColor: 'rgba(19, 22, 47, 0.9)',
+                                titleFont: { size: 13, family: "'Poppins', sans-serif" },
+                                bodyFont: { size: 13, family: "'Poppins', sans-serif" },
+                                padding: 12,
+                                cornerRadius: 8,
+                                callbacks: {
+                                    label: function (context) {
+                                        let label = context.dataset.label || '';
+                                        if (label) { label += ': '; }
+                                        label += formatarPercentual.format(context.parsed.y) + '%';
+                                        return label;
+                                    }
+                                }
+                            }
+                        },
+                        scales: {
+                            x: {
+                                grid: { display: false }
+                            },
+                            y: {
+                                type: 'linear',
+                                display: true,
+                                title: {
+                                    display: true,
+                                    text: 'Margem (%)',
+                                    font: { weight: '500' }
+                                },
+                                grid: { color: '#E0E5EC' },
+                                ticks: {
+                                    callback: function (value) { return value + '%'; }
+                                }
+                            }
+                        }
+                    }
+                });
+
+                graficoVendedoresChart = new Chart(vendedorCtx, {
+                    type: 'bar',
+                    data: {
+                        labels: vendedoresGrafico.map(v => v.vendedor),
+                        datasets: [
+                            {
+                                type: 'line',
+                                label: 'Margem %',
+                                data: vendedoresGrafico.map(v => v.margem_percentual),
+                                borderColor: '#00A34F',
+                                backgroundColor: '#00A34F',
+                                borderWidth: 3,
+                                pointBackgroundColor: '#FFFFFF',
+                                pointBorderColor: '#00A34F',
+                                pointBorderWidth: 2,
+                                pointRadius: 4,
+                                pointHoverRadius: 6,
+                                fill: false,
+                                tension: 0.35,
+                                yAxisID: 'y1',
+                            },
+                            {
+                                type: 'bar',
+                                label: 'Faturamento',
+                                data: vendedoresGrafico.map(v => v.total_vendas),
+                                backgroundColor: '#13162F',
+                                borderRadius: 6,
+                                borderSkipped: false,
+                                maxBarThickness: 46,
+                                yAxisID: 'y',
+                            },
+                            {
+                                type: 'bar',
+                                label: 'Margem',
+                                data: vendedoresGrafico.map(v => v.margem_total),
+                                backgroundColor: '#0E6FC4',
+                                borderRadius: 6,
+                                borderSkipped: false,
+                                maxBarThickness: 46,
+                                yAxisID: 'y',
+                            }
+                        ]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        interaction: {
+                            mode: 'index',
+                            intersect: false,
+                        },
+                        plugins: {
+                            legend: {
+                                position: 'top',
+                                labels: {
+                                    usePointStyle: true,
+                                    padding: 20,
+                                    font: { weight: '500' }
+                                }
+                            },
+                            tooltip: {
+                                backgroundColor: 'rgba(19, 22, 47, 0.9)',
+                                titleFont: { size: 13, family: "'Poppins', sans-serif" },
+                                bodyFont: { size: 13, family: "'Poppins', sans-serif" },
+                                padding: 12,
+                                cornerRadius: 8,
+                                callbacks: {
+                                    label: function (context) {
+                                        let label = context.dataset.label || '';
+                                        if (label) { label += ': '; }
+                                        if (context.dataset.type === 'line') {
+                                            label += formatarPercentual.format(context.parsed.y) + '%';
+                                        } else {
+                                            label += formatarMoeda.format(context.parsed.y);
+                                        }
+                                        return label;
+                                    }
+                                }
+                            }
+                        },
+                        scales: {
+                            x: {
+                                grid: { display: false },
+                                ticks: {
+                                    maxRotation: 45,
+                                    minRotation: 0
+                                }
+                            },
+                            y: {
+                                type: 'linear',
+                                display: true,
+                                position: 'left',
+                                grid: { color: '#E0E5EC' },
+                                ticks: {
+                                    callback: function (value) {
+                                        return formatarMoeda.format(value);
+                                    }
+                                }
+                            },
+                            y1: {
+                                type: 'linear',
+                                display: true,
+                                position: 'right',
+                                title: {
+                                    display: true,
+                                    text: 'Margem (%)',
+                                    font: { weight: '500' }
+                                },
+                                grid: { drawOnChartArea: false },
+                                ticks: {
+                                    callback: function (value) { return value + '%'; }
+                                }
+                            }
+                        }
+                    }
+                });
+
                 const ctx = document.getElementById('graficoFatPeriodo').getContext('2d');
 
                 const totalDados = dados.labels.length;
@@ -515,7 +834,7 @@
                                             label += context.parsed.y + '%';
                                         } else {
                                             // Formata o dinheiro bonitinho no tooltip
-                                            label += new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(context.parsed.y);
+                                            label += formatarMoeda.format(context.parsed.y);
                                         }
                                         return label;
                                     }
