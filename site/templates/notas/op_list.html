@@ -63,7 +63,10 @@
 
 <script>
 (function() {
-    const treeData = JSON.parse('{{ arvore_json|escapejs }}');
+    const treeState = JSON.parse('{{ arvore_json|escapejs }}');
+    const treeData = treeState.arvore || treeState;
+    const folhasIndexadas = treeState.folhas_indexadas || {};
+    const estadoNivel1 = treeState.estado_nivel_1 || {};
     const tbody = document.getElementById('tree-table-body');
     
     function formatCurrency(value) {

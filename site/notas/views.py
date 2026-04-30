@@ -27,6 +27,7 @@ import pyodbc
 import pymysql
 import datetime
 from decimal import Decimal
+from typing import Any, TypedDict
 from dbutils.pooled_db import PooledDB
 from dateutil.relativedelta import relativedelta
 
@@ -739,7 +740,7 @@ def op_list_view(request, lote, cod_produto):
             op['centro_custo'] = '-'
             op['desc_centro_de_custo'] = '-'
                 
-    arvore_dict = construir_arvore_producao(linhas_op, cod_produto=cod_produto)
+    arvore_dict = construir_estado_arvore_producao(linhas_op, cod_produto=cod_produto)
     arvore_json = json.dumps(arvore_dict, default=str)
     
     return render(request, 'notas/op_list.html', {'linhas_op': linhas_op, 'lote': lote, 'cod_produto': cod_produto, 'arvore_json': arvore_json})
@@ -1239,71 +1240,184 @@ def exportar_op_excel(request, lote):
     wb.save(response)
     return response
 
-def construir_arvore_producao(flat_data, cod_produto=None):
-    ops = {}
-    produtos_consumidos = set()
+FlatRow = dict[str, Any]
 
-# 1. Agrupar os dados por OP
+
+class FolhaIndexada(TypedDict):
+    id_nivel_1: str
+    quantidade_acumulada: float
+    custo_atual_folha: float
+
+
+class EstadoNivel1(TypedDict):
+    custo_medio_base: float
+    custo_medio: float
+
+
+def _to_float(value: Any, default: float = 0.0) -> float:
+    if value in (None, ''):
+        return default
+    if isinstance(value, str):
+        value = value.replace('R$', '').strip()
+        if ',' in value:
+            value = value.replace('.', '').replace(',', '.')
+    try:
+        return float(value)
+    except (TypeError, ValueError):
+        return default
+
+
+def _custo_medio_erp(row: FlatRow) -> float:
+    return _to_float(row.get('custo_2_raw', row.get('custo_2', 0)))
+
+
+def _quantidade_item(row: FlatRow) -> float:
+    return _to_float(row.get('quant_2_raw', row.get('quant_2', row.get('quantidade', 1))), 1.0)
+
+
+def construir_estado_arvore_producao(
+    flat_data: list[FlatRow],
+    cod_produto: str | None = None,
+) -> dict[str, Any]:
+    ops: dict[str, dict[str, Any]] = {}
+    produtos_consumidos: set[str] = set()
+    op_por_produto: dict[str, str] = {}
+
     for row in flat_data:
         op_id = row['ord_producao']
-        if op_id not in ops:
-            ops[op_id] = {'pai': None, 'filhos': []}
+        op_data = ops.setdefault(op_id, {'pai': None, 'filhos': []})
 
-        # Se for movimento de produção (010), é o produto resultante da OP
         if row['tp_movimento'] == '010':
-            ops[op_id]['pai'] = row
+            op_data['pai'] = row
+            op_por_produto.setdefault(row['produto'], op_id)
         else:
-            # É componente consumido
-            ops[op_id]['filhos'].append(row)
+            op_data['filhos'].append(row)
             produtos_consumidos.add(row['produto'])
 
-# 2. Descobrir quem é o Root (Produto Final)
-# O Root é o 'pai' de alguma OP cujo código de produto NÃO está na lista de produtos consumidos
     root_op = None
     for op_id, dados in ops.items():
-        if dados['pai'] and dados['pai']['produto'] not in produtos_consumidos:
+        pai = dados['pai']
+        if pai and cod_produto and pai['produto'] == cod_produto:
+            root_op = op_id
+            break
+        if pai and not cod_produto and pai['produto'] not in produtos_consumidos:
             root_op = op_id
             break
 
-# 3. Função Recursiva para montar a árvore e somar os custos corretamente
-    def montar_no(op_id):
-        if op_id not in ops or not ops[op_id]['pai']:
-            return None
+    folhas_indexadas: dict[str, list[FolhaIndexada]] = {}
+    estado_nivel_1: dict[str, EstadoNivel1] = {}
 
-        no_atual = ops[op_id]['pai'].copy()
+    def registrar_nivel_1(id_nivel_1: str, custo_base: float) -> None:
+        estado = estado_nivel_1.setdefault(
+            id_nivel_1,
+            {'custo_medio_base': 0.0, 'custo_medio': 0.0},
+        )
+        estado['custo_medio_base'] += custo_base
+        estado['custo_medio'] += custo_base
+
+    def registrar_folha(row: FlatRow, id_nivel_1: str, quantidade_acumulada: float) -> None:
+        folhas_indexadas.setdefault(row['produto'], []).append({
+            'id_nivel_1': id_nivel_1,
+            'quantidade_acumulada': quantidade_acumulada,
+            'custo_atual_folha': _custo_medio_erp(row),
+        })
+
+    def montar_componente(
+        row: FlatRow,
+        nivel: int,
+        id_nivel_1: str,
+        quantidade_acumulada: float,
+    ) -> FlatRow:
+        produto = row['produto']
+        op_do_filho = op_por_produto.get(produto)
+        no_atual = row.copy()
+        no_atual['nivel'] = nivel
+        no_atual['quantidade_acumulada'] = quantidade_acumulada
         no_atual['filhos'] = []
-        custo_total = 0
 
-        for filho_flat in ops[op_id]['filhos']:
-            # Verifica se este filho tem a sua própria OP de fabricação na lista
-            # (Ou seja, se ele é um subconjunto e não uma matéria-prima pura)
-            op_do_filho = next((k for k, v in ops.items() if v['pai'] and v['pai']['produto'] == filho_flat['produto']), None)
-
-            if op_do_filho:
-                # É um subconjunto, desce na recursão
-                no_filho_processado = montar_no(op_do_filho)
-                # O custo não é mais uma soma recursiva, apenas o valor da consulta
-                no_filho_processado['custo_calculado'] = float(filho_flat.get('custo_2_raw', 0))
-                no_atual['filhos'].append(no_filho_processado)
-            else:
-                # É uma folha (matéria-prima final, ex: parafuso, cabo, mão de obra)
-                filho_processado = filho_flat.copy()
-                # Aqui o custo é apenas o valor original da consulta
-                custo_calculado_folha = float(filho_flat.get('custo_2_raw', 0))
-                filho_processado['custo_calculado'] = custo_calculado_folha
-                filho_processado['is_leaf'] = True
-                
-                no_atual['filhos'].append(filho_processado)
-
-        # O custo do nó atual também não é uma soma, é o valor original, exceto para o cod_produto alvo
-        if cod_produto and ops[op_id]['pai'] and ops[op_id]['pai']['produto'] == cod_produto:
-            no_atual['custo_calculado'] = sum(filho.get('custo_calculado', 0) for filho in no_atual['filhos'])
+        if nivel == 1:
+            # Baseline absoluto do L1: sempre o custo médio da linha flat do ERP.
+            custo_base = _custo_medio_erp(row)
+            registrar_nivel_1(id_nivel_1, custo_base)
+            no_atual['custo_medio_base'] = custo_base
+            no_atual['custo_medio'] = custo_base
+            no_atual['custo_calculado'] = custo_base
         else:
-            no_atual['custo_calculado'] = float(ops[op_id]['pai'].get('custo_2_raw', 0)) if ops[op_id]['pai'] else 0
-        
-        no_atual['is_leaf'] = False
+            no_atual['custo_calculado'] = _custo_medio_erp(row)
+
+        if op_do_filho and op_do_filho in ops:
+            for filho in ops[op_do_filho]['filhos']:
+                quantidade_filho = quantidade_acumulada * _quantidade_item(filho)
+                no_atual['filhos'].append(
+                    montar_componente(
+                        filho,
+                        nivel + 1,
+                        id_nivel_1,
+                        quantidade_filho,
+                    )
+                )
+            no_atual['is_leaf'] = False
+        else:
+            no_atual['is_leaf'] = True
+            registrar_folha(row, id_nivel_1, quantidade_acumulada)
+
         return no_atual
 
-# Monta a árvore a partir do produto principal
-    arvore = montar_no(root_op) if root_op else {}
-    return arvore
+    if not root_op or not ops[root_op]['pai']:
+        return {
+            'arvore': {},
+            'folhas_indexadas': folhas_indexadas,
+            'estado_nivel_1': estado_nivel_1,
+            'custo_raiz': 0.0,
+        }
+
+    arvore = ops[root_op]['pai'].copy()
+    arvore['nivel'] = 0
+    arvore['quantidade_acumulada'] = 1.0
+    arvore['filhos'] = []
+    arvore['is_leaf'] = False
+
+    for filho in ops[root_op]['filhos']:
+        arvore['filhos'].append(
+            montar_componente(
+                filho,
+                nivel=1,
+                id_nivel_1=filho['produto'],
+                quantidade_acumulada=1.0,
+            )
+        )
+
+    custo_raiz = sum(estado['custo_medio'] for estado in estado_nivel_1.values())
+    arvore['custo_medio'] = custo_raiz
+    arvore['custo_calculado'] = custo_raiz
+
+    return {
+        'arvore': arvore,
+        'folhas_indexadas': folhas_indexadas,
+        'estado_nivel_1': estado_nivel_1,
+        'custo_raiz': custo_raiz,
+    }
+
+
+def construir_arvore_producao(flat_data: list[FlatRow], cod_produto: str | None = None) -> FlatRow:
+    return construir_estado_arvore_producao(flat_data, cod_produto=cod_produto)['arvore']
+
+
+def simular_variacao_custo(
+    folhas_indexadas: dict[str, list[FolhaIndexada]],
+    estado_nivel_1: dict[str, EstadoNivel1],
+    custo_raiz: float,
+    id_folha_editada: str,
+    novo_custo_folha: float,
+) -> float:
+    caminhos = folhas_indexadas.get(id_folha_editada, [])
+
+    for caminho in caminhos:
+        delta_unitario = novo_custo_folha - caminho['custo_atual_folha']
+        delta_total = delta_unitario * caminho['quantidade_acumulada']
+
+        estado_nivel_1[caminho['id_nivel_1']]['custo_medio'] += delta_total
+        custo_raiz += delta_total
+        caminho['custo_atual_folha'] = novo_custo_folha
+
+    return custo_raiz
