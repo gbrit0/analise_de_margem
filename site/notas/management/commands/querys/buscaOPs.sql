@@ -8,17 +8,18 @@ SELECT
     TRIM(D3_UM) unidade,
     D3_QUANT quantidade,
     CASE 
-        WHEN TRIM(D3_TM) = '010' THEN 0 
+        -- WHEN TRIM(D3_TM) = '010' THEN 0 
         WHEN SUBSTRING(D3_CF, 1, 2) = 'RE' THEN D3_QUANT 
         ELSE D3_QUANT * -1 
     END quant_2,
     D3_CUSTO1 custo,
     CASE 
-        WHEN TRIM(D3_TM) = '010' THEN
-            CASE 
-                WHEN COALESCE(MAX(CAST(B2_CMFIM1 AS FLOAT)), 0) = 0 THEN MAX(CAST(B2_CM1 AS FLOAT))
-                ELSE MAX(CAST(B2_CMFIM1 AS FLOAT))
-            END
+        -- WHEN TRIM(D3_TM) = '010' THEN 0
+            -- CASE 
+            --     WHEN COALESCE(MAX(CAST(B2_CMFIM1 AS FLOAT)), 0) = 0 THEN MAX(CAST(B2_CM1 AS FLOAT))
+            --     ELSE MAX(CAST(B2_CMFIM1 AS FLOAT))
+            -- END
+        
         WHEN SUBSTRING(D3_CF, 1, 2) = 'RE' THEN (D3_CUSTO1) 
         ELSE (D3_CUSTO1) * -1 
     END custo_2,
@@ -87,20 +88,15 @@ WHERE
         WHERE 
             D_E_L_E_T_ <> '*' 
             -- AND D3_ESTORNO <> 'S' 
-            AND TRIM(D3_LOTECTL) = ? --'7166' 
+            AND TRIM(D3_LOTECTL) = ? --'7166' --
     )
 
 
     AND D3_ESTORNO <> 'S'
-    -- and D3_COD = 'E0010035'
+    and D3_COD <> 'MO1501MOD'
 GROUP BY
     D3_FILIAL, D3_COD, D3_LOCAL, D3_TM, F5_TEXTO, B1_DESC, D3_UM, D3_QUANT, D3_CUSTO1, D3_OP, D3_LOTECTL, D3_OSTEC, D3_GRUPO, BM_DESC, D3_CF, D3_DOC, D3_EMISSAO, D3_CONTA, CT1_DESC01, D3_CC, CTT_DESC01, D3_PARCTOT, D3_ESTORNO, D3_NUMSEQ, D3_TIPO, D3_USUARIO, D3_NUMSA, D3_ITEMSA
 
 ORDER BY
     D3_OP, D3_TM, D3_CUSTO1 DESC, TRIM(B1_DESC);
 
-
-
-
-
---SELECT TOP 10 B2_CMFIM1, B2_CM1, * FROM SB2010 ORDER BY R_E_C_N_O_ DESC

@@ -177,7 +177,7 @@ class NotasListView(LoginRequiredMixin, FilterView, ListView):
                 'value': f"{y}-{mo:02d}",
                 'label': f"{mo:02d}/{y}"
             })
-
+            
         context['meses_disponiveis'] = meses
         # Valor selecionado atualmente (vindo dos GET params)
         selected = self.request.GET.get('data_emissao_month', '')
@@ -661,91 +661,88 @@ def op_list_view(request, lote, cod_produto):
                         d[k] = v.strip()
                 linhas_op.append(d)
 
-            arvore_json = json.dumps(construir_arvore_producao(linhas_op), default=str)
-    return render(request, 'notas/op_list.html', {
-        'arvore_json': arvore_json,
-        'lote': lote,
-        'cod_produto': cod_produto
-    })
     
-    # if linhas_op:
-    #     existing_ops = {o.id_op: o for o in OP.objects.prefetch_related('custo2_op_set').filter(lote=lote)}
-    #     ops_to_create = []
-    #     ops_to_update = []
-        
-    #     update_fields = [c for c in colunas if c != 'id_op']
-        
-    #     for op in linhas_op:
-    #         lote_str = str(op.get('lote') or '').strip()
-    #         ord_str = str(op.get('ord_producao') or '').strip()
-    #         seq_str = str(op.get('sequencial') or '').strip()
-    #         tm_str = str(op.get('tp_movimento') or '').strip()
+    if linhas_op:
+        existing_ops = {o.id_op: o for o in OP.objects.prefetch_related('custo2_op_set').filter(lote=lote)}
+        ops_to_create = []
+        ops_to_update = []
             
-    #         id_op_unico = f"{lote_str}_{ord_str}_{seq_str}_{tm_str}"
-    #         op['id_op'] = id_op_unico
+        update_fields = [c for c in colunas if c != 'id_op']
             
-    #         op_data = {k: v for k, v in op.items() if k in update_fields}
-            
-    #         for decimal_field in ['quantidade', 'quant_2', 'custo', 'custo_2']:
-    #             if op_data.get(decimal_field) is None:
-    #                 op_data[decimal_field] = 0
-    #                 op[decimal_field] = 0
+        for op in linhas_op:
+            lote_str = str(op.get('lote') or '').strip()
+            ord_str = str(op.get('ord_producao') or '').strip()
+            seq_str = str(op.get('sequencial') or '').strip()
+            tm_str = str(op.get('tp_movimento') or '').strip()
+                
+            id_op_unico = f"{lote_str}_{ord_str}_{seq_str}_{tm_str}"
+            op['id_op'] = id_op_unico
+                
+            op_data = {k: v for k, v in op.items() if k in update_fields}
+                
+            for decimal_field in ['quantidade', 'quant_2', 'custo', 'custo_2']:
+                if op_data.get(decimal_field) is None:
+                    op_data[decimal_field] = 0
+                    op[decimal_field] = 0
 
-    #         if id_op_unico in existing_ops:
-    #             obj = existing_ops[id_op_unico]
-    #             has_custo2_history = obj.pk is not None and obj.custo2_op_set.exists()
-    #             if has_custo2_history:
-    #                 op['custo_2'] = obj.custo_2
-    #                 op_data.pop('custo_2', None)
+            if id_op_unico in existing_ops:
+                obj = existing_ops[id_op_unico]
+                has_custo2_history = obj.pk is not None and obj.custo2_op_set.exists()
+                if has_custo2_history:
+                    op['custo_2'] = obj.custo_2
+                    op_data.pop('custo_2', None)
 
-    #             for k, v in op_data.items():
-    #                 setattr(obj, k, v)
-    #             obj._update_fields = [f for f in update_fields if f in op_data]
-    #             ops_to_update.append(obj)
-    #         else:
-    #             op_data['id_op'] = id_op_unico
-    #             ops_to_create.append(OP(**op_data))
-    #             existing_ops[id_op_unico] = ops_to_create[-1]
+                for k, v in op_data.items():
+                    setattr(obj, k, v)
+                obj._update_fields = [f for f in update_fields if f in op_data]
+                ops_to_update.append(obj)
+            else:
+                op_data['id_op'] = id_op_unico
+                ops_to_create.append(OP(**op_data))
+                existing_ops[id_op_unico] = ops_to_create[-1]
 
-    #     if ops_to_create:
-    #         OP.objects.bulk_create(ops_to_create, batch_size=500)
+        if ops_to_create:
+            OP.objects.bulk_create(ops_to_create, batch_size=500)
 
-    #     if ops_to_update:
-    #         from collections import defaultdict
-    #         grupos = defaultdict(list)
-    #         for obj in ops_to_update:
-    #             campos = tuple(getattr(obj, '_update_fields', update_fields))
-    #             grupos[campos].append(obj)
-    #         for campos, grupo in grupos.items():
-    #             OP.objects.bulk_update(grupo, list(campos), batch_size=500)
+        if ops_to_update:
+            from collections import defaultdict
+            grupos = defaultdict(list)
+            for obj in ops_to_update:
+                campos = tuple(getattr(obj, '_update_fields', update_fields))
+                grupos[campos].append(obj)
+            for campos, grupo in grupos.items():
+                OP.objects.bulk_update(grupo, list(campos), batch_size=500)
     
-    # for op in linhas_op:
-    #     if op.get('custo') is not None:
-    #         op['custo_raw'] = f"{float(op['custo']):.2f}"
-    #         op['custo'] = locale.currency(op['custo'], grouping=True)
-    #     if op.get('custo_2') is not None:
-    #         # Retrieve latest historical custo_2 if exists
-    #         try:
-    #             op_obj = OP.objects.filter(id_op=op['id_op']).first()
-    #             if op_obj:
-    #                 latest_custo2 = op_obj.custo2_op_set.order_by('-id').first()
-    #                 if latest_custo2:
-    #                     op['custo_2'] = latest_custo2.valor
-    #         except Exception:
-    #             pass
-    #         op['custo_2_raw'] = f"{float(op['custo_2']):.2f}"
-    #         op['custo_2'] = locale.currency(op['custo_2'], grouping=True)
-    #     if op.get('quant_2') is not None:
-    #         op['quant_2_raw'] = f"{float(op['quant_2']):.2f}"
+    for op in linhas_op:
+        if op.get('custo') is not None:
+            op['custo_raw'] = f"{float(op['custo']):.2f}"
+            op['custo'] = locale.currency(op['custo'], grouping=True)
+        if op.get('custo_2') is not None:
+            # Retrieve latest historical custo_2 if exists
+            try:
+                op_obj = OP.objects.filter(id_op=op['id_op']).first()
+                if op_obj:
+                    latest_custo2 = op_obj.custo2_op_set.order_by('-id').first()
+                    if latest_custo2:
+                        op['custo_2'] = latest_custo2.valor
+            except Exception:
+                pass
+            op['custo_2_raw'] = f"{float(op['custo_2']):.2f}"
+            op['custo_2'] = locale.currency(op['custo_2'], grouping=True)
+        if op.get('quant_2') is not None:
+            op['quant_2_raw'] = f"{float(op['quant_2']):.2f}"
 
-    #     if op.get('c_contabil') is None:
-    #         op['c_contabil'] = '-'
-    #         op['descricao_da_conta'] = '-'
-    #     if op.get('centro_custo') is None:
-    #         op['centro_custo'] = '-'
-    #         op['desc_centro_de_custo'] = '-'
-            
-    # return render(request, 'notas/op_list.html', {'linhas_op': linhas_op, 'lote': lote, 'cod_produto': cod_produto})
+        if op.get('c_contabil') is None:
+            op['c_contabil'] = '-'
+            op['descricao_da_conta'] = '-'
+        if op.get('centro_custo') is None:
+            op['centro_custo'] = '-'
+            op['desc_centro_de_custo'] = '-'
+                
+    arvore_dict = construir_arvore_producao(linhas_op, cod_produto=cod_produto)
+    arvore_json = json.dumps(arvore_dict, default=str)
+    
+    return render(request, 'notas/op_list.html', {'linhas_op': linhas_op, 'lote': lote, 'cod_produto': cod_produto, 'arvore_json': arvore_json})
 
 class JustificativaListView(LoginRequiredMixin, FilterView, ListView):
     login_url = 'login/'
@@ -759,8 +756,8 @@ def justificativa_admin_view(request):
     
     selected = request.GET.get('data_emissao_month', '')
     
-    # Se não veio valor no GET, tenta preencher com mês atual (se houver dados),
-    # caso contrário preenche com o mês mais recente disponível.
+# Se não veio valor no GET, tenta preencher com mês atual (se houver dados),
+# caso contrário preenche com o mês mais recente disponível.
     if not selected:
         hoje = datetime.datetime.today()
         atual = f"{hoje.year}-{hoje.month:02d}"
@@ -794,7 +791,7 @@ def justificativa_admin_view(request):
             'bloqueado': status.bloqueado if status else False,
             'data_atualizacao': status.data_atualizacao if status else None,
         })
-    
+        
     return render(request, 'notas/admin.html', {
         'justificativas': justificativas, 
         'logs_justificativas': logs_justificativas,
@@ -881,21 +878,21 @@ def toggle_bloqueio_mes_api(request):
 
 @login_required
 def exportar_excel(request):
-    # Obtém o queryset base com as pre-anotações e filial filter
+# Obtém o queryset base com as pre-anotações e filial filter
     notas_view = NotasListView()
     notas_view.request = request
     base_qs = notas_view.get_queryset()
 
-    # Aplica os filtros da URL
+# Aplica os filtros da URL
     f = NotaFilter(request.GET, queryset=base_qs)
     queryset = f.qs
 
-    # 1. Criar o workbook e planilha
+# 1. Criar o workbook e planilha
     wb = Workbook()
     ws = wb.active
     ws.title = "Dados"
 
-    # 2. Adicionar cabeçalhos (Substituído por campos existentes para não ocorrer Crash do framework)
+# 2. Adicionar cabeçalhos (Substituído por campos existentes para não ocorrer Crash do framework)
     columns = [
         'chave',
         'filial',
@@ -935,15 +932,15 @@ def exportar_excel(request):
     ]
     ws.append(columns)
 
-    # 3. Adicionar dados (Dados reais baseados no Model para evitar crash na query)
-    # Lembre-se de adaptar essa query de acordo com os dados exatos que desejar!
+# 3. Adicionar dados (Dados reais baseados no Model para evitar crash na query)
+# Lembre-se de adaptar essa query de acordo com os dados exatos que desejar!
     
-    # Obtém o queryset base com as pre-anotações e filial filter
+# Obtém o queryset base com as pre-anotações e filial filter
     notas_view = NotasListView()
     notas_view.request = request
     base_qs = notas_view.get_queryset()
 
-    # Aplica os filtros da URL
+# Aplica os filtros da URL
     f = NotaFilter(request.GET, queryset=base_qs)
     queryset = f.qs
 
@@ -951,19 +948,19 @@ def exportar_excel(request):
     for linha in dados:
         ws.append(linha)
 
-    # 4. Formatos
+# 4. Formatos
     fmt_header_fill = PatternFill(start_color="D9E1F2", end_color="D9E1F2", fill_type="solid")
     fmt_header_font = Font(bold=True)
     fmt_border = Border(left=Side(style='thin'), right=Side(style='thin'), 
                         top=Side(style='thin'), bottom=Side(style='thin'))
 
-    # Formatar o cabeçalho
+# Formatar o cabeçalho
     for cell in ws[1]:
         cell.font = fmt_header_font
         cell.fill = fmt_header_fill
         cell.border = fmt_border
 
-    # 5. Aplica formatação de colunas (Largura e Números)
+# 5. Aplica formatação de colunas (Largura e Números)
     for col_idx, col_name in enumerate(columns, 1):
         col_name_lower = str(col_name).lower()
         num_format = None
@@ -990,7 +987,7 @@ def exportar_excel(request):
     last_col_letter = get_column_letter(len(columns))
     last_row = len(dados) + 1
 
-    # 6. Lógica para colorir a linha inteira se tp_movimento == '010'
+# 6. Lógica para colorir a linha inteira se tp_movimento == '010'
     if 'tp_movimento' in columns:
         col_idx = columns.index('tp_movimento') + 1
         col_letter = get_column_letter(col_idx)
@@ -1003,16 +1000,16 @@ def exportar_excel(request):
         rule = FormulaRule(formula=formula, stopIfTrue=True, fill=fmt_destaque)
         ws.conditional_formatting.add(f"A2:{last_col_letter}{last_row}", rule)
 
-    # Autofilter
+# Autofilter
     ws.auto_filter.ref = f"A1:{last_col_letter}{last_row}"
 
-    # 7. Configurar a resposta HTTP para download
+# 7. Configurar a resposta HTTP para download
     response = HttpResponse(
         content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
     )
     response['Content-Disposition'] = 'attachment; filename="dados.xlsx"'
 
-    # 8. Salvar o arquivo no response
+# 8. Salvar o arquivo no response
     wb.save(response)
     return response
 
@@ -1024,7 +1021,7 @@ def exportar_estatisticas_excel(request):
     from openpyxl.styles import Font, PatternFill, Border, Side
     from openpyxl.utils import get_column_letter
 
-    # 1. Obtém os dados chamando a API localmente
+# 1. Obtém os dados chamando a API localmente
     resp = dados_vendas_api(request)
     if resp.status_code != 200:
         return HttpResponse("Erro ao gerar dados", status=500)
@@ -1033,7 +1030,7 @@ def exportar_estatisticas_excel(request):
     
     wb = Workbook()
     
-    # Aba 1: Estatísticas Justificativas
+# Aba 1: Estatísticas Justificativas
     ws1 = wb.active
     ws1.title = "Estatísticas Justificativas"
     
@@ -1048,7 +1045,7 @@ def exportar_estatisticas_excel(request):
             item['percentual_abaixo_margem'] / 100.0
         ])
         
-    # Aba 2: Estatísticas Período
+# Aba 2: Estatísticas Período
     ws2 = wb.create_sheet(title="Estatísticas Por Período")
     cols2 = ['Mês', 'Faturamento (valor_)', 'Custo Total', 'Margem Bruta', 'Margem Percentual']
     ws2.append(['Mês', 'Faturamento', 'Custo Total', 'Margem Total', 'Margem Percentual'])
@@ -1068,7 +1065,7 @@ def exportar_estatisticas_excel(request):
             (margens_pct[i] / 100.0) if margens_pct[i] is not None else 0
         ])
     
-    # Aplicar formato
+# Aplicar formato
     fmt_header_fill = PatternFill(start_color="D9E1F2", end_color="D9E1F2", fill_type="solid")
     fmt_header_font = Font(bold=True)
     fmt_border = Border(left=Side(style='thin'), right=Side(style='thin'), top=Side(style='thin'), bottom=Side(style='thin'))
@@ -1242,11 +1239,11 @@ def exportar_op_excel(request, lote):
     wb.save(response)
     return response
 
-def construir_arvore_producao(flat_data):
+def construir_arvore_producao(flat_data, cod_produto=None):
     ops = {}
     produtos_consumidos = set()
 
-    # 1. Agrupar os dados por OP
+# 1. Agrupar os dados por OP
     for row in flat_data:
         op_id = row['ord_producao']
         if op_id not in ops:
@@ -1260,15 +1257,15 @@ def construir_arvore_producao(flat_data):
             ops[op_id]['filhos'].append(row)
             produtos_consumidos.add(row['produto'])
 
-    # 2. Descobrir quem é o Root (Produto Final)
-    # O Root é o 'pai' de alguma OP cujo código de produto NÃO está na lista de produtos consumidos
+# 2. Descobrir quem é o Root (Produto Final)
+# O Root é o 'pai' de alguma OP cujo código de produto NÃO está na lista de produtos consumidos
     root_op = None
     for op_id, dados in ops.items():
         if dados['pai'] and dados['pai']['produto'] not in produtos_consumidos:
             root_op = op_id
             break
 
-    # 3. Função Recursiva para montar a árvore e somar os custos corretamente
+# 3. Função Recursiva para montar a árvore e somar os custos corretamente
     def montar_no(op_id):
         if op_id not in ops or not ops[op_id]['pai']:
             return None
@@ -1285,23 +1282,28 @@ def construir_arvore_producao(flat_data):
             if op_do_filho:
                 # É um subconjunto, desce na recursão
                 no_filho_processado = montar_no(op_do_filho)
-                custo_total += no_filho_processado['custo_calculado']
+                # O custo não é mais uma soma recursiva, apenas o valor da consulta
+                no_filho_processado['custo_calculado'] = float(filho_flat.get('custo_2_raw', 0))
                 no_atual['filhos'].append(no_filho_processado)
             else:
                 # É uma folha (matéria-prima final, ex: parafuso, cabo, mão de obra)
                 filho_processado = filho_flat.copy()
-                # Aqui o custo é o unitário * quantidade
-                custo_calculado_folha = float(filho_flat.get('custo_2', 0))
+                # Aqui o custo é apenas o valor original da consulta
+                custo_calculado_folha = float(filho_flat.get('custo_2_raw', 0))
                 filho_processado['custo_calculado'] = custo_calculado_folha
                 filho_processado['is_leaf'] = True
                 
-                custo_total += custo_calculado_folha
                 no_atual['filhos'].append(filho_processado)
 
-        no_atual['custo_calculado'] = custo_total
+        # O custo do nó atual também não é uma soma, é o valor original, exceto para o cod_produto alvo
+        if cod_produto and ops[op_id]['pai'] and ops[op_id]['pai']['produto'] == cod_produto:
+            no_atual['custo_calculado'] = sum(filho.get('custo_calculado', 0) for filho in no_atual['filhos'])
+        else:
+            no_atual['custo_calculado'] = float(ops[op_id]['pai'].get('custo_2_raw', 0)) if ops[op_id]['pai'] else 0
+        
         no_atual['is_leaf'] = False
         return no_atual
 
-    # Monta a árvore a partir do produto principal
+# Monta a árvore a partir do produto principal
     arvore = montar_no(root_op) if root_op else {}
     return arvore

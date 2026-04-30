@@ -70,6 +70,24 @@
         return value.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
     }
     
+    function getCodProdutoFromUrl() {
+        try {
+            const parts = window.location.pathname.replace(/\/$/, '').split('/');
+            const last = parts[parts.length - 1];
+            return last || null;
+        } catch (e) {
+            return null;
+        }
+    }
+
+    const codProdutoAlvo = "{{ cod_produto|default:''|escapejs }}".trim() || getCodProdutoFromUrl();
+
+    function parseDecimal(value) {
+        if (value == null) return 0;
+        const n = parseFloat(String(value).replace(',', '.'));
+        return isNaN(n) ? 0 : n;
+    }
+
     // Flatten tree and render rows
     function renderTreeRows(node, parentId, depth) {
         if (!node || Object.keys(node).length === 0) {
@@ -84,6 +102,7 @@
         tr.id = rowId;
         if (parentId) {
             tr.setAttribute('data-parent-id', parentId);
+            tr.style.display = 'none';
         }
         tr.setAttribute('data-node-id', node.produto || '');
         tr.setAttribute('data-depth', depth);
@@ -93,22 +112,22 @@
         }
         
         const isLeaf = node.is_leaf;
-        const toggleIcon = isLeaf ? '<span class="toggle-icon"></span>' : `<span class="toggle-icon" style="cursor: pointer; margin-right: 5px; color: var(--azul-escuro);">▼</span>`;
+        const toggleIcon = isLeaf ? '<span class="toggle-icon"></span>' : `<span class="toggle-icon" style="cursor: pointer; margin-right: 5px; color: var(--azul-escuro);">▶</span>`;
         const paddingLeft = depth * 25; // 25px per level
         
         // Determine whether Custo 2 should be an input or a calculated span
         let custo2Html = '';
-        if (isLeaf) {
-            const val = (node.custo_calculado || 0).toFixed(2);
-            custo2Html = `<input type="number" step="0.01" class="form-control form-control-sm custo2-input" data-id-op="${node.id_op || ''}" data-produto="${node.produto || ''}" value="${val}" style="width: 100px; text-align: right;" onchange="window.updateTreeCost(this, '${node.produto}')">`;
-        } else {
-            const val = formatCurrency(node.custo_calculado || 0);
-            custo2Html = `<span style="color: #0d6efd; font-weight: bold;">${val}</span>`;
-        }
+        const val = (node.custo_calculado || 0).toFixed(2);
+        custo2Html = `<input type="number" step="0.01" class="form-control form-control-sm custo2-input" data-id-op="${node.id_op || ''}" data-produto="${node.produto || ''}" data-old-value="${val}" value="${val}" style="width: 100px; text-align: right;" onchange="window.updateTreeCost(this, '${node.produto}')">`;
         
         let custoHtml = '';
         if (node.custo !== undefined && node.custo !== null && node.custo !== '') {
-            custoHtml = formatCurrency(parseFloat(node.custo));
+            // If it is already formatted by Django, use it directly. Otherwise format it.
+            if (typeof node.custo === 'string' && node.custo.includes('R$')) {
+                custoHtml = node.custo;
+            } else {
+                custoHtml = formatCurrency(parseFloat(node.custo_raw || node.custo));
+            }
         }
             
         tr.innerHTML = `
@@ -204,68 +223,60 @@
     }
 
     window.updateTreeCost = function(inputElement, targetId) {
-        const newCost = parseFloat(inputElement.value) || 0;
-        updateNodeValue(treeData, targetId, newCost);
-        recalculateTree(treeData);
+        const newValue = parseDecimal(inputElement.value);
+        const oldValueRaw = inputElement.getAttribute('data-old-value');
+        const oldValue = oldValueRaw ? parseDecimal(oldValueRaw) : newValue;
         
-        updateParentCostDisplays(treeData);
-        calcularCustoFinal();
+        const delta = newValue - oldValue;
+        inputElement.setAttribute('data-old-value', newValue.toFixed(2));
         
         let id_op = inputElement.getAttribute('data-id-op');
         if (id_op && id_op !== 'undefined') {
-            atualizarCusto2OP(id_op, newCost, inputElement);
+            atualizarCusto2OP(id_op, newValue, inputElement);
         }
+        
+        if (delta !== 0) {
+            propagateDeltaUp(inputElement.closest('tr'), delta);
+        }
+        
+        calcularCustoFinal();
     };
-    
-    function updateNodeValue(node, targetId, newCost) {
-        if (!node) return false;
-        if (node.is_leaf && node.produto === targetId) {
-            node.custo_calculado = newCost;
-            return true;
-        }
-        if (node.filhos) {
-            for (let filho of node.filhos) {
-                if (updateNodeValue(filho, targetId, newCost)) return true;
-            }
-        }
-        return false;
-    }
 
-    function recalculateTree(node) {
-        if (!node) return 0;
-        if (node.is_leaf) {
-            return node.custo_calculado;
-        }
-        let sum = 0;
-        if (node.filhos) {
-            node.filhos.forEach(filho => {
-                sum += recalculateTree(filho);
-            });
-        }
-        node.custo_calculado = sum;
-        return sum;
-    }
-
-    function updateParentCostDisplays(node) {
-        if (!node) return;
-        if (!node.is_leaf) {
-            const parentRows = tbody.querySelectorAll(`tr[data-node-id="${node.produto}"]`);
-            parentRows.forEach(tr => {
-                const span = tr.cells[10].querySelector('span');
-                if (span) {
-                    span.textContent = formatCurrency(node.custo_calculado);
+    function propagateDeltaUp(trNode, delta) {
+        const parentId = trNode.getAttribute('data-parent-id');
+        if (!parentId) return;
+        
+        const parentTr = document.getElementById(parentId);
+        if (parentTr) {
+            const parentInput = parentTr.querySelector('.custo2-input');
+            if (parentInput) {
+                const currentVal = parseDecimal(parentInput.value);
+                const newVal = currentVal + delta;
+                
+                parentInput.value = newVal.toFixed(2);
+                parentInput.setAttribute('data-old-value', newVal.toFixed(2));
+                
+                parentInput.style.backgroundColor = '#e2f0d9';
+                setTimeout(() => { parentInput.style.backgroundColor = ''; }, 900);
+                
+                let id_op = parentInput.getAttribute('data-id-op');
+                if (id_op && id_op !== 'undefined') {
+                    atualizarCusto2OP(id_op, newVal, parentInput);
                 }
-            });
-            
-            if (node.filhos) {
-                node.filhos.forEach(filho => updateParentCostDisplays(filho));
+                
+                propagateDeltaUp(parentTr, delta);
             }
         }
     }
-
+    
     function calcularCustoFinal() {
-        if (!treeData || Object.keys(treeData).length === 0) return;
-        const total = treeData.custo_calculado || 0;
+        let total = 0;
+        if (codProdutoAlvo) {
+            const inputAlvo = document.querySelector(`tr[data-node-id="${codProdutoAlvo}"] .custo2-input`);
+            if (inputAlvo) {
+                total = parseDecimal(inputAlvo.value);
+            }
+        }
         const label = document.getElementById('custoFinalLabel');
         if (label) {
             label.textContent = formatCurrency(total);

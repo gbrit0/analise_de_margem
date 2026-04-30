@@ -1,0 +1,83 @@
+{
+    "produto": "G0110243",
+    "filhos": [
+        {
+            "produto": "GP010027",
+            "custo_medio": 108068.26,
+            "quantidade": 1,
+            "filhos": [
+                {
+                    "produto": "G0990206",
+                    "custo": 100811.27,
+                    "quantidade": 1,
+                    "filhos": [
+                        {
+                            "produto": "B0009975",
+                            "custo": 72407.51,
+                            "quantidade": 1
+                        },
+                        {
+                            "produto": "E0050016",
+                            "custo": 24739.14,
+                            "quantidade": 1
+                        },
+                        ...
+                    ]
+                },
+                {
+                    "produto": "G0990207",
+                    "custo": 7178.52,
+                    "quantidade": 1,
+                    "filhos": [
+                        {
+                            "produto": "C0000169",
+                            "custo": 6363.34,
+                            "quantidade": 1
+                        },
+                        {
+                            "produto": "D0010014",
+                            "custo": 760.65,
+                            "quantidade": 1
+                        },
+                        ...
+                    ]
+                },
+                ...
+
+            ]
+        },
+        {
+            "produto": "I0000081",
+            "custo_medio": 16039.27,
+            "quantidade": 1,
+            "filhos": [
+                {
+                    "produto": "E0110372",
+                    "custo": 10578.42,
+                    "quantidade": 1
+                },
+                {
+                    "produto": "I0000157",
+                    "custo": 1809.29,
+                    "quantidade": 1,
+                    "filhos": [
+                        {
+                            "produto": "E000H32N",
+                            "custo": 1449.98,
+                            "quantidade": 1
+                        },
+                        {
+                            "produto": "E0000242",
+                            "custo": 100.34,
+                            "quantidade": 2
+                        },
+                        ...
+                    ]
+                },
+                ...
+
+            ]
+        }
+    ]
+
+}
