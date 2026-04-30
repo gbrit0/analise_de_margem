@@ -68,6 +68,7 @@
     const folhasIndexadas = treeState.folhas_indexadas || {};
     const estadoNivel1 = treeState.estado_nivel_1 || {};
     const tbody = document.getElementById('tree-table-body');
+    const modalOP = document.getElementById('modalOP');
     
     function formatCurrency(value) {
         return value.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
@@ -239,6 +240,9 @@
         }
         
         if (delta !== 0) {
+            if (modalOP) {
+                modalOP.dataset.opCostEdited = 'true';
+            }
             propagateDeltaUp(inputElement.closest('tr'), delta);
         }
         
@@ -283,6 +287,9 @@
         const label = document.getElementById('custoFinalLabel');
         if (label) {
             label.textContent = formatCurrency(total);
+        }
+        if (modalOP) {
+            modalOP.dataset.opCustoFinalValue = total.toFixed(2);
         }
     }
 

@@ -589,6 +589,7 @@
                 <td data-label="Lote">
                     {% if nota.lote and nota.lote.strip %}
                     <a href="javascript:void(0);" class="btn-abre-modal" data-url="{% url 'lista_ops' nota.lote nota.cod_produto %}"
+                        data-chave="{{ nota.chave }}"
                         style="color: var(--azul-escuro); text-decoration: underline; font-weight: 600; transition: color 0.2s;"
                         onmouseover="this.style.color='var(--verde-principal)'"
                         onmouseout="this.style.color='var(--azul-escuro)'" title="Ver Ordens de Produção desta Nota">
@@ -1059,9 +1060,14 @@
             e.preventDefault(); // Evita que o link tente navegar
 
             const url = $(this).attr('data-url');
+            const notaChave = $(this).attr('data-chave');
             const modalElement = document.getElementById('modalOP');
             const modalOP = bootstrap.Modal.getOrCreateInstance(modalElement);
             const containerConteudo = $('#conteudo-modal-op');
+
+            modalElement.dataset.notaChave = notaChave || '';
+            modalElement.dataset.opCostEdited = 'false';
+            modalElement.dataset.opCustoFinalValue = '';
 
             // Mostra o modal com o spinner
             containerConteudo.html('<div class="text-center p-4"><div class="spinner-border text-primary" role="status"></div><p class="mt-2">Buscando Ordens de Produção...</p></div>');
@@ -1078,6 +1084,27 @@
                     containerConteudo.html('<div class="alert alert-danger text-center">Erro ao carregar os dados.</div>');
                     console.error('Erro:', error);
                 });
+        });
+
+        $('#modalOP').on('hidden.bs.modal', function () {
+            const modalElement = this;
+            const houveEdicao = modalElement.dataset.opCostEdited === 'true';
+            const notaChave = modalElement.dataset.notaChave;
+            const custoFinal = modalElement.dataset.opCustoFinalValue;
+
+            if (!houveEdicao || !notaChave || !custoFinal) {
+                return;
+            }
+
+            const inputCustoNota = document.querySelector(`.custo-input[data-chave="${notaChave}"]`);
+            if (!inputCustoNota) {
+                return;
+            }
+
+            inputCustoNota.value = parseFloat(custoFinal).toFixed(2);
+            atualizarCusto(inputCustoNota);
+
+            modalElement.dataset.opCostEdited = 'false';
         });
     });
 </script>
