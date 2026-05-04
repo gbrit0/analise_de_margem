@@ -234,19 +234,19 @@ class NotasListView(LoginRequiredMixin, FilterView, ListView):
         for nota in context['object_list']:
             # Cria um atributo dinâmico "is_parceiro" na nota
             # Se a tupla (cod_cliente, loja) da nota existir no SET, recebe True.
-            if (nota.cod_cliente, nota.loja) in set_parceiros:
+            if (nota.cod_cliente, nota.loja) in set_intercompany:
+                nota.is_intercompany = True
+                justificativa_nf = Nf_Has_Justificativa.objects.filter(nf=nota).last()
+                if not justificativa_nf:
+                    Nf_Has_Justificativa.objects.create(
+                        nf=nota,
+                        justificativa=Justificativa.objects.get(texto='Venda Intercompany'),
+                        usuario=CustomUser.objects.get(id=2)
+                    )
+            elif (nota.cod_cliente, nota.loja) in set_parceiros:
                 nota.is_parceiro = True
                 margem = Margem.objects.filter(chave=nota).last()
                 
-                if (nota.cod_cliente, nota.loja) in set_intercompany:
-                    nota.is_intercompany = True
-                    justificativa_nf = Nf_Has_Justificativa.objects.filter(nf=nota).last()
-                    if not justificativa_nf:
-                        Nf_Has_Justificativa.objects.create(
-                            nf=nota,
-                            justificativa=Justificativa.objects.get(texto='Venda Intercompany'),
-                            usuario=CustomUser.objects.get(id=2)
-                        )
                 if margem.margem_bruta_percentual < 0.27 :
                     if margem.margem_bruta_percentual > 0.15:
                         justificativa_nf = Nf_Has_Justificativa.objects.filter(nf=nota).last()
