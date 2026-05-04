@@ -80,10 +80,18 @@ class Command(BaseCommand):
             custos_para_criar = {}
             margens_para_criar = {}
             notas_ignoradas_regra_data = 0
+            notas_ignoradas_sem_data = 0
 
             for row in rows_notas:
                 chave, filial, nome_filial, nota, item, no_pedido, vendedor, data_emissao, lote, cfop, cfop_descri, atualiza_estoque, gera_duplicata, cod_produto, produto, tipo_produto, desc_tipo_produto, armazem, cod_cliente, loja, cliente, grp_amar_ctb, classificacao_produto, estado_destino, quantidade, tabela_preco, preco_tabela, valor_contabil, custo_valor, valor_unitario, valor_ipi, valor_imp5, valor_imp6, valor_icms_difal, valor_icms, aliq_icms, recno, comentario, deletado = row
                 delete_marcado = protheus_delete_marcado(deletado)
+
+                if not data_emissao:
+                    notas_ignoradas_sem_data += 1
+                    self.stderr.write(
+                        f"Nota ignorada sem data_emissao: chave={chave}, filial={filial}, nota={nota}, item={item}, recno={recno}"
+                    )
+                    continue
                 
                 # Guarda o lote se existir para a busca das OPs
                 # if lote and lote.strip():
@@ -160,6 +168,10 @@ class Command(BaseCommand):
                     Nota.objects.bulk_update(notas_para_atualizar_delete.values(), ['delete'], batch_size=1000)
 
             self.stdout.write("Notas salvas. Buscando OPs no Protheus...")
+            if notas_ignoradas_sem_data:
+                self.stdout.write(
+                    f"{notas_ignoradas_sem_data} notas ignoradas por data_emissao vazia no Protheus."
+                )
             if notas_ignoradas_regra_data:
                 self.stdout.write(
                     f"{notas_ignoradas_regra_data} notas ignoradas pela regra de bloqueio (mês/ano anterior após dia 3)."
