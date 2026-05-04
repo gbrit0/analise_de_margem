@@ -42,7 +42,8 @@ SELECT DISTINCT
     D2_VALICM AS [valor_icms],
     D2_PICM AS [aliq_icms],
     D2.R_E_C_N_O_ as [recno],
-    TRIM(C5.C5_COMENT) AS [comentario]
+    TRIM(C5.C5_COMENT) AS [comentario],
+    D2.D_E_L_E_T_ AS [deletado]
 
 FROM SD2010 AS D2 -- Itens de Venda da NF
 
@@ -123,8 +124,7 @@ FROM SD2010 AS D2 -- Itens de Venda da NF
     	AND C5_SERIE = D2_SERIE
 
 WHERE
-    D2.D_E_L_E_T_ <> '*'
-    AND D2_EMISSAO >= 20250901 -- AND 20250930
+    D2_EMISSAO >= 20250901 -- AND 20250930
     AND TRIM(D2_FILIAL) IN ('0101', '0501', '0502', '0503') -- BRG MATRIZ, GRID GO, GRID MG E GRID PA
     AND TRIM(B1.B1_COD) NOT IN ('B0010046', 'E000H2P8') 
     AND TRIM(D2_CF) NOT IN ('5922', '6922')

@@ -102,7 +102,7 @@ class NotasListView(LoginRequiredMixin, FilterView, ListView):
         ).order_by('-data_cadastro').values('justificativa')[:1]
         
         # 2. Anotamos o queryset principal da Nota com esse valor
-        queryset = Nota.objects.annotate(
+        queryset = Nota.objects.filter(delete=False).annotate(
             custo_mais_recente=Coalesce(
                 Subquery(custo_mais_recente), 
                 0, 
@@ -165,7 +165,7 @@ class NotasListView(LoginRequiredMixin, FilterView, ListView):
         context['lista_justificativas'] = Justificativa.objects.filter(ativo=True)
         
         # Monta lista de meses/anos disponíveis (format YYYY-MM)
-        meses_qs = Nota.objects.annotate(
+        meses_qs = Nota.objects.filter(delete=False).annotate(
             year=ExtractYear('data_emissao'),
             month=ExtractMonth('data_emissao')
         ).values('year', 'month').distinct().order_by('-year', '-month')
@@ -204,7 +204,7 @@ class NotasListView(LoginRequiredMixin, FilterView, ListView):
         context['selected_month'] = selected
         
         # context['mes_anterior'] = (datetime.date.today() - relativedelta(month=1)).strftime("%Y-%m")
-        filiais = Nota.objects.values('filial', 'nome_filial').distinct()
+        filiais = Nota.objects.filter(delete=False).values('filial', 'nome_filial').distinct()
         
         context['filiais'] = filiais
         
@@ -450,7 +450,7 @@ def atualizar_justificativa_api(request):
 def dashboard_view(request):
     selected = request.GET.get('data_emissao_month', '')
     
-    meses_qs = Nota.objects.annotate(
+    meses_qs = Nota.objects.filter(delete=False).annotate(
         year=ExtractYear('data_emissao'),
         month=ExtractMonth('data_emissao')
     ).values('year', 'month').distinct().order_by('-year', '-month')
@@ -475,7 +475,7 @@ def dashboard_view(request):
         elif len(valores) > 0:
             selected = valores[0]
         
-    filiais = Nota.objects.values('filial', 'nome_filial').distinct()
+    filiais = Nota.objects.filter(delete=False).values('filial', 'nome_filial').distinct()
     
     context = {
         'filiais': filiais,
@@ -491,7 +491,7 @@ def dados_vendas_api(request):
     meses_str = request.GET.get('meses')
     filiais_str = request.GET.get('filiais')
         
-    queryset = Nota.objects.all()
+    queryset = Nota.objects.filter(delete=False)
     
     if meses_str:
         meses_list = meses_str.split(',')
