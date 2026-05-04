@@ -622,8 +622,9 @@
                 </td>
 
                 <td data-label="Margem %" class="text-right celula-margem-pct col-principal"
+                    data-is-intercompany="{% if nota.is_intercompany %}true{% else %}false{% endif %}"
                     style="font-weight:bold; color: 
-                    {% if nota.margem_percentual != None %}{% if nota.is_parceiro or nota.is_intercompany %}var(--verde-principal){% elif nota.margem_percentual < 14.995 %}var(--vermelho-alerta){% elif not nota.is_parceiro and nota.margem_percentual < 26.995 %}var(--vermelho-alerta){% else %}var(--verde-principal){% endif %}{% else %}var(--verde-principal){% endif %};">
+                    {% if nota.is_intercompany %}var(--verde-principal){% elif nota.margem_percentual != None %}{% if nota.is_parceiro %}var(--verde-principal){% elif nota.margem_percentual < 14.995 %}var(--vermelho-alerta){% elif not nota.is_parceiro and nota.margem_percentual < 26.995 %}var(--vermelho-alerta){% else %}var(--verde-principal){% endif %}{% else %}var(--verde-principal){% endif %};">
                     {% if nota.margem_percentual != None %}{{ nota.margem_percentual|floatformat:2 }}%{% else %}-{%endif%}
                 </td>
 
@@ -906,8 +907,12 @@
                         celulaBruta.style.color = parseFloat(data.margem_bruta) < 0 ? 'var(--vermelho-alerta)' : 'var(--verde-principal)';
                     }
                     if (celulaPct) {
-                        const valorPct = parseFloat(String(data.margem_percentual).replace(',', '.'));
-                        celulaPct.style.color = valorPct < 27 ? 'var(--vermelho-alerta)' : 'var(--verde-principal)';
+                        if (celulaPct.dataset.isIntercompany === 'true') {
+                            celulaPct.style.color = 'var(--verde-principal)';
+                        } else {
+                            const valorPct = parseFloat(String(data.margem_percentual).replace(',', '.'));
+                            celulaPct.style.color = valorPct < 27 ? 'var(--vermelho-alerta)' : 'var(--verde-principal)';
+                        }
                     }
                 } else {
                     alert('Erro: ' + data.error);
