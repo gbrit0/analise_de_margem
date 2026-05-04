@@ -32,6 +32,9 @@ def dividir_em_lotes(lista, tamanho):
     for i in range(0, len(lista), tamanho):
         yield lista[i:i + tamanho]
 
+def protheus_delete_marcado(valor):
+    return str(valor or '').strip() == '*'
+
 class Command(BaseCommand):
     help = 'Sincroniza dados do Django com o Protheus de forma otimizada'
 
@@ -73,12 +76,14 @@ class Command(BaseCommand):
 
             notas_para_criar = {}
             notas_para_atualizar = {}
+            notas_para_atualizar_delete = {}
             custos_para_criar = {}
             margens_para_criar = {}
             notas_ignoradas_regra_data = 0
 
             for row in rows_notas:
-                chave, filial, nome_filial, nota, item, no_pedido, vendedor, data_emissao, lote, cfop, cfop_descri, atualiza_estoque, gera_duplicata, cod_produto, produto, tipo_produto, desc_tipo_produto, armazem, cod_cliente, loja, cliente, grp_amar_ctb, classificacao_produto, estado_destino, quantidade, tabela_preco, preco_tabela, valor_contabil, custo_valor, valor_unitario, valor_ipi, valor_imp5, valor_imp6, valor_icms_difal, valor_icms, aliq_icms, recno, comentario = row
+                chave, filial, nome_filial, nota, item, no_pedido, vendedor, data_emissao, lote, cfop, cfop_descri, atualiza_estoque, gera_duplicata, cod_produto, produto, tipo_produto, desc_tipo_produto, armazem, cod_cliente, loja, cliente, grp_amar_ctb, classificacao_produto, estado_destino, quantidade, tabela_preco, preco_tabela, valor_contabil, custo_valor, valor_unitario, valor_ipi, valor_imp5, valor_imp6, valor_icms_difal, valor_icms, aliq_icms, recno, comentario, deletado = row
+                delete_marcado = protheus_delete_marcado(deletado)
                 
                 # Guarda o lote se existir para a busca das OPs
                 # if lote and lote.strip():
@@ -96,7 +101,8 @@ class Command(BaseCommand):
                     quantidade=quantidade, tabela_preco=tabela_preco, preco_tabela=preco_tabela,
                     valor_contabil=valor_contabil, valor_unitario=valor_unitario, valor_ipi=valor_ipi,
                     valor_imp5=valor_imp5, valor_imp6=valor_imp6, valor_icms_difal=valor_icms_difal,
-                    valor_icms=valor_icms, aliq_icms=aliq_icms, recno=recno, comentario=comentario
+                    valor_icms=valor_icms, aliq_icms=aliq_icms, recno=recno, comentario=comentario,
+                    delete=delete_marcado
                 )
 
                 if chave not in chaves_existentes:
@@ -126,6 +132,7 @@ class Command(BaseCommand):
                         and data_emissao.month == mes_anterior
                         and data_emissao.year == ano_mes_anterior
                     ):
+                        notas_para_atualizar_delete[chave] = nota_obj
                         notas_ignoradas_regra_data += 1
                         continue
 
@@ -145,8 +152,12 @@ class Command(BaseCommand):
                         'cfop', 'cfop_descri', 'estado_destino', 'quantidade', 'tabela_preco',
                         'valor_contabil', 'valor_unitario', 'valor_ipi', 'valor_imp5',
                         'valor_imp6', 'valor_icms_difal', 'valor_icms', 'aliq_icms',
+                        'delete',
                     ] 
                     Nota.objects.bulk_update(notas_para_atualizar.values(), campos_update, batch_size=1000)
+
+                if notas_para_atualizar_delete:
+                    Nota.objects.bulk_update(notas_para_atualizar_delete.values(), ['delete'], batch_size=1000)
 
             self.stdout.write("Notas salvas. Buscando OPs no Protheus...")
             if notas_ignoradas_regra_data:
