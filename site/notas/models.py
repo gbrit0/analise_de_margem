@@ -257,3 +257,16 @@ class LogBloqueioMes(models.Model):
     acao = models.CharField(max_length=20) # 'BLOQUEADO' ou 'DESBLOQUEADO'
     usuario = models.ForeignKey('users.CustomUser', on_delete=models.SET_NULL, null=True)
     data_cadastro = models.DateTimeField(auto_now_add=True)
+
+
+class PreferenciaColunasNota(models.Model):
+    usuario = models.OneToOneField(CustomUser, on_delete=models.CASCADE, related_name='preferencia_colunas_nota')
+    colunas_visiveis = models.JSONField(default=list)
+    data_atualizacao = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        verbose_name = "Preferência de Colunas da Nota"
+        verbose_name_plural = "Preferências de Colunas das Notas"
+
+    def __str__(self):
+        return f"Preferência de colunas - {self.usuario}"

@@ -161,6 +161,39 @@
         color: #6c757d;
     }
 
+    .column-config-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(210px, 1fr));
+        gap: 12px;
+        margin-bottom: 18px;
+    }
+
+    .column-config-item {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        padding: 10px 12px;
+        border: 1px solid var(--cinza-borda);
+        border-radius: 6px;
+        background: var(--branco);
+        color: var(--azul-escuro);
+        font-weight: 500;
+    }
+
+    .column-config-actions {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        flex-wrap: wrap;
+    }
+
+    .column-config-status {
+        min-height: 24px;
+        color: var(--verde-principal);
+        font-size: 0.9rem;
+        font-weight: 600;
+    }
+
     @media (max-width: 991.98px) {
         .admin-grid {
             grid-template-columns: 1fr;
@@ -183,6 +216,9 @@
         </li>
         <li class="nav-item" role="presentation">
             <button class="nav-link" id="meses-bloqueados-tab" data-bs-toggle="tab" data-bs-target="#meses-bloqueados" type="button" role="tab" style="color: var(--azul-escuro); font-weight: 500;"><i class="fa-solid fa-calendar-xmark"></i> Meses Bloqueados</button>
+        </li>
+        <li class="nav-item" role="presentation">
+            <button class="nav-link" id="ajuste-colunas-tab" data-bs-toggle="tab" data-bs-target="#ajuste-colunas" type="button" role="tab" style="color: var(--azul-escuro); font-weight: 500;"><i class="fa-solid fa-table-columns"></i> Ajuste de Colunas</button>
         </li>
     </ul>
 
@@ -421,6 +457,42 @@
                 </div>
             </div>
         </div>
+
+        <div class="tab-pane fade" id="ajuste-colunas" role="tabpanel">
+            <div class="admin-card">
+                <div class="admin-header">
+                    <div class="admin-title">
+                        <i class="fa-solid fa-table-columns"></i> Ajuste de Colunas da Tabela Inicial
+                    </div>
+                </div>
+                <div class="column-config-grid" id="notaColumnConfig">
+                    {% for column in nota_grid_columns %}
+                    <label class="column-config-item" for="nota-column-{{ column.key }}">
+                        <input
+                            class="form-check-input nota-column-checkbox"
+                            type="checkbox"
+                            id="nota-column-{{ column.key }}"
+                            value="{{ column.key }}"
+                            {% if column.key in nota_grid_visible_columns %}checked{% endif %}
+                        >
+                        <span>{{ column.label }}</span>
+                    </label>
+                    {% endfor %}
+                </div>
+                <div class="column-config-actions">
+                    <button type="button" class="btn-custom btn-secondary text-dark border bg-light" onclick="selecionarTodasColunasNota()">
+                        <i class="fa-solid fa-check-double"></i> Selecionar todas
+                    </button>
+                    <button type="button" class="btn-custom btn-secondary text-dark border bg-light" onclick="restaurarColunasPadraoNota()">
+                        <i class="fa-solid fa-rotate-left"></i> Restaurar padrão
+                    </button>
+                    <button type="button" class="btn-custom btn-primary-custom" onclick="salvarPreferenciaColunasNota()">
+                        <i class="fa-solid fa-floppy-disk"></i> Salvar preferência
+                    </button>
+                    <span class="column-config-status" id="notaColumnConfigStatus" aria-live="polite"></span>
+                </div>
+            </div>
+        </div>
     </div>
 </div>
 
@@ -450,7 +522,13 @@
 </div>
 
 <script src="https://cdn.datatables.net/1.13.6/js/jquery.dataTables.min.js"></script>
+{{ nota_grid_columns|json_script:"nota-grid-columns" }}
 <script>
+    const notaGridColumns = JSON.parse(document.getElementById('nota-grid-columns').textContent);
+    const notaGridDefaultColumns = notaGridColumns
+        .filter(column => column.default_visible)
+        .map(column => column.key);
+
     $(document).ready(function() {
         $('#tabelaJustificativas').DataTable({
             language: {
@@ -641,6 +719,69 @@
         .catch(error => {
             console.error('Erro:', error);
             alert('Erro de comunicação do servidor.');
+        });
+    }
+
+    function setNotaColumnStatus(message, isError = false) {
+        const status = document.getElementById('notaColumnConfigStatus');
+        if (!status) return;
+        status.style.color = isError ? 'var(--vermelho-alerta)' : 'var(--verde-principal)';
+        status.innerText = message;
+    }
+
+    function getNotaColumnCheckboxes() {
+        return Array.from(document.querySelectorAll('.nota-column-checkbox'));
+    }
+
+    function selecionarTodasColunasNota() {
+        getNotaColumnCheckboxes().forEach(checkbox => {
+            checkbox.checked = true;
+        });
+        setNotaColumnStatus('');
+    }
+
+    function restaurarColunasPadraoNota() {
+        const padrao = new Set(notaGridDefaultColumns);
+        getNotaColumnCheckboxes().forEach(checkbox => {
+            checkbox.checked = padrao.has(checkbox.value);
+        });
+        setNotaColumnStatus('');
+    }
+
+    function salvarPreferenciaColunasNota() {
+        const csrfToken = document.querySelector('[name=csrfmiddlewaretoken]').value;
+        const colunasVisiveis = getNotaColumnCheckboxes()
+            .filter(checkbox => checkbox.checked)
+            .map(checkbox => checkbox.value);
+
+        if (colunasVisiveis.length === 0) {
+            setNotaColumnStatus('Selecione ao menos uma coluna.', true);
+            return;
+        }
+
+        setNotaColumnStatus('Salvando...');
+
+        fetch('{% url "api_salvar_preferencia_colunas_nota" %}', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': csrfToken
+            },
+            body: JSON.stringify({
+                colunas_visiveis: colunasVisiveis
+            })
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                setNotaColumnStatus('Preferência salva.');
+            } else {
+                setNotaColumnStatus(data.error || 'Não foi possível salvar.', true);
+            }
+        })
+        .catch(error => {
+            console.error('Erro:', error);
+            setNotaColumnStatus('Erro de comunicação do servidor.', true);
         });
     }
 </script>
