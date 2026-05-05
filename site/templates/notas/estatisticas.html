@@ -840,29 +840,32 @@
                         datasets: [
                             {
                                 type: 'line',
-                                label: 'Margem %',
-                                data: dados.margem_percentual.map(m => m.toFixed(2)),
-                                borderColor: '#00A34F', // Verde Principal
-                                backgroundColor: '#00A34F',
+                                label: 'Faturamento',
+                                data: dados.total_vendas,
+                                borderColor: '#13162F',
+                                backgroundColor: '#13162F',
                                 borderWidth: 3,
                                 pointBackgroundColor: '#FFFFFF',
-                                pointBorderColor: '#00A34F',
+                                pointBorderColor: '#13162F',
                                 pointBorderWidth: 2,
                                 pointRadius: 4,
                                 pointHoverRadius: 6,
                                 fill: false,
-                                tension: 0.4, // Curva mais suave
-                                yAxisID: 'y1',
+                                tension: 0.35
                             },
                             {
-                                type: 'bar',
-                                label: 'Faturamento',
-                                data: dados.total_vendas,
-                                backgroundColor: '#13162F', // Azul Escuro Tecnológico
-                                borderRadius: 6, // Arredonda o topo das colunas
-                                borderSkipped: false,
-                                maxBarThickness: 50, // Evita barras gigantes em telas largas
-                                yAxisID: 'y',
+                                type: 'line',
+                                label: 'Margem %',
+                                data: dados.margem_percentual.map(m => Number(m.toFixed(2))),
+                                borderColor: '#00A34F',
+                                backgroundColor: '#00A34F',
+                                borderWidth: 2,
+                                borderDash: [6, 6],
+                                pointRadius: 3,
+                                pointHoverRadius: 5,
+                                fill: false,
+                                tension: 0.2,
+                                yAxisID: 'y1'
                             },
                             {
                                 type: 'bar',
@@ -873,6 +876,7 @@
                                 borderSkipped: false,
                                 maxBarThickness: 50,
                                 yAxisID: 'y',
+                                stack: 'custos'
                             },
                             {
                                 type: 'bar',
@@ -883,7 +887,8 @@
                                 borderSkipped: false,
                                 maxBarThickness: 50,
                                 yAxisID: 'y',
-                            },
+                                stack: 'custos'
+                            }
                         ]
                     },
                     options: {
@@ -912,10 +917,9 @@
                                     label: function (context) {
                                         let label = context.dataset.label || '';
                                         if (label) { label += ': '; }
-                                        if (context.dataset.type === 'line') {
-                                            label += context.parsed.y + '%';
+                                        if (context.dataset.label === 'Margem %') {
+                                            label += formatarPercentual.format(context.parsed.y) + '%';
                                         } else {
-                                            // Formata o dinheiro bonitinho no tooltip
                                             label += formatarMoeda.format(context.parsed.y);
                                         }
                                         return label;
@@ -925,11 +929,11 @@
                         },
                         scales: {
                             x: {
-                                grid: { display: false }, // Tira linhas de grade verticais para visual limpo
-                                // max: totalDados - 1,
-                                // min: totalDados - 6
+                                stacked: true,
+                                grid: { display: false }
                             },
                             y: {
+                                stacked: true,
                                 type: 'linear',
                                 display: true,
                                 position: 'left',
@@ -938,7 +942,12 @@
                                     text: 'Faturamento (R$)',
                                     font: { weight: '500' }
                                 },
-                                grid: { color: '#E0E5EC' } // Cinza borda
+                                grid: { color: '#E0E5EC' },
+                                ticks: {
+                                    callback: function (value) {
+                                        return formatarMoeda.format(value);
+                                    }
+                                }
                             },
                             y1: {
                                 type: 'linear',
