@@ -288,8 +288,33 @@
             Faturamento x Margem por Período
         </div>
 
-        <div style="position: relative; height: 350px; width: 100%;">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
+            <div style="font-weight:600; color:var(--azul-escuro);">Visualização</div>
+            <div>
+                <button class="btn-custom btn-secondary-custom" type="button" onclick="toggleView('fatPeriodo')">Ver como Tabela</button>
+            </div>
+        </div>
+
+        <div id="fatPeriodo_grafico_wrapper" style="position: relative; height: 350px; width: 100%;">
             <canvas id="graficoFatPeriodo"></canvas>
+        </div>
+
+        <div id="fatPeriodo_tabela_wrapper" style="display:none; margin-top:12px;">
+            <div class="bi-table-wrapper">
+                <table class="bi-table">
+                    <thead>
+                        <tr>
+                            <th>Período</th>
+                            <th>Faturamento</th>
+                            <th>Custo</th>
+                            <th>Margem</th>
+                            <th>Margem %</th>
+                        </tr>
+                    </thead>
+                    <tbody id="tabelaFatPeriodo"></tbody>
+                </table>
+                <div id="semDadosFatPeriodo" class="empty-state" style="display: none;">Nenhum dado encontrado para os filtros selecionados.</div>
+            </div>
         </div>
     </div>
 
@@ -299,8 +324,32 @@
             Estatísticas de Justificativas
         </div>
 
-        <div style="position: relative; height: 350px; width: 100%;">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
+            <div style="font-weight:600; color:var(--azul-escuro);">Visualização</div>
+            <div>
+                <button class="btn-custom btn-secondary-custom" type="button" onclick="toggleView('justificativas')">Ver como Tabela</button>
+            </div>
+        </div>
+
+        <div id="justificativas_grafico_wrapper" style="position: relative; height: 350px; width: 100%;">
             <canvas id="graficoJustificativas"></canvas>
+        </div>
+
+        <div id="justificativas_tabela_wrapper" style="display:none; margin-top:12px;">
+            <div class="bi-table-wrapper">
+                <table class="bi-table">
+                    <thead>
+                        <tr>
+                            <th>Justificativa</th>
+                            <th>Qtd Notas</th>
+                            <th>Representatividade %</th>
+                            <th>% Abaixo Margem</th>
+                        </tr>
+                    </thead>
+                    <tbody id="tabelaJustificativas"></tbody>
+                </table>
+                <div id="semDadosJustificativas" class="empty-state" style="display: none;">Nenhum dado encontrado para os filtros selecionados.</div>
+            </div>
         </div>
     </div>
 
@@ -310,8 +359,31 @@
             Evolução da Margem % por Vendedor
         </div>
 
-        <div style="position: relative; height: 360px; width: 100%;">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
+            <div style="font-weight:600; color:var(--azul-escuro);">Visualização</div>
+            <div>
+                <button class="btn-custom btn-secondary-custom" type="button" onclick="toggleView('evolucaoVendedores')">Ver como Tabela</button>
+            </div>
+        </div>
+
+        <div id="evolucaoVendedores_grafico_wrapper" style="position: relative; height: 360px; width: 100%;">
             <canvas id="graficoEvolucaoVendedores"></canvas>
+        </div>
+
+        <div id="evolucaoVendedores_tabela_wrapper" style="display:none; margin-top:12px;">
+            <div class="bi-table-wrapper">
+                <table class="bi-table">
+                    <thead>
+                        <tr>
+                            <th>Vendedor</th>
+                            <th>Período</th>
+                            <th>Margem %</th>
+                        </tr>
+                    </thead>
+                    <tbody id="tabelaEvolucaoVendedores"></tbody>
+                </table>
+                <div id="semDadosEvolucaoVendedores" class="empty-state" style="display: none;">Nenhum dado encontrado para os filtros selecionados.</div>
+            </div>
         </div>
     </div>
 
@@ -544,8 +616,12 @@
                     });
                 }
 
+                // Popular tabela de justificativas
+                renderJustificativasTable(dados.estatisticas_justificativas || []);
+
                 const vendedores = dados.estatisticas_vendedores || [];
                 atualizarTabelaVendedores(vendedores);
+                renderVendedoresTable(vendedores);
                 const vendedoresGrafico = vendedores.slice(0, 15);
                 const evolucaoVendedores = dados.estatisticas_vendedores_periodo || [];
                 const coresVendedores = ['#00A34F', '#0E6FC4', '#D9420F', '#13162F', '#7A5C00'];
@@ -742,6 +818,12 @@
                         }
                     }
                 });
+
+                // Popular tabela fat x periodo
+                renderFatPeriodoTable(dados.labels || [], dados.total_vendas || [], dados.custo_total || [], dados.margem_total || [], dados.margem_percentual || []);
+
+                // Popular tabela evolução vendedores
+                renderEvolucaoVendedoresTable(evolucaoVendedores || []);
 
                 const ctx = document.getElementById('graficoFatPeriodo').getContext('2d');
 
@@ -963,6 +1045,112 @@
 
         const url = `/exportar-estatisticas/?meses=${mesesStr}&filiais=${filiaisStr}`;
         window.location.href = url;
+    }
+
+    // Toggle entre gráfico e tabela para cada componente
+    function toggleView(component) {
+        const graficoWrapper = document.getElementById(component + '_grafico_wrapper');
+        const tabelaWrapper = document.getElementById(component + '_tabela_wrapper');
+        if (!graficoWrapper || !tabelaWrapper) return;
+        const showingGrafico = graficoWrapper.style.display !== 'none';
+        if (showingGrafico) {
+            graficoWrapper.style.display = 'none';
+            tabelaWrapper.style.display = 'block';
+        } else {
+            graficoWrapper.style.display = 'block';
+            tabelaWrapper.style.display = 'none';
+        }
+    }
+
+    // Renderizadores de tabelas
+    function renderFatPeriodoTable(labels, faturamento, custos, margem, margemPercentual) {
+        const tbody = document.getElementById('tabelaFatPeriodo');
+        const empty = document.getElementById('semDadosFatPeriodo');
+        tbody.innerHTML = '';
+        if (!labels || !labels.length) {
+            empty.style.display = 'block';
+            return;
+        }
+        empty.style.display = 'none';
+        for (let i = 0; i < labels.length; i++) {
+            const tr = document.createElement('tr');
+            const cells = [
+                labels[i] || '-',
+                faturamento[i] != null ? formatarMoeda.format(faturamento[i]) : '-',
+                custos[i] != null ? formatarMoeda.format(custos[i]) : '-',
+                margem[i] != null ? formatarMoeda.format(margem[i]) : '-',
+                margemPercentual[i] != null ? formatarPercentual.format(margemPercentual[i]) + '%' : '-'
+            ];
+            cells.forEach(value => {
+                const td = document.createElement('td');
+                td.textContent = value;
+                tr.appendChild(td);
+            });
+            tbody.appendChild(tr);
+        }
+    }
+
+    function renderJustificativasTable(stats) {
+        const tbody = document.getElementById('tabelaJustificativas');
+        const empty = document.getElementById('semDadosJustificativas');
+        tbody.innerHTML = '';
+        if (!stats || !stats.length) {
+            empty.style.display = 'block';
+            return;
+        }
+        empty.style.display = 'none';
+        stats.forEach(s => {
+            const tr = document.createElement('tr');
+            const cells = [
+                s.justificativa || '-',
+                s.contagem != null ? s.contagem : '-',
+                s.representatividade_vendas != null ? formatarPercentual.format(s.representatividade_vendas) + '%' : '-',
+                s.percentual_abaixo_margem != null ? formatarPercentual.format(s.percentual_abaixo_margem) + '%' : '-'
+            ];
+            cells.forEach(value => {
+                const td = document.createElement('td');
+                td.textContent = value;
+                tr.appendChild(td);
+            });
+            tbody.appendChild(tr);
+        });
+    }
+
+    function renderVendedoresTable(vendedores) {
+        const tbody = document.getElementById('tabelaVendedores');
+        const empty = document.getElementById('semDadosVendedores');
+        // A função atualizarTabelaVendedores já popula essa tabela, então reutiliza-la
+        if (vendedores && vendedores.length) {
+            empty.style.display = 'none';
+        } else {
+            empty.style.display = 'block';
+        }
+        // Não duplicar: atualizarTabelaVendedores já fez o innerHTML
+    }
+
+    function renderEvolucaoVendedoresTable(evolucao) {
+        const tbody = document.getElementById('tabelaEvolucaoVendedores');
+        const empty = document.getElementById('semDadosEvolucaoVendedores');
+        tbody.innerHTML = '';
+        if (!evolucao || !evolucao.length) {
+            empty.style.display = 'block';
+            return;
+        }
+        empty.style.display = 'none';
+        evolucao.forEach(item => {
+            const tr = document.createElement('tr');
+            const cells = [
+                item.vendedor || '-',
+                item.mes || '-',
+                item.margem_percentual != null ? formatarPercentual.format(item.margem_percentual) + '%' : '-'
+            ];
+            cells.forEach(value => {
+                const td = document.createElement('td');
+                td.textContent = value;
+                tr.appendChild(td);
+            });
+            tbody.appendChild(tr);
+        });
     }
 </script>
 {% endblock %}
