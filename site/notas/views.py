@@ -1178,7 +1178,7 @@ def exportar_estatisticas_excel(request):
     from openpyxl.styles import Font, PatternFill, Border, Side
     from openpyxl.utils import get_column_letter
 
-# 1. Obtém os dados chamando a API localmente
+    # 1. Obtém os dados chamando a API localmente
     resp = dados_vendas_api(request)
     if resp.status_code != 200:
         return HttpResponse("Erro ao gerar dados", status=500)
@@ -1187,7 +1187,7 @@ def exportar_estatisticas_excel(request):
     
     wb = Workbook()
     
-# Aba 1: Estatísticas Justificativas
+    # Aba 1: Estatísticas Justificativas
     ws1 = wb.active
     ws1.title = "Estatísticas Justificativas"
     
@@ -1202,7 +1202,7 @@ def exportar_estatisticas_excel(request):
             item['percentual_abaixo_margem'] / 100.0
         ])
         
-# Aba 2: Estatísticas Período
+    # Aba 2: Estatísticas Período
     ws2 = wb.create_sheet(title="Estatísticas Por Período")
     cols2 = ['Mês', 'Faturamento (valor_)', 'Custo Total', 'Margem Bruta', 'Margem Percentual']
     ws2.append(['Mês', 'Faturamento', 'Custo Total', 'Margem Total', 'Margem Percentual'])
@@ -1222,7 +1222,7 @@ def exportar_estatisticas_excel(request):
             (margens_pct[i] / 100.0) if margens_pct[i] is not None else 0
         ])
 
-# Aba 3: Estatísticas Vendedores
+    # Aba 3: Estatísticas Vendedores
     ws3 = wb.create_sheet(title="Estatísticas Por Vendedor")
     cols3 = ['Vendedor', 'Qtd Notas', 'Faturamento', 'Custo Total', 'Margem Total', 'Margem Percentual']
     ws3.append(cols3)
@@ -1237,7 +1237,7 @@ def exportar_estatisticas_excel(request):
             item['margem_percentual'] / 100.0
         ])
 
-# Aba 4: Evolução Vendedores
+    # Aba 4: Evolução Vendedores
     ws4 = wb.create_sheet(title="Evolução Por Vendedor")
     cols4 = ['Mês', 'Vendedor', 'Faturamento', 'Margem Total', 'Margem Percentual']
     ws4.append(cols4)
@@ -1251,7 +1251,7 @@ def exportar_estatisticas_excel(request):
             item['margem_percentual'] / 100.0
         ])
     
-# Aplicar formato
+    # Aplicar formato
     fmt_header_fill = PatternFill(start_color="D9E1F2", end_color="D9E1F2", fill_type="solid")
     fmt_header_font = Font(bold=True)
     fmt_border = Border(left=Side(style='thin'), right=Side(style='thin'), top=Side(style='thin'), bottom=Side(style='thin'))
