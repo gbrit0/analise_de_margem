@@ -10,7 +10,8 @@ from .models import (
     OP,
     Custo2_OP,
     MesBloqueado,
-    LogBloqueioMes
+    LogBloqueioMes,
+    PreferenciaColunasNota
 )
 
 from users.models import CustomUser
@@ -48,6 +49,73 @@ from django.views.decorators.http import require_http_methods, require_POST
 from django.db.models import OuterRef, Subquery, DecimalField, Case, When, F, Value, ExpressionWrapper
 
 locale.setlocale(locale.LC_ALL, 'pt_BR.UTF-8')
+
+NOTA_GRID_COLUMNS = [
+    {'key': 'filial', 'label': 'Filial', 'index': 1, 'default_visible': True},
+    {'key': 'nota', 'label': 'Nota', 'index': 2, 'default_visible': True},
+    {'key': 'emissao', 'label': 'Emissão', 'index': 3, 'default_visible': True},
+    {'key': 'pedido', 'label': 'Nº Pedido', 'index': 4, 'default_visible': True},
+    {'key': 'vendedor', 'label': 'Vendedor', 'index': 5, 'default_visible': True},
+    {'key': 'cliente', 'label': 'Cliente', 'index': 6, 'default_visible': True},
+    {'key': 'cfop', 'label': 'CFOP', 'index': 7, 'default_visible': False},
+    {'key': 'tipo', 'label': 'Tipo', 'index': 8, 'default_visible': False},
+    {'key': 'produto', 'label': 'Produto', 'index': 9, 'default_visible': True},
+    {'key': 'lote', 'label': 'Lote', 'index': 10, 'default_visible': False},
+    {'key': 'quantidade', 'label': 'Qtd', 'index': 11, 'default_visible': False},
+    {'key': 'valor_contabil', 'label': 'Vl. Contábil', 'index': 12, 'default_visible': True},
+    {'key': 'custo', 'label': 'Custo', 'index': 13, 'default_visible': True},
+    {'key': 'tabela_preco', 'label': 'Tabela Preço', 'index': 14, 'default_visible': False},
+    {'key': 'preco_tabela', 'label': 'Preço Tabela', 'index': 15, 'default_visible': False},
+    {'key': 'margem_bruta', 'label': 'Margem Bruta', 'index': 16, 'default_visible': True},
+    {'key': 'margem_percentual', 'label': 'Margem %', 'index': 17, 'default_visible': True},
+    {'key': 'estoque', 'label': 'Estoque?', 'index': 18, 'default_visible': False},
+    {'key': 'duplicata', 'label': 'Duplicata?', 'index': 19, 'default_visible': False},
+    {'key': 'armazem', 'label': 'Armazém', 'index': 20, 'default_visible': False},
+    {'key': 'grp_amar_ctb', 'label': 'Gp. Amar. CTB', 'index': 21, 'default_visible': False},
+    {'key': 'uf', 'label': 'UF', 'index': 22, 'default_visible': False},
+    {'key': 'valor_unitario', 'label': 'Vl. Unit', 'index': 23, 'default_visible': False},
+    {'key': 'ipi', 'label': 'IPI', 'index': 24, 'default_visible': False},
+    {'key': 'imp5', 'label': 'Imp5', 'index': 25, 'default_visible': False},
+    {'key': 'imp6', 'label': 'Imp6', 'index': 26, 'default_visible': False},
+    {'key': 'difal', 'label': 'Difal', 'index': 27, 'default_visible': False},
+    {'key': 'icms', 'label': 'ICMS', 'index': 28, 'default_visible': False},
+    {'key': 'aliq_icms', 'label': 'Aliq %', 'index': 29, 'default_visible': False},
+    {'key': 'justificativa', 'label': 'Justificativa', 'index': 30, 'default_visible': True},
+    {'key': 'comentario', 'label': 'Comentário', 'index': 31, 'default_visible': False},
+]
+
+NOTA_GRID_COLUMN_KEYS = {column['key'] for column in NOTA_GRID_COLUMNS}
+NOTA_GRID_MAIN_COLUMN_KEYS = {
+    'filial',
+    'nota',
+    'pedido',
+    'vendedor',
+    'cliente',
+    'produto',
+    'valor_contabil',
+    'custo',
+    'margem_bruta',
+    'margem_percentual',
+    'justificativa',
+}
+NOTA_GRID_DEFAULT_VISIBLE = [
+    column['key'] for column in NOTA_GRID_COLUMNS if column['default_visible']
+]
+
+
+def get_nota_grid_visible_columns(user):
+    if not user.is_authenticated:
+        return NOTA_GRID_DEFAULT_VISIBLE
+
+    preferencia = getattr(user, 'preferencia_colunas_nota', None)
+    if not preferencia or not isinstance(preferencia.colunas_visiveis, list):
+        return NOTA_GRID_DEFAULT_VISIBLE
+
+    colunas = [
+        coluna for coluna in preferencia.colunas_visiveis
+        if coluna in NOTA_GRID_COLUMN_KEYS
+    ]
+    return colunas or NOTA_GRID_DEFAULT_VISIBLE
 
 pool = PooledDB(
     creator=pyodbc,
@@ -163,6 +231,9 @@ class NotasListView(LoginRequiredMixin, FilterView, ListView):
         
         # Adicionamos a lista de justificativas ativas para popular os selects no HTML
         context['lista_justificativas'] = Justificativa.objects.filter(ativo=True)
+        context['nota_grid_columns'] = NOTA_GRID_COLUMNS
+        context['nota_grid_visible_columns'] = get_nota_grid_visible_columns(self.request.user)
+        context['nota_grid_main_column_keys'] = list(NOTA_GRID_MAIN_COLUMN_KEYS)
         
         # Monta lista de meses/anos disponíveis (format YYYY-MM)
         meses_qs = Nota.objects.filter(delete=False).annotate(
@@ -855,8 +926,36 @@ def justificativa_admin_view(request):
         'meses_bloqueados': meses_bloqueados,
         'meses_gerenciaveis': meses_gerenciaveis,
         'logs_bloqueio': logs_bloqueio,
-        'selected_month': selected
+        'selected_month': selected,
+        'nota_grid_columns': NOTA_GRID_COLUMNS,
+        'nota_grid_visible_columns': get_nota_grid_visible_columns(request.user),
     })
+
+@login_required
+@require_POST
+def salvar_preferencia_colunas_nota(request):
+    try:
+        data = json.loads(request.body)
+        colunas = data.get('colunas_visiveis', [])
+
+        if not isinstance(colunas, list):
+            return JsonResponse({'success': False, 'error': 'Formato de colunas inválido.'}, status=400)
+
+        colunas_validas = []
+        for coluna in colunas:
+            if coluna in NOTA_GRID_COLUMN_KEYS and coluna not in colunas_validas:
+                colunas_validas.append(coluna)
+
+        if not colunas_validas:
+            return JsonResponse({'success': False, 'error': 'Selecione ao menos uma coluna.'}, status=400)
+
+        preferencia, created = PreferenciaColunasNota.objects.get_or_create(usuario=request.user)
+        preferencia.colunas_visiveis = colunas_validas
+        preferencia.save(update_fields=['colunas_visiveis', 'data_atualizacao'])
+
+        return JsonResponse({'success': True, 'colunas_visiveis': colunas_validas})
+    except Exception as e:
+        return JsonResponse({'success': False, 'error': str(e)}, status=500)
 
 @login_required
 @require_POST
