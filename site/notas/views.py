@@ -778,7 +778,9 @@ def op_list_view(request, lote, cod_produto):
         
     with pool.connection() as conn:
         with conn.cursor() as cursor:
-            cursor.execute(query_ops, lote)
+            # Passe 'lote' como tupla/lista; passar string direto pode ser
+            # tratada como sequência de caracteres pela API do DB.
+            cursor.execute(query_ops, (lote,))
             colunas = [coluna[0] for coluna in cursor.description]
             linhas_op = []
             for linha in cursor.fetchall():
@@ -1302,7 +1304,9 @@ def exportar_op_excel(request, lote):
         
     with pool.connection() as conn:
         with conn.cursor() as cursor:
-            cursor.execute(query_ops, lote)
+            # Passe 'lote' como tupla/lista; passar string direto pode ser
+            # tratada como sequência de caracteres pela API do DB.
+            cursor.execute(query_ops, (lote,))
             colunas = [coluna[0] for coluna in cursor.description]
             linhas_op = [dict(zip(colunas, linha)) for linha in cursor.fetchall()]
 
