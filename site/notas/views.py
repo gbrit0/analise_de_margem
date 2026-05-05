@@ -1035,139 +1035,179 @@ def toggle_bloqueio_mes_api(request):
 
 @login_required
 def exportar_excel(request):
-# Obtém o queryset base com as pre-anotações e filial filter
+    import pandas as pd
+    import io
+    from xlsxwriter.utility import xl_col_to_name
+
+    # Obtém o queryset base com as pre-anotações e filial filter
     notas_view = NotasListView()
     notas_view.request = request
     base_qs = notas_view.get_queryset()
 
-# Aplica os filtros da URL
+    # Aplica os filtros da URL
     f = NotaFilter(request.GET, queryset=base_qs)
     queryset = f.qs
 
-# 1. Criar o workbook e planilha
-    wb = Workbook()
-    ws = wb.active
-    ws.title = "Dados"
-
-# 2. Adicionar cabeçalhos (Substituído por campos existentes para não ocorrer Crash do framework)
     columns = [
-        'chave',
-        'filial',
-        'nome_filial',
-        'nota',
-        'item',
-        'no_pedido',
-        'vendedor',
-        'data_emissao',
-        'lote',
-        'cfop',
-        'cfop_descri',
-        'atualiza_estoque',
-        'gera_duplicata',
-        'cod_produto',
-        'produto',
-        'tipo_produto',
-        'desc_tipo_produto',
-        'armazem',
-        'cod_cliente',
-        'loja',
-        'cliente',
-        'grp_amar_ctb',
-        'classificacao_produto',
-        'estado_destino',
-        'quantidade',
-        'tabela_preco',
-        'preco_tabela',
-        'valor_contabil',
-        'valor_unitario',
-        'valor_ipi',
-        'valor_imp5',
-        'valor_imp6',
-        'valor_icms_difal',
-        'valor_icms',
-        'aliq_icms',
+        'chave', 'filial', 'nome_filial', 'nota', 'item', 'no_pedido', 'vendedor',
+        'data_emissao', 'lote', 'cfop', 'cfop_descri', 'atualiza_estoque', 'gera_duplicata',
+        'cod_produto', 'produto', 'tipo_produto', 'desc_tipo_produto', 'armazem',
+        'cod_cliente', 'loja', 'cliente', 'grp_amar_ctb', 'classificacao_produto',
+        'estado_destino', 'quantidade', 'tabela_preco', 'preco_tabela',
+        'valor_contabil', 'custo_mais_recente', 'valor_unitario', 'valor_ipi', 'valor_imp5',
+        'valor_imp6', 'valor_icms_difal', 'valor_icms', 'aliq_icms',
+        'margem_bruta', 'margem_percentual'
     ]
-    ws.append(columns)
 
-# 3. Adicionar dados (Dados reais baseados no Model para evitar crash na query)
-# Lembre-se de adaptar essa query de acordo com os dados exatos que desejar!
-    
-# Obtém o queryset base com as pre-anotações e filial filter
-    notas_view = NotasListView()
-    notas_view.request = request
-    base_qs = notas_view.get_queryset()
+    dados = list(queryset.values(*columns))
+    df = pd.DataFrame(dados)
 
-# Aplica os filtros da URL
-    f = NotaFilter(request.GET, queryset=base_qs)
-    queryset = f.qs
+    output = io.BytesIO()
+    with pd.ExcelWriter(output, engine='xlsxwriter') as writer:
+        workbook = writer.book
+        sheet_name = "NFs"
 
-    dados = list(queryset.values_list(*columns))
-    for linha in dados:
-        ws.append(linha)
-
-# 4. Formatos
-    fmt_header_fill = PatternFill(start_color="D9E1F2", end_color="D9E1F2", fill_type="solid")
-    fmt_header_font = Font(bold=True)
-    fmt_border = Border(left=Side(style='thin'), right=Side(style='thin'), 
-                        top=Side(style='thin'), bottom=Side(style='thin'))
-
-# Formatar o cabeçalho
-    for cell in ws[1]:
-        cell.font = fmt_header_font
-        cell.fill = fmt_header_fill
-        cell.border = fmt_border
-
-# 5. Aplica formatação de colunas (Largura e Números)
-    for col_idx, col_name in enumerate(columns, 1):
-        col_name_lower = str(col_name).lower()
-        num_format = None
-        
-        if any(x in col_name_lower for x in ['valor_', 'custo', 'vlr_', 'margem_bruta']):
-            num_format = 'R$ #,##0.00'
-        elif any(x in col_name_lower for x in ['percent', 'aliquota', 'diff_percentual']):
-            num_format = '0.00%'
-
-        max_len = len(str(col_name))
-        
-        last_row = len(dados) + 1
-        for row_idx in range(2, last_row + 1):
-            cell = ws.cell(row=row_idx, column=col_idx)
+        if df.empty:
+            df.to_excel(writer, sheet_name=sheet_name, index=False)
+        else:
+            if 'data_emissao' in df.columns:
+                df['data_emissao'] = pd.to_datetime(df['data_emissao']).dt.date
             
-            if num_format:
-                cell.number_format = num_format
+            cols_to_float = [
+                'quantidade', 'preco_tabela', 'valor_contabil', 'custo_mais_recente', 
+                'valor_unitario', 'valor_ipi', 'valor_imp5', 'valor_imp6', 
+                'valor_icms_difal', 'valor_icms', 'aliq_icms', 'margem_bruta', 'margem_percentual'
+            ]
+            for col in cols_to_float:
+                if col in df.columns:
+                    df[col] = pd.to_numeric(df[col], errors='coerce').fillna(0.0)
+
+            if 'aliq_icms' in df.columns:
+                df['aliq_icms'] = df['aliq_icms'] / 100.0
+
+            if 'margem_percentual' in df.columns:
+                df['margem_percentual'] = df['margem_percentual'] / 100.0
+
+            df.to_excel(writer, sheet_name=sheet_name, index=False)
+            worksheet = writer.sheets[sheet_name]
+
+            fmt_header = workbook.add_format({'bold': True, 'bg_color': '#D9E1F2', 'border': 1})
+            fmt_currency = workbook.add_format({'num_format': 'R$ #,##0.00'}) 
+            fmt_percent = workbook.add_format({'num_format': '0.00%'})
+            fmt_date = workbook.add_format({'num_format': 'dd/mm/yyyy'})
             
-            if cell.value is not None:
-                max_len = max(max_len, len(str(cell.value)))
+            cor_ruim = '#FFC7CE'
+            texto_ruim = '#9C0006'
+            cor_alta = '#FFEB9C'
+            texto_alta = '#9C6500'
 
-        ws.column_dimensions[get_column_letter(col_idx)].width = max_len + 2
+            formats = {
+                'red': {
+                    'geral': workbook.add_format({'bg_color': cor_ruim, 'font_color': texto_ruim}),
+                    'money': workbook.add_format({'bg_color': cor_ruim, 'font_color': texto_ruim, 'num_format': 'R$ #,##0.00'}),
+                    'percent': workbook.add_format({'bg_color': cor_ruim, 'font_color': texto_ruim, 'num_format': '0.00%'}),
+                    'date': workbook.add_format({'bg_color': cor_ruim, 'font_color': texto_ruim, 'num_format': 'dd/mm/yyyy'})
+                },
+                'yellow': {
+                    'geral': workbook.add_format({'bg_color': cor_alta, 'font_color': texto_alta}),
+                    'money': workbook.add_format({'bg_color': cor_alta, 'font_color': texto_alta, 'num_format': 'R$ #,##0.00'}),
+                    'percent': workbook.add_format({'bg_color': cor_alta, 'font_color': texto_alta, 'num_format': '0.00%'}),
+                    'date': workbook.add_format({'bg_color': cor_alta, 'font_color': texto_alta, 'num_format': 'dd/mm/yyyy'})
+                },
+                'blank': {
+                    'geral': workbook.add_format({}),
+                    'money': fmt_currency,
+                    'percent': fmt_percent,
+                    'date': fmt_date
+                }
+            }
 
-    last_col_letter = get_column_letter(len(columns))
-    last_row = len(dados) + 1
+            for idx, col in enumerate(df.columns):
+                series = df[col]
+                max_len = max((series.astype(str).map(len).max(), len(str(col)))) + 2
+                worksheet.set_column(idx, idx, max_len)
+                worksheet.write(0, idx, col, fmt_header)
 
-# 6. Lógica para colorir a linha inteira se tp_movimento == '010'
-    if 'tp_movimento' in columns:
-        col_idx = columns.index('tp_movimento') + 1
-        col_letter = get_column_letter(col_idx)
-        
-        fmt_destaque = PatternFill(start_color="FFEB9C", end_color="FFEB9C", fill_type="solid")
-        
-        # A fórmula é semelhante à do Excel. Passamos uma string numa lista e setamos stopIfTrue
-        formula = [f'=${col_letter}2="010"']
-        
-        rule = FormulaRule(formula=formula, stopIfTrue=True, fill=fmt_destaque)
-        ws.conditional_formatting.add(f"A2:{last_col_letter}{last_row}", rule)
+            set_parceiros = set()
+            try:
+                with pool_mysql.connection() as con:
+                    with con.cursor() as cursor:
+                        query = """SELECT cod_cliente, loja_cliente FROM analise_margem.cliente_parceiro;"""
+                        cursor.execute(query)
+                        clientes_parceiros_raw = cursor.fetchall()
+                set_parceiros = {(str(c[0]).strip(), str(c[1]).strip()) for c in clientes_parceiros_raw}
+            except Exception:
+                pass
 
-# Autofilter
-    ws.auto_filter.ref = f"A1:{last_col_letter}{last_row}"
+            col_letters = {col: xl_col_to_name(idx) for idx, col in enumerate(df.columns)}
+            
+            col_cfop = col_letters.get('cfop', 'A')
+            col_valor_contabil = col_letters.get('valor_contabil', 'A')
+            col_custo = col_letters.get('custo_mais_recente', 'A')
+            col_ipi = col_letters.get('valor_ipi', 'A')
+            col_imp5 = col_letters.get('valor_imp5', 'A')
+            col_imp6 = col_letters.get('valor_imp6', 'A')
+            col_icms_difal = col_letters.get('valor_icms_difal', 'A')
+            col_icms = col_letters.get('valor_icms', 'A')
+            
+            idx_margem_bruta = df.columns.get_loc('margem_bruta') if 'margem_bruta' in df.columns else -1
+            idx_margem_percentual = df.columns.get_loc('margem_percentual') if 'margem_percentual' in df.columns else -1
 
-# 7. Configurar a resposta HTTP para download
+            for row_idx, row in enumerate(df.itertuples(index=False), start=1):
+                margem = getattr(row, 'margem_percentual', 0)
+                cod_cliente = str(getattr(row, 'cod_cliente', '')).strip()
+                loja = str(getattr(row, 'loja', '')).strip()
+                parceiro = (cod_cliente, loja) in set_parceiros
+                cod_produto = getattr(row, 'cod_produto', None)
+                meta_minima = 0.17 if parceiro else 0.27
+                
+                tipo_destaque = 'blank'
+                if cod_produto not in ('B0010046','E000H2P8'):
+                    if margem < meta_minima:
+                        tipo_destaque = 'red'
+                    elif margem > 0.50:
+                        tipo_destaque = 'yellow'
+                        
+                dict_formatos = formats[tipo_destaque]
+                
+                for col_idx, col_name in enumerate(df.columns):
+                    valor_celula = row[col_idx]
+                    col_lower = col_name.lower()
+                    formato_final = dict_formatos['geral']
+                    
+                    if any(x in col_lower for x in ['margem_percentual', 'margem_bruta_percentual', 'aliq_icms']):
+                        formato_final = dict_formatos['percent']
+                    elif any(x in col_lower for x in ['valor_', 'custo', 'vlr_', 'margem_bruta', 'preco']):
+                        formato_final = dict_formatos['money']
+                    elif any(x in col_lower for x in ['data_emissao']):
+                        formato_final = dict_formatos['date']
+                        
+                    worksheet.write(row_idx, col_idx, valor_celula, formato_final)
+                    
+                if idx_margem_bruta != -1:
+                    formula_margem = (
+                        f'={col_valor_contabil}{row_idx+1}-{col_custo}{row_idx+1}-{col_ipi}{row_idx+1}-'
+                        f'{col_imp5}{row_idx+1}-{col_imp6}{row_idx+1}-{col_icms_difal}{row_idx+1}-'
+                        f'IF(OR({col_cfop}{row_idx+1}="5101", {col_cfop}{row_idx+1}="6101", '
+                        f'{col_cfop}{row_idx+1}="5116", {col_cfop}{row_idx+1}="6116", '
+                        f'{col_cfop}{row_idx+1}="6107"), {col_icms}{row_idx+1}*0.047, {col_icms}{row_idx+1})'
+                    )
+                    worksheet.write_formula(row_idx, idx_margem_bruta, formula_margem, dict_formatos['money'])
+                
+                if idx_margem_percentual != -1 and idx_margem_bruta != -1:
+                    formula_margem_pct = f'=IF({col_valor_contabil}{row_idx+1}=0, 0, {xl_col_to_name(idx_margem_bruta)}{row_idx+1}/{col_valor_contabil}{row_idx+1})'
+                    worksheet.write_formula(row_idx, idx_margem_percentual, formula_margem_pct, dict_formatos['percent'])
+
+            worksheet.autofilter(0, 0, len(df), len(df.columns) - 1)
+
+    output.seek(0)
     response = HttpResponse(
+        output.read(),
         content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
     )
-    response['Content-Disposition'] = 'attachment; filename="dados.xlsx"'
-
-# 8. Salvar o arquivo no response
-    wb.save(response)
+    hoje = datetime.datetime.today()
+    atual = f"{hoje.year}-{hoje.month:02d}"
+    response['Content-Disposition'] = f'attachment; filename="NFs-{atual}.xlsx"'
     return response
 
 
@@ -1178,7 +1218,7 @@ def exportar_estatisticas_excel(request):
     from openpyxl.styles import Font, PatternFill, Border, Side
     from openpyxl.utils import get_column_letter
 
-    # 1. Obtém os dados chamando a API localmente
+# 1. Obtém os dados chamando a API localmente
     resp = dados_vendas_api(request)
     if resp.status_code != 200:
         return HttpResponse("Erro ao gerar dados", status=500)
@@ -1187,7 +1227,7 @@ def exportar_estatisticas_excel(request):
     
     wb = Workbook()
     
-    # Aba 1: Estatísticas Justificativas
+# Aba 1: Estatísticas Justificativas
     ws1 = wb.active
     ws1.title = "Estatísticas Justificativas"
     
@@ -1202,7 +1242,7 @@ def exportar_estatisticas_excel(request):
             item['percentual_abaixo_margem'] / 100.0
         ])
         
-    # Aba 2: Estatísticas Período
+# Aba 2: Estatísticas Período
     ws2 = wb.create_sheet(title="Estatísticas Por Período")
     cols2 = ['Mês', 'Faturamento (valor_)', 'Custo Total', 'Margem Bruta', 'Margem Percentual']
     ws2.append(['Mês', 'Faturamento', 'Custo Total', 'Margem Total', 'Margem Percentual'])
@@ -1222,7 +1262,7 @@ def exportar_estatisticas_excel(request):
             (margens_pct[i] / 100.0) if margens_pct[i] is not None else 0
         ])
 
-    # Aba 3: Estatísticas Vendedores
+# Aba 3: Estatísticas Vendedores
     ws3 = wb.create_sheet(title="Estatísticas Por Vendedor")
     cols3 = ['Vendedor', 'Qtd Notas', 'Faturamento', 'Custo Total', 'Margem Total', 'Margem Percentual']
     ws3.append(cols3)
@@ -1237,7 +1277,7 @@ def exportar_estatisticas_excel(request):
             item['margem_percentual'] / 100.0
         ])
 
-    # Aba 4: Evolução Vendedores
+# Aba 4: Evolução Vendedores
     ws4 = wb.create_sheet(title="Evolução Por Vendedor")
     cols4 = ['Mês', 'Vendedor', 'Faturamento', 'Margem Total', 'Margem Percentual']
     ws4.append(cols4)
@@ -1251,7 +1291,7 @@ def exportar_estatisticas_excel(request):
             item['margem_percentual'] / 100.0
         ])
     
-    # Aplicar formato
+# Aplicar formato
     fmt_header_fill = PatternFill(start_color="D9E1F2", end_color="D9E1F2", fill_type="solid")
     fmt_header_font = Font(bold=True)
     fmt_border = Border(left=Side(style='thin'), right=Side(style='thin'), top=Side(style='thin'), bottom=Side(style='thin'))
