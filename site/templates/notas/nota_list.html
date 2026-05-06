@@ -689,7 +689,7 @@
                 <td data-label="Margem %" class="text-right celula-margem-pct col-principal"
                     data-is-intercompany="{% if nota.is_intercompany %}true{% else %}false{% endif %}"
                     style="font-weight:bold; color: 
-                    {% if nota.is_intercompany %}var(--verde-principal){% elif nota.margem_percentual != None %}{% if nota.is_parceiro %}var(--verde-principal){% elif nota.margem_percentual < 14.995 %}var(--vermelho-alerta){% elif not nota.is_parceiro and nota.margem_percentual < 26.995 %}var(--vermelho-alerta){% else %}var(--verde-principal){% endif %}{% else %}var(--verde-principal){% endif %};">
+                    {% if nota.is_intercompany %}var(--verde-principal){% elif nota.margem_percentual != None %}{% if nota.margem_percentual < 14.995 %}var(--vermelho-alerta){% elif not nota.is_parceiro and nota.margem_percentual < 26.995 %}var(--vermelho-alerta){% else %}var(--verde-principal){% endif %}{% else %}var(--verde-principal){% endif %};">
                     {% if nota.margem_percentual != None %}{{ nota.margem_percentual|floatformat:2 }}%{% else %}-{%endif%}
                 </td>
 
