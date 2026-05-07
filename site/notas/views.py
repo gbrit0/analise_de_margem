@@ -816,7 +816,7 @@ def op_list_view(request, lote, cod_produto):
 
             if id_op_unico in existing_ops:
                 obj = existing_ops[id_op_unico]
-                has_custo2_history = obj.pk is not None and obj.custo2_op_set.exists()
+                has_custo2_history = obj.pk is not None and len(obj.custo2_op_set.all()) > 0
                 if has_custo2_history:
                     op['custo_2'] = obj.custo_2
                     op_data.pop('custo_2', None)
@@ -849,10 +849,11 @@ def op_list_view(request, lote, cod_produto):
         if op.get('custo_2') is not None:
             # Retrieve latest historical custo_2 if exists
             try:
-                op_obj = OP.objects.filter(id_op=op['id_op']).first()
-                if op_obj:
-                    latest_custo2 = op_obj.custo2_op_set.order_by('-id').first()
-                    if latest_custo2:
+                op_obj = existing_ops.get(op['id_op'])
+                if op_obj and op_obj.pk is not None:
+                    custos2 = list(op_obj.custo2_op_set.all())
+                    if custos2:
+                        latest_custo2 = sorted(custos2, key=lambda x: x.id, reverse=True)[0]
                         op['custo_2'] = latest_custo2.valor
             except Exception:
                 pass
