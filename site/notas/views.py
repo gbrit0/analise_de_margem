@@ -11,7 +11,7 @@ from .models import (
     Custo2_OP,
     MesBloqueado,
     LogBloqueioMes,
-    PreferenciaColunasNota
+    PreferenciaGlobalColunasNota
 )
 
 from users.models import CustomUser
@@ -103,11 +103,8 @@ NOTA_GRID_DEFAULT_VISIBLE = [
 ]
 
 
-def get_nota_grid_visible_columns(user):
-    if not user.is_authenticated:
-        return NOTA_GRID_DEFAULT_VISIBLE
-
-    preferencia = getattr(user, 'preferencia_colunas_nota', None)
+def get_nota_grid_visible_columns():
+    preferencia = PreferenciaGlobalColunasNota.objects.first()
     if not preferencia or not isinstance(preferencia.colunas_visiveis, list):
         return NOTA_GRID_DEFAULT_VISIBLE
 
@@ -232,7 +229,7 @@ class NotasListView(LoginRequiredMixin, FilterView, ListView):
         # Adicionamos a lista de justificativas ativas para popular os selects no HTML
         context['lista_justificativas'] = Justificativa.objects.filter(ativo=True)
         context['nota_grid_columns'] = NOTA_GRID_COLUMNS
-        context['nota_grid_visible_columns'] = get_nota_grid_visible_columns(self.request.user)
+        context['nota_grid_visible_columns'] = get_nota_grid_visible_columns()
         context['nota_grid_main_column_keys'] = list(NOTA_GRID_MAIN_COLUMN_KEYS)
         
         # Monta lista de meses/anos disponíveis (format YYYY-MM)
@@ -931,7 +928,7 @@ def justificativa_admin_view(request):
         'logs_bloqueio': logs_bloqueio,
         'selected_month': selected,
         'nota_grid_columns': NOTA_GRID_COLUMNS,
-        'nota_grid_visible_columns': get_nota_grid_visible_columns(request.user),
+        'nota_grid_visible_columns': get_nota_grid_visible_columns(),
     })
 
 @login_required
@@ -952,9 +949,12 @@ def salvar_preferencia_colunas_nota(request):
         if not colunas_validas:
             return JsonResponse({'success': False, 'error': 'Selecione ao menos uma coluna.'}, status=400)
 
-        preferencia, created = PreferenciaColunasNota.objects.get_or_create(usuario=request.user)
+        preferencia = PreferenciaGlobalColunasNota.objects.first()
+        if not preferencia:
+            preferencia = PreferenciaGlobalColunasNota()
+            
         preferencia.colunas_visiveis = colunas_validas
-        preferencia.save(update_fields=['colunas_visiveis', 'data_atualizacao'])
+        preferencia.save(update_fields=['colunas_visiveis', 'data_atualizacao'] if preferencia.pk else None)
 
         return JsonResponse({'success': True, 'colunas_visiveis': colunas_validas})
     except Exception as e:
