@@ -89,6 +89,7 @@ WHERE
             D_E_L_E_T_ <> '*' 
             -- AND D3_ESTORNO <> 'S' 
             AND TRIM(D3_LOTECTL) = ? --'7166' --
+            AND TRIM(D3_OP) <> ''
     )
 
 
