@@ -79,9 +79,10 @@ NOTA_GRID_COLUMNS = [
     {'key': 'imp6', 'label': 'Imp6', 'index': 26, 'default_visible': False},
     {'key': 'difal', 'label': 'Difal', 'index': 27, 'default_visible': False},
     {'key': 'icms', 'label': 'ICMS', 'index': 28, 'default_visible': False},
-    {'key': 'aliq_icms', 'label': 'Aliq %', 'index': 29, 'default_visible': False},
-    {'key': 'justificativa', 'label': 'Justificativa', 'index': 30, 'default_visible': True},
-    {'key': 'comentario', 'label': 'Comentário', 'index': 31, 'default_visible': False},
+    {'key': 'base_icms', 'label': 'Base ICMS', 'index': 29, 'default_visible': False},
+    {'key': 'aliq_icms', 'label': 'Aliq %', 'index': 30, 'default_visible': False},
+    {'key': 'justificativa', 'label': 'Justificativa', 'index': 31, 'default_visible': True},
+    {'key': 'comentario', 'label': 'Comentário', 'index': 32, 'default_visible': False},
 ]
 
 NOTA_GRID_COLUMN_KEYS = {column['key'] for column in NOTA_GRID_COLUMNS}
