@@ -83,7 +83,7 @@ class Command(BaseCommand):
             notas_ignoradas_sem_data = 0
 
             for row in rows_notas:
-                chave, filial, nome_filial, nota, item, no_pedido, vendedor, data_emissao, lote, cfop, cfop_descri, atualiza_estoque, gera_duplicata, cod_produto, produto, tipo_produto, desc_tipo_produto, armazem, cod_cliente, loja, cliente, grp_amar_ctb, classificacao_produto, estado_destino, quantidade, tabela_preco, preco_tabela, valor_contabil, custo_valor, valor_unitario, valor_ipi, valor_imp5, valor_imp6, valor_icms_difal, valor_icms, aliq_icms, recno, comentario, deletado = row
+                chave, filial, nome_filial, nota, item, no_pedido, vendedor, data_emissao, lote, cfop, cfop_descri, atualiza_estoque, gera_duplicata, cod_produto, produto, tipo_produto, desc_tipo_produto, armazem, cod_cliente, loja, cliente, grp_amar_ctb, classificacao_produto, estado_destino, quantidade, tabela_preco, preco_tabela, valor_contabil, custo_valor, valor_unitario, valor_ipi, valor_imp5, valor_imp6, valor_icms_difal, valor_icms, base_icms,aliq_icms, recno, comentario, deletado = row
                 delete_marcado = protheus_delete_marcado(deletado)
 
                 if not data_emissao:
@@ -109,8 +109,8 @@ class Command(BaseCommand):
                     quantidade=quantidade, tabela_preco=tabela_preco, preco_tabela=preco_tabela,
                     valor_contabil=valor_contabil, valor_unitario=valor_unitario, valor_ipi=valor_ipi,
                     valor_imp5=valor_imp5, valor_imp6=valor_imp6, valor_icms_difal=valor_icms_difal,
-                    valor_icms=valor_icms, aliq_icms=aliq_icms, recno=recno, comentario=comentario,
-                    delete=delete_marcado
+                    valor_icms=valor_icms, base_icms=base_icms, aliq_icms=aliq_icms, recno=recno, 
+                    comentario=comentario, delete=delete_marcado
                 )
 
                 if chave not in chaves_existentes:
@@ -122,7 +122,7 @@ class Command(BaseCommand):
                     
                     pro_goias = 0.0477 if data_emissao >= data_corte else 0.02
                     
-                    icms_calc = valor_icms * pro_goias if cfop in cfops_especiais else valor_icms
+                    icms_calc = base_icms * pro_goias if cfop in cfops_especiais else valor_icms
                     
                     margem_bruta = valor_contabil - custo_valor - valor_ipi - valor_imp5 - valor_imp6 - valor_icms_difal - icms_calc
                     
@@ -159,7 +159,7 @@ class Command(BaseCommand):
                     campos_update = [
                         'cfop', 'cfop_descri', 'estado_destino', 'quantidade', 'tabela_preco',
                         'valor_contabil', 'valor_unitario', 'valor_ipi', 'valor_imp5',
-                        'valor_imp6', 'valor_icms_difal', 'valor_icms', 'aliq_icms',
+                        'valor_imp6', 'valor_icms_difal', 'valor_icms', 'base_icms','aliq_icms',
                         'delete',
                     ] 
                     Nota.objects.bulk_update(notas_para_atualizar.values(), campos_update, batch_size=1000)

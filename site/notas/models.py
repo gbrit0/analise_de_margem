@@ -41,6 +41,7 @@ class Nota(models.Model):
     valor_imp6 = models.DecimalField(max_digits=18, decimal_places=2)
     valor_icms_difal = models.DecimalField(max_digits=18, decimal_places=2)
     valor_icms = models.DecimalField(max_digits=18, decimal_places=2)
+    base_icms = models.DecimalField(max_digits=18, decimal_places=2, default=None, blank=True)
     aliq_icms = models.DecimalField(max_digits=5, decimal_places=2)
     recno = models.BigIntegerField()
     delete = models.BooleanField(default=False)
@@ -93,6 +94,10 @@ class Nota(models.Model):
     @property
     def valor_icms_formatado(self):
         return locale.currency(self.valor_icms, grouping=True)
+    
+    @property
+    def base_icms_formatado(self):
+        return locale.currency(self.base_icms, grouping=True)
     
     @property
     def preco_tabela_formatado(self):

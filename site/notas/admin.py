@@ -53,6 +53,7 @@ class CustomNotasAdmin(admin.ModelAdmin):
         'valor_imp6',
         'valor_icms_difal',
         'valor_icms',
+        'base_icms',
         'aliq_icms',
         'delete',
     ]

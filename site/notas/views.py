@@ -179,7 +179,7 @@ class NotasListView(LoginRequiredMixin, FilterView, ListView):
                 output_field=DecimalField()
             ),
             icms_calculado=Case(
-                When(cfop__in=cfops_especiais, then=F('valor_icms') * 0.047), # 4,7% do ICMS
+                When(cfop__in=cfops_especiais, then=F('base_icms') * 0.047), # 4,7% do ICMS
                 default=F('valor_icms'),                                     # ICMS cheio
                 output_field=DecimalField()
             ),
@@ -376,7 +376,7 @@ def atualizar_custo_api(request):
         # Definição do ICMS baseada no CFOP
         cfops_especiais = ['5101', '6101', '5116', '6116', '6107']
         if nota.cfop in cfops_especiais:
-            val_icms = nota.valor_icms * Decimal('0.047')
+            val_icms = nota.base_icms * Decimal('0.047')
         else:
             val_icms = nota.valor_icms
 
@@ -1056,7 +1056,7 @@ def exportar_excel(request):
         'cod_cliente', 'loja', 'cliente', 'grp_amar_ctb', 'classificacao_produto',
         'estado_destino', 'quantidade', 'tabela_preco', 'preco_tabela',
         'valor_contabil', 'custo_mais_recente', 'valor_unitario', 'valor_ipi', 'valor_imp5',
-        'valor_imp6', 'valor_icms_difal', 'valor_icms', 'aliq_icms',
+        'valor_imp6', 'valor_icms_difal', 'valor_icms', 'base_icms','aliq_icms',
         'margem_bruta', 'margem_percentual'
     ]
 
@@ -1077,7 +1077,7 @@ def exportar_excel(request):
             cols_to_float = [
                 'quantidade', 'preco_tabela', 'valor_contabil', 'custo_mais_recente', 
                 'valor_unitario', 'valor_ipi', 'valor_imp5', 'valor_imp6', 
-                'valor_icms_difal', 'valor_icms', 'aliq_icms', 'margem_bruta', 'margem_percentual'
+                'valor_icms_difal', 'valor_icms',  'base_icms', 'aliq_icms', 'margem_bruta', 'margem_percentual'
             ]
             for col in cols_to_float:
                 if col in df.columns:
@@ -1150,6 +1150,7 @@ def exportar_excel(request):
             col_imp6 = col_letters.get('valor_imp6', 'A')
             col_icms_difal = col_letters.get('valor_icms_difal', 'A')
             col_icms = col_letters.get('valor_icms', 'A')
+            col_base_icms = col_letters.get('base_icms', 'A')
             
             idx_margem_bruta = df.columns.get_loc('margem_bruta') if 'margem_bruta' in df.columns else -1
             idx_margem_percentual = df.columns.get_loc('margem_percentual') if 'margem_percentual' in df.columns else -1
