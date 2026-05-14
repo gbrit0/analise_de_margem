@@ -355,6 +355,7 @@ def atualizar_custo_api(request):
         if mes_status and mes_status.bloqueado:
             return JsonResponse({'error': f'Mês {mes_ano_nota} fechado para edição.'}, status=403)
         
+        # 3. A regra de bloqueio do dia 03 foi removida para edição manual (mantida apenas na sync)
         
         if Custo.objects.filter(chave=nota).exists():
             if not request.user.is_superuser:
