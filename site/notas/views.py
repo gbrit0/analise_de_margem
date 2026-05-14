@@ -355,13 +355,6 @@ def atualizar_custo_api(request):
         if mes_status and mes_status.bloqueado:
             return JsonResponse({'error': f'Mês {mes_ano_nota} fechado para edição.'}, status=403)
         
-        # 3. Verifica regra de bloqueio: se a nota pertence a mês anterior e hoje é > 03, impede atualização
-        nota_month = nota.data_emissao.month
-        nota_year = nota.data_emissao.year
-        today = datetime.date.today()
-        # Se a data da nota está em mês/ano anterior ao atual e hoje é após o dia 3, bloqueia
-        if (today.year, today.month) > (nota_year, nota_month) and today.day > 3:
-            return JsonResponse({'error': 'Atualização de custo bloqueada após fechamento do dia 03'}, status=403)
         
         if Custo.objects.filter(chave=nota).exists():
             if not request.user.is_superuser:
