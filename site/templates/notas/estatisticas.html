@@ -401,12 +401,13 @@
             <table class="bi-table">
                 <thead>
                     <tr>
-                        <th>Vendedor</th>
-                        <th>Notas</th>
-                        <th>Faturamento</th>
-                        <th>Custo</th>
-                        <th>Margem</th>
-                        <th>Margem %</th>
+                        <th style="width: 40px; text-align: center;"></th>
+                        <th style="text-align: left;">Vendedor</th>
+                        <th style="text-align: right;">Notas</th>
+                        <th style="text-align: right;">Faturamento</th>
+                        <th style="text-align: right;">Custo</th>
+                        <th style="text-align: right;">Margem</th>
+                        <th style="text-align: right;">Margem %</th>
                     </tr>
                 </thead>
                 <tbody id="tabelaVendedores"></tbody>
@@ -442,19 +443,204 @@
         empty.style.display = 'none';
         vendedores.forEach(item => {
             const tr = document.createElement('tr');
-            [
-                item.vendedor,
+            tr.style.cursor = 'pointer';
+            
+            // 1. Toggle Cell
+            const tdToggle = document.createElement('td');
+            tdToggle.style.textAlign = 'center';
+            const icon = document.createElement('i');
+            icon.className = 'fa-solid fa-chevron-right';
+            icon.style.transition = 'transform 0.2s';
+            tdToggle.appendChild(icon);
+            tr.appendChild(tdToggle);
+
+            // 2. Data Cells
+            const cells = [
+                item.vendedor || 'Sem vendedor',
                 item.qtd_notas,
                 formatarMoeda.format(item.total_vendas),
                 formatarMoeda.format(item.custo_total),
                 formatarMoeda.format(item.margem_total),
                 `${formatarPercentual.format(item.margem_percentual)}%`
-            ].forEach(value => {
+            ];
+            
+            cells.forEach((value, index) => {
                 const td = document.createElement('td');
                 td.textContent = value;
+                if (index === 0) {
+                    td.style.textAlign = 'left';
+                } else {
+                    td.style.textAlign = 'right';
+                }
                 tr.appendChild(td);
             });
+            
+            // 3. Detail Row
+            const trDetail = document.createElement('tr');
+            trDetail.className = 'detail-row';
+            trDetail.style.display = 'none';
+            trDetail.style.backgroundColor = 'var(--cinza-fundo)';
+            
+            const tdDetail = document.createElement('td');
+            tdDetail.colSpan = 7;
+            tdDetail.style.padding = '15px 24px';
+            
+            const detailContainer = document.createElement('div');
+            detailContainer.className = 'detail-container';
+            
+            // Add a sub-heading/title inside details
+            const detailHeader = document.createElement('h5');
+            detailHeader.style.margin = '0 0 12px 0';
+            detailHeader.style.color = 'var(--azul-escuro)';
+            detailHeader.style.fontWeight = '600';
+            detailHeader.style.fontSize = '0.95rem';
+            detailHeader.textContent = `Detalhamento de Notas - ${item.vendedor || 'Sem vendedor'}`;
+            detailContainer.appendChild(detailHeader);
+            
+            // Add table structure for sub-table
+            const subTableWrapper = document.createElement('div');
+            subTableWrapper.style.overflowX = 'auto';
+            subTableWrapper.style.borderRadius = '8px';
+            subTableWrapper.style.border = '1px solid var(--cinza-borda)';
+            subTableWrapper.style.backgroundColor = 'var(--branco)';
+            
+            const subTable = document.createElement('table');
+            subTable.className = 'bi-table';
+            subTable.style.margin = '0';
+            
+            // Header for subtable
+            const subThead = document.createElement('thead');
+            const subTrHead = document.createElement('tr');
+            const headers = ['Nota', 'Data Emissão', 'Cliente', 'Faturamento', 'Custo', 'Margem', 'Margem %', 'Justificativa'];
+            headers.forEach((h, hIdx) => {
+                const th = document.createElement('th');
+                th.textContent = h;
+                th.style.fontSize = '0.8rem';
+                th.style.padding = '8px 12px';
+                th.style.backgroundColor = '#f8f9fa';
+                if (hIdx === 0 || hIdx === 1 || hIdx === 2 || hIdx === 7) {
+                    th.style.textAlign = 'left';
+                } else {
+                    th.style.textAlign = 'right';
+                }
+                subTrHead.appendChild(th);
+            });
+            subThead.appendChild(subTrHead);
+            subTable.appendChild(subThead);
+            
+            const subTbody = document.createElement('tbody');
+            subTable.appendChild(subTbody);
+            subTableWrapper.appendChild(subTable);
+            detailContainer.appendChild(subTableWrapper);
+            tdDetail.appendChild(detailContainer);
+            trDetail.appendChild(tdDetail);
+
+            // Click listener on main row to toggle
+            let loaded = false;
+            tr.addEventListener('click', () => {
+                const isCollapsed = trDetail.style.display === 'none';
+                if (isCollapsed) {
+                    trDetail.style.display = 'table-row';
+                    icon.style.transform = 'rotate(90deg)';
+                    
+                    if (!loaded) {
+                        subTbody.replaceChildren(); // Safe clear
+                        const loadingRow = document.createElement('tr');
+                        const loadingTd = document.createElement('td');
+                        loadingTd.colSpan = 8;
+                        loadingTd.style.textAlign = 'center';
+                        loadingTd.style.padding = '12px';
+                        loadingTd.textContent = 'Carregando notas...';
+                        loadingRow.appendChild(loadingTd);
+                        subTbody.appendChild(loadingRow);
+                        
+                        const mesesChecados = Array.from(document.querySelectorAll('.mes-checkbox:checked')).map(cb => cb.value);
+                        const mesesStr = mesesChecados.join(',');
+
+                        const filiaisChecadas = Array.from(document.querySelectorAll('.filial-checkbox:checked')).map(cb => cb.value);
+                        const filiaisStr = filiaisChecadas.join(',');
+                        
+                        const url = `/api/estatisticas/vendedor/notas/?vendedor=${encodeURIComponent(item.vendedor || 'Sem vendedor')}&meses=${mesesStr}&filiais=${filiaisStr}`;
+                        
+                        fetch(url)
+                            .then(res => res.json())
+                            .then(data => {
+                                subTbody.replaceChildren(); // Safe clear
+                                if (!data.notas || !data.notas.length) {
+                                    const noDataRow = document.createElement('tr');
+                                    const noDataTd = document.createElement('td');
+                                    noDataTd.colSpan = 8;
+                                    noDataTd.style.textAlign = 'center';
+                                    noDataTd.style.padding = '12px';
+                                    noDataTd.textContent = 'Nenhuma nota encontrada.';
+                                    noDataRow.appendChild(noDataTd);
+                                    subTbody.appendChild(noDataRow);
+                                    return;
+                                }
+                                
+                                data.notas.forEach(nota => {
+                                    const nTr = document.createElement('tr');
+                                    
+                                    const nCells = [
+                                        nota.nota,
+                                        nota.data_emissao,
+                                        nota.cliente,
+                                        formatarMoeda.format(nota.valor_contabil),
+                                        formatarMoeda.format(nota.custo),
+                                        formatarMoeda.format(nota.margem),
+                                        `${formatarPercentual.format(nota.margem_percentual)}%`,
+                                        nota.justificativa
+                                    ];
+                                    
+                                    nCells.forEach((val, valIdx) => {
+                                        const nTd = document.createElement('td');
+                                        nTd.textContent = val;
+                                        nTd.style.fontSize = '0.82rem';
+                                        nTd.style.padding = '8px 12px';
+                                        
+                                        if (valIdx === 0 || valIdx === 1 || valIdx === 2 || valIdx === 7) {
+                                            nTd.style.textAlign = 'left';
+                                        } else {
+                                            nTd.style.textAlign = 'right';
+                                        }
+                                        
+                                        if (valIdx === 6) {
+                                            if (nota.margem_percentual < 27) {
+                                                nTd.style.color = '#D9420F';
+                                                nTd.style.fontWeight = '600';
+                                            } else {
+                                                nTd.style.color = '#00A34F';
+                                                nTd.style.fontWeight = '600';
+                                            }
+                                        }
+                                        nTr.appendChild(nTd);
+                                    });
+                                    subTbody.appendChild(nTr);
+                                });
+                                loaded = true;
+                            })
+                            .catch(err => {
+                                console.error(err);
+                                subTbody.replaceChildren();
+                                const errorRow = document.createElement('tr');
+                                const errorTd = document.createElement('td');
+                                errorTd.colSpan = 8;
+                                errorTd.style.textAlign = 'center';
+                                errorTd.style.padding = '12px';
+                                errorTd.style.color = '#D9420F';
+                                errorTd.textContent = 'Erro ao carregar notas.';
+                                errorRow.appendChild(errorTd);
+                                subTbody.appendChild(errorRow);
+                            });
+                    }
+                } else {
+                    trDetail.style.display = 'none';
+                    icon.style.transform = 'rotate(0deg)';
+                }
+            });
+
             tbody.appendChild(tr);
+            tbody.appendChild(trDetail);
         });
     }
 

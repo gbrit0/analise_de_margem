@@ -732,6 +732,80 @@ def dados_vendas_api(request):
         'estatisticas_vendedores': estatisticas_vendedores,
         'estatisticas_vendedores_periodo': estatisticas_vendedores_periodo
     })
+
+@login_required
+def vendedor_notas_api(request):
+    vendedor = request.GET.get('vendedor')
+    meses_str = request.GET.get('meses')
+    filiais_str = request.GET.get('filiais')
+        
+    queryset = Nota.objects.filter(delete=False)
+    
+    if meses_str:
+        meses_list = meses_str.split(',')
+        queries = Q()
+        for mes in meses_list:
+            if '-' in mes:
+                try:
+                    y, m = mes.split('-')
+                    queries |= Q(data_emissao__year=int(y), data_emissao__month=int(m))
+                except ValueError:
+                    pass
+        if queries:
+            queryset = queryset.filter(queries)
+            
+    if filiais_str:
+        filiais_list = filiais_str.split(',')
+        queryset = queryset.filter(filial__in=filiais_list)
+        
+    if vendedor == 'Sem vendedor':
+        queryset = queryset.filter(Q(vendedor__isnull=True) | Q(vendedor=''))
+    elif vendedor is not None:
+        queryset = queryset.filter(vendedor=vendedor)
+        
+    subquery_margem_percentual = Margem.objects.filter(
+        chave=OuterRef('chave')
+    ).values('margem_bruta_percentual').order_by('-custo__data_cadastro')[:1]
+    
+    subquery_custo = Custo.objects.filter(
+        chave=OuterRef('pk')
+    ).order_by('-data_cadastro').values('valor')[:1]
+    
+    subquery_margem = Margem.objects.filter(
+        chave=OuterRef('chave')
+    ).values('margem_bruta').order_by('-custo__data_cadastro')[:1]
+
+    subquery_justificativas_texto = Nf_Has_Justificativa.objects.filter(
+        nf=OuterRef('pk')
+    ).order_by('-data_cadastro').values('justificativa__texto')[:1]
+
+    queryset = queryset.annotate(
+        custo_val=Subquery(subquery_custo),
+        margem_val=Subquery(subquery_margem),
+        margem_pct=Subquery(subquery_margem_percentual),
+        just_texto=Subquery(subquery_justificativas_texto)
+    )
+    
+    notas_list = []
+    for nota in queryset.order_by('-data_emissao'):
+        custo_val = float(nota.custo_val) if nota.custo_val is not None else 0.0
+        margem_val = float(nota.margem_val) if nota.margem_val is not None else 0.0
+        margem_pct = float(nota.margem_pct) * 100 if nota.margem_pct is not None else 0.0
+        
+        notas_list.append({
+            'chave': nota.chave,
+            'nota': nota.nota,
+            'data_emissao': nota.data_emissao.strftime('%d/%m/%Y'),
+            'cliente': nota.cliente,
+            'valor_contabil': float(nota.valor_contabil),
+            'custo': custo_val,
+            'margem': margem_val,
+            'margem_percentual': round(margem_pct, 2),
+            'justificativa': nota.just_texto or '-'
+        })
+        
+    return JsonResponse({'notas': notas_list})
+
     
 
 # class OPListView(LoginRequiredMixin, FilterView, ListView):
