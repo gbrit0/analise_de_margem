@@ -78,6 +78,12 @@ FROM SD2010 AS D2 -- Itens de Venda da NF
         AND DA1.DA1_CODPRO = B1.B1_COD
         AND DA1.DA1_FILIAL = D2_FILIAL
         AND DA1.D_E_L_E_T_ <> '*'
+        AND DA1.DA1_TPOPER = CASE 
+            WHEN TRIM(A1_EST) = 'GO' AND TRIM(D2_FILIAL) IN ('0101', '0501') THEN '1'
+            WHEN TRIM(A1_EST) = 'MG' AND TRIM(D2_FILIAL) = '0502' THEN '1'
+            WHEN TRIM(A1_EST) = 'PA' AND TRIM(D2_FILIAL) = '0503' THEN '1'
+            ELSE '2'
+        END
     
     LEFT JOIN SA3010 AS A3 ON -- Vendedores
         A3.D_E_L_E_T_ <> '*'
