@@ -30,7 +30,7 @@ SELECT DISTINCT
     END AS [tabela_preco],
     CASE WHEN 
         DA1.DA1_PRCVEN IS NULL THEN 0
-        ELSE DA1.DA1_PRCVEN * D2_QUANT 
+        ELSE DA1.DA1_PRCVEN
     END AS [preco_tabela],
     D2_VALBRUT AS [valor_contabil],
     D2_CUSTO1 AS [custo],
@@ -74,10 +74,10 @@ FROM SD2010 AS D2 -- Itens de Venda da NF
         AND A1_FILIAL = SUBSTRING(F2_FILIAL, 1, 2)
 
     LEFT JOIN DA1010 AS DA1 ON -- Itens da Tabela de preço
-        DA1.DA1_CODTAB  = A1_TABELA
-        AND DA1.DA1_CODPRO = B1.B1_COD
-        AND DA1.DA1_FILIAL = D2_FILIAL
-        AND DA1.D_E_L_E_T_ <> '*'
+        DA1.D_E_L_E_T_ <> '*'
+        AND A1_TABELA  = DA1.DA1_CODTAB
+        AND D2_COD = DA1.DA1_CODPRO 
+        AND D2_FILIAL = DA1.DA1_FILIAL 
         AND DA1.DA1_TPOPER = CASE 
             WHEN TRIM(A1_EST) = 'GO' AND TRIM(D2_FILIAL) IN ('0101', '0501') THEN '1'
             WHEN TRIM(A1_EST) = 'MG' AND TRIM(D2_FILIAL) = '0502' THEN '1'
@@ -85,6 +85,11 @@ FROM SD2010 AS D2 -- Itens de Venda da NF
             ELSE '2'
         END
     
+    LEFT JOIN DA0010 AS DA0 ON -- Tabela DA0 - Tabela de Precos
+    	DA0.D_E_L_E_T_ <> '*'
+    	AND DA0.DA0_CODTAB = A1.A1_TABELA
+    	AND DA0.DA0_FILIAL = D2_FILIAL
+
     LEFT JOIN SA3010 AS A3 ON -- Vendedores
         A3.D_E_L_E_T_ <> '*'
         AND A3_COD = F2_VEND1
@@ -119,11 +124,6 @@ FROM SD2010 AS D2 -- Itens de Venda da NF
         AND X5.X5_CHAVE = B1_TIPO
         AND SUBSTRING(X5.X5_FILIAL, 1, 2) = B1_FILIAL
 	
-    LEFT JOIN DA0010 AS DA0 ON -- Tabela DA0 - Tabela de Precos
-    	DA0.D_E_L_E_T_ <> '*'
-    	AND DA0.DA0_CODTAB = A1.A1_TABELA
-    	-- AND DA0.DA0_FILIAL = A1.A1_FILIAL
-
     LEFT JOIN SC5010 AS C5 ON
     	C5.D_E_L_E_T_ <> '*'
     	AND C5_FILIAL = D2_FILIAL
