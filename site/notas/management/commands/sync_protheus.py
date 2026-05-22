@@ -157,7 +157,7 @@ class Command(BaseCommand):
                 if notas_para_atualizar:
                     # Campos que devem ser atualizados
                     campos_update = [
-                        'cfop', 'cfop_descri', 'estado_destino', 'quantidade', 'tabela_preco'
+                        'cfop', 'cfop_descri', 'estado_destino', 'quantidade', 'tabela_preco',
                         'valor_contabil', 'valor_unitario', 'valor_ipi', 'valor_imp5',
                         'valor_imp6', 'valor_icms_difal', 'valor_icms', 'base_icms','aliq_icms',
                         'delete', 'preco_tabela'
