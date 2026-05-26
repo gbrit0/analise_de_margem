@@ -57,7 +57,11 @@ class Command(BaseCommand):
 
             # 3. Mapeia o que já existe no Django para saber se é Insert ou Update
             chaves_protheus = [row[0] for row in rows_notas]
-            chaves_existentes = set(Nota.objects.filter(chave__in=chaves_protheus).values_list('chave', flat=True))
+            existentes_dict = {
+                n['chave']: n['preco_tabela']
+                for n in Nota.objects.filter(chave__in=chaves_protheus).values('chave', 'preco_tabela')
+            }
+            chaves_existentes = set(existentes_dict.keys())
             
             usuario_sistema = CustomUser.objects.get(id=2)
             data_corte = date(2026, 2, 1)
@@ -140,9 +144,9 @@ class Command(BaseCommand):
                         and data_emissao.month == mes_anterior
                         and data_emissao.year == ano_mes_anterior
                     ):
-                        notas_para_atualizar_delete[chave] = nota_obj
+                        # Mantém o preco_tabela atual do banco de dados para esta nota
+                        nota_obj.preco_tabela = existentes_dict[chave]
                         notas_ignoradas_regra_data += 1
-                        continue
 
                     notas_para_atualizar[chave] = nota_obj
 
@@ -174,7 +178,7 @@ class Command(BaseCommand):
                 )
             if notas_ignoradas_regra_data:
                 self.stdout.write(
-                    f"{notas_ignoradas_regra_data} notas ignoradas pela regra de bloqueio (mês/ano anterior após dia 3)."
+                    f"{notas_ignoradas_regra_data} notas com preco_tabela não atualizado pela regra de bloqueio (mês/ano anterior após dia 3)."
                 )
 
             todas_ops_dict = {}
