@@ -1261,7 +1261,7 @@ def exportar_excel(request):
                         f'{col_imp5}{row_idx+1}-{col_imp6}{row_idx+1}-{col_icms_difal}{row_idx+1}-'
                         f'IF(OR({col_cfop}{row_idx+1}="5101", {col_cfop}{row_idx+1}="6101", '
                         f'{col_cfop}{row_idx+1}="5116", {col_cfop}{row_idx+1}="6116", '
-                        f'{col_cfop}{row_idx+1}="6107"), {col_icms}{row_idx+1}*0.047, {col_icms}{row_idx+1})'
+                        f'{col_cfop}{row_idx+1}="6107"), {col_base_icms}{row_idx+1}*0.047, {col_icms}{row_idx+1})'
                     )
                     worksheet.write_formula(row_idx, idx_margem_bruta, formula_margem, dict_formatos['money'])
                 
