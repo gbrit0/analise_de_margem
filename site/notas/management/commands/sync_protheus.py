@@ -2,8 +2,10 @@ import os
 import time
 import pyodbc
 from datetime import date
+from decimal import Decimal
 from django.core.management.base import BaseCommand
 from django.db import transaction
+from django.db.models import Subquery, OuterRef
 from notas.models import Nota, Custo, Margem, OP
 from users.models import CustomUser
 from dbutils.pooled_db import PooledDB
@@ -57,9 +59,17 @@ class Command(BaseCommand):
 
             # 3. Mapeia o que já existe no Django para saber se é Insert ou Update
             chaves_protheus = [row[0] for row in rows_notas]
+            ultimo_custo_subquery = Custo.objects.filter(chave=OuterRef('pk')).order_by('-data_cadastro').values('valor')[:1]
+            existentes = Nota.objects.filter(chave__in=chaves_protheus).annotate(
+                ultimo_custo=Subquery(ultimo_custo_subquery)
+            ).values('chave', 'preco_tabela', 'ultimo_custo')
+            
             existentes_dict = {
-                n['chave']: n['preco_tabela']
-                for n in Nota.objects.filter(chave__in=chaves_protheus).values('chave', 'preco_tabela')
+                n['chave']: {
+                    'preco_tabela': n['preco_tabela'],
+                    'ultimo_custo': n['ultimo_custo']
+                }
+                for n in existentes
             }
             chaves_existentes = set(existentes_dict.keys())
             
@@ -145,8 +155,29 @@ class Command(BaseCommand):
                         and data_emissao.year == ano_mes_anterior
                     ):
                         # Mantém o preco_tabela atual do banco de dados para esta nota
-                        nota_obj.preco_tabela = existentes_dict[chave]
+                        nota_obj.preco_tabela = existentes_dict[chave]['preco_tabela']
                         notas_ignoradas_regra_data += 1
+
+                    # Se o custo do Protheus mudou ou não existe no banco, criamos um novo Custo e Margem
+                    ultimo_custo_db = existentes_dict[chave]['ultimo_custo']
+                    c_protheus = float(custo_valor) if custo_valor is not None else 0.0
+                    c_db = float(ultimo_custo_db) if ultimo_custo_db is not None else None
+
+                    if c_db is None or abs(c_db - c_protheus) > 0.001:
+                        custo_obj = Custo(chave_id=chave, valor=custo_valor, usuario=usuario_sistema)
+                        custos_para_criar[chave] = custo_obj
+                        
+                        pro_goias = 0.0477 if data_emissao >= data_corte else 0.02
+                        icms_calc = base_icms * pro_goias if cfop in cfops_especiais else valor_icms
+                        margem_bruta = valor_contabil - custo_valor - valor_ipi - valor_imp5 - valor_imp6 - valor_icms_difal - icms_calc
+                        
+                        margem_obj = Margem(
+                            chave_id=chave,
+                            custo=custo_obj,
+                            margem_bruta=margem_bruta,
+                            margem_bruta_percentual=margem_bruta / valor_contabil if valor_contabil else 0
+                        )
+                        margens_para_criar[chave] = margem_obj
 
                     notas_para_atualizar[chave] = nota_obj
 
@@ -154,8 +185,11 @@ class Command(BaseCommand):
             with transaction.atomic():
                 if notas_para_criar:
                     Nota.objects.bulk_create(notas_para_criar.values(), batch_size=1000)
-                    # Nota: bulk_create não retorna os IDs em alguns bancos de dados antigos, mas como você usa 'chave' (que você mesmo define), é seguro inserir Custo/Margem direto.
+                
+                if custos_para_criar:
                     Custo.objects.bulk_create(custos_para_criar.values(), batch_size=1000)
+                
+                if margens_para_criar:
                     Margem.objects.bulk_create(margens_para_criar.values(), batch_size=1000)
                 
                 if notas_para_atualizar:
