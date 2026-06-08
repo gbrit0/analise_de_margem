@@ -280,6 +280,25 @@
     </div>
 </div>
 
+<div class="kpi-container" style="margin-bottom: 24px;">
+    <div class="kpi-card" style="border-left: 5px solid #13162F;">
+        <div class="kpi-title"><i class="fa-solid fa-dollar-sign" style="color: #13162F; margin-right: 6px;"></i> Faturamento Total</div>
+        <div class="kpi-value" id="kpiFaturamento">R$ 0,00</div>
+    </div>
+    <div class="kpi-card" style="border-left: 5px solid #D9420F;">
+        <div class="kpi-title"><i class="fa-solid fa-calculator" style="color: #D9420F; margin-right: 6px;"></i> Custo Total</div>
+        <div class="kpi-value" id="kpiCusto">R$ 0,00</div>
+    </div>
+    <div class="kpi-card" style="border-left: 5px solid #E2A000;">
+        <div class="kpi-title"><i class="fa-solid fa-percent" style="color: #E2A000; margin-right: 6px;"></i> Margem Bruta Total</div>
+        <div class="kpi-value" id="kpiMargem">R$ 0,00 (0,00%)</div>
+    </div>
+    <div class="kpi-card" style="border-left: 5px solid #00A34F;">
+        <div class="kpi-title"><i class="fa-solid fa-handshake" style="color: #00A34F; margin-right: 6px;"></i> Comissões Totais</div>
+        <div class="kpi-value" id="kpiComissao">R$ 0,00</div>
+    </div>
+</div>
+
 <div class="dashboard-grid">
 
     <div class="chart-card">
@@ -307,6 +326,7 @@
                             <th>Período</th>
                             <th>Faturamento</th>
                             <th>Custo</th>
+                            <th>Comissão</th>
                             <th>Margem</th>
                             <th>Margem %</th>
                         </tr>
@@ -406,6 +426,7 @@
                         <th style="text-align: right;">Notas</th>
                         <th style="text-align: right;">Faturamento</th>
                         <th style="text-align: right;">Custo</th>
+                        <th style="text-align: right;">Comissão</th>
                         <th style="text-align: right;">Margem</th>
                         <th style="text-align: right;">Margem %</th>
                     </tr>
@@ -460,6 +481,7 @@
                 item.qtd_notas,
                 formatarMoeda.format(item.total_vendas),
                 formatarMoeda.format(item.custo_total),
+                formatarMoeda.format(item.comissao_total),
                 formatarMoeda.format(item.margem_total),
                 `${formatarPercentual.format(item.margem_percentual)}%`
             ];
@@ -482,7 +504,7 @@
             trDetail.style.backgroundColor = 'var(--cinza-fundo)';
             
             const tdDetail = document.createElement('td');
-            tdDetail.colSpan = 7;
+            tdDetail.colSpan = 8;
             tdDetail.style.padding = '15px 24px';
             
             const detailContainer = document.createElement('div');
@@ -511,14 +533,14 @@
             // Header for subtable
             const subThead = document.createElement('thead');
             const subTrHead = document.createElement('tr');
-            const headers = ['Nota', 'Data Emissão', 'Cliente', 'Faturamento', 'Custo', 'Margem', 'Margem %', 'Justificativa'];
+            const headers = ['Nota', 'Data Emissão', 'Cliente', 'Faturamento', 'Custo', 'Comissão', 'Margem', 'Margem %', 'Justificativa'];
             headers.forEach((h, hIdx) => {
                 const th = document.createElement('th');
                 th.textContent = h;
                 th.style.fontSize = '0.8rem';
                 th.style.padding = '8px 12px';
                 th.style.backgroundColor = '#f8f9fa';
-                if (hIdx === 0 || hIdx === 1 || hIdx === 2 || hIdx === 7) {
+                if (hIdx === 0 || hIdx === 1 || hIdx === 2 || hIdx === 8) {
                     th.style.textAlign = 'left';
                 } else {
                     th.style.textAlign = 'right';
@@ -547,7 +569,7 @@
                         subTbody.replaceChildren(); // Safe clear
                         const loadingRow = document.createElement('tr');
                         const loadingTd = document.createElement('td');
-                        loadingTd.colSpan = 8;
+                        loadingTd.colSpan = 9;
                         loadingTd.style.textAlign = 'center';
                         loadingTd.style.padding = '12px';
                         loadingTd.textContent = 'Carregando notas...';
@@ -569,7 +591,7 @@
                                 if (!data.notas || !data.notas.length) {
                                     const noDataRow = document.createElement('tr');
                                     const noDataTd = document.createElement('td');
-                                    noDataTd.colSpan = 8;
+                                    noDataTd.colSpan = 9;
                                     noDataTd.style.textAlign = 'center';
                                     noDataTd.style.padding = '12px';
                                     noDataTd.textContent = 'Nenhuma nota encontrada.';
@@ -587,6 +609,7 @@
                                         nota.cliente,
                                         formatarMoeda.format(nota.valor_contabil),
                                         formatarMoeda.format(nota.custo),
+                                        formatarMoeda.format(nota.comissao),
                                         formatarMoeda.format(nota.margem),
                                         `${formatarPercentual.format(nota.margem_percentual)}%`,
                                         nota.justificativa
@@ -598,13 +621,13 @@
                                         nTd.style.fontSize = '0.82rem';
                                         nTd.style.padding = '8px 12px';
                                         
-                                        if (valIdx === 0 || valIdx === 1 || valIdx === 2 || valIdx === 7) {
+                                        if (valIdx === 0 || valIdx === 1 || valIdx === 2 || valIdx === 8) {
                                             nTd.style.textAlign = 'left';
                                         } else {
                                             nTd.style.textAlign = 'right';
                                         }
                                         
-                                        if (valIdx === 6) {
+                                        if (valIdx === 7) {
                                             if (nota.margem_percentual < 27) {
                                                 nTd.style.color = '#D9420F';
                                                 nTd.style.fontWeight = '600';
@@ -624,7 +647,7 @@
                                 subTbody.replaceChildren();
                                 const errorRow = document.createElement('tr');
                                 const errorTd = document.createElement('td');
-                                errorTd.colSpan = 8;
+                                errorTd.colSpan = 9;
                                 errorTd.style.textAlign = 'center';
                                 errorTd.style.padding = '12px';
                                 errorTd.style.color = '#D9420F';
@@ -660,6 +683,12 @@
         fetch(url)
             .then(response => response.json())
             .then(dados => {
+                // Atualizar KPI Cards
+                document.getElementById('kpiFaturamento').textContent = formatarMoeda.format(dados.total_faturamento_geral || 0);
+                document.getElementById('kpiCusto').textContent = formatarMoeda.format(dados.total_custo_geral || 0);
+                document.getElementById('kpiMargem').textContent = `${formatarMoeda.format(dados.total_margem_geral || 0)} (${formatarPercentual.format(dados.total_margem_pct_geral || 0)}%)`;
+                document.getElementById('kpiComissao').textContent = formatarMoeda.format(dados.total_comissao_geral || 0);
+
                 const just_ctx = document.getElementById('graficoJustificativas').getContext('2d');
                 if (graficoJustificativasChart) {
                     graficoJustificativasChart.destroy();
@@ -1006,7 +1035,7 @@
                 });
 
                 // Popular tabela fat x periodo
-                renderFatPeriodoTable(dados.labels || [], dados.total_vendas || [], dados.custo_total || [], dados.margem_total || [], dados.margem_percentual || []);
+                renderFatPeriodoTable(dados.labels || [], dados.total_vendas || [], dados.custo_total || [], dados.comissao_total || [], dados.margem_total || [], dados.margem_percentual || []);
 
                 // Popular tabela evolução vendedores
                 renderEvolucaoVendedoresTable(evolucaoVendedores || []);
@@ -1258,7 +1287,7 @@
     }
 
     // Renderizadores de tabelas
-    function renderFatPeriodoTable(labels, faturamento, custos, margem, margemPercentual) {
+    function renderFatPeriodoTable(labels, faturamento, custos, comissoes, margem, margemPercentual) {
         const tbody = document.getElementById('tabelaFatPeriodo');
         const empty = document.getElementById('semDadosFatPeriodo');
         tbody.innerHTML = '';
@@ -1273,6 +1302,7 @@
                 labels[i] || '-',
                 faturamento[i] != null ? formatarMoeda.format(faturamento[i]) : '-',
                 custos[i] != null ? formatarMoeda.format(custos[i]) : '-',
+                comissoes && comissoes[i] != null ? formatarMoeda.format(comissoes[i]) : '-',
                 margem[i] != null ? formatarMoeda.format(margem[i]) : '-',
                 margemPercentual[i] != null ? formatarPercentual.format(margemPercentual[i]) + '%' : '-'
             ];

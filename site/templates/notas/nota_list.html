@@ -595,6 +595,7 @@
                 <th>Custo</th>
                 <th>Tabela Preço</th>
                 <th>Preço Tabela</th>
+                <th>Comissão</th>
                 <th>Margem Bruta</th>
                 <th>Margem %</th>
                 <th>Estoque?</th>
@@ -682,6 +683,8 @@
                 <td data-label="Tabela Preço" class="text-right">{{ nota.tabela_preco }}</td>
 
                 <td data-label="Preço Tabela" class="text-right">{{ nota.preco_tabela_formatado }}</td>
+
+                <td data-label="Comissão" class="text-right">{{ nota.comissao_formatada }}</td>
 
                 <td data-label="Margem Bruta" class="text-right celula-margem-bruta" style="font-weight:bold;">
                     {% if nota.margem_bruta_formatada %}{{ nota.margem_bruta_formatada }}{% else %}-{% endif %}

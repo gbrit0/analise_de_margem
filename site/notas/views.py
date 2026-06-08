@@ -66,23 +66,24 @@ NOTA_GRID_COLUMNS = [
     {'key': 'custo', 'label': 'Custo', 'index': 13, 'default_visible': True},
     {'key': 'tabela_preco', 'label': 'Tabela Preço', 'index': 14, 'default_visible': False},
     {'key': 'preco_tabela', 'label': 'Preço Tabela', 'index': 15, 'default_visible': False},
-    {'key': 'margem_bruta', 'label': 'Margem Bruta', 'index': 16, 'default_visible': True},
-    {'key': 'margem_percentual', 'label': 'Margem %', 'index': 17, 'default_visible': True},
-    {'key': 'estoque', 'label': 'Estoque?', 'index': 18, 'default_visible': False},
-    {'key': 'duplicata', 'label': 'Duplicata?', 'index': 19, 'default_visible': False},
-    {'key': 'armazem', 'label': 'Armazém', 'index': 20, 'default_visible': False},
-    {'key': 'grp_amar_ctb', 'label': 'Gp. Amar. CTB', 'index': 21, 'default_visible': False},
-    {'key': 'uf', 'label': 'UF', 'index': 22, 'default_visible': False},
-    {'key': 'valor_unitario', 'label': 'Vl. Unit', 'index': 23, 'default_visible': False},
-    {'key': 'ipi', 'label': 'IPI', 'index': 24, 'default_visible': False},
-    {'key': 'imp5', 'label': 'Imp5', 'index': 25, 'default_visible': False},
-    {'key': 'imp6', 'label': 'Imp6', 'index': 26, 'default_visible': False},
-    {'key': 'difal', 'label': 'Difal', 'index': 27, 'default_visible': False},
-    {'key': 'icms', 'label': 'ICMS', 'index': 28, 'default_visible': False},
-    {'key': 'base_icms', 'label': 'Base ICMS', 'index': 29, 'default_visible': False},
-    {'key': 'aliq_icms', 'label': 'Aliq %', 'index': 30, 'default_visible': False},
-    {'key': 'justificativa', 'label': 'Justificativa', 'index': 31, 'default_visible': True},
-    {'key': 'comentario', 'label': 'Comentário', 'index': 32, 'default_visible': False},
+    {'key': 'comissao', 'label': 'Comissão', 'index': 16, 'default_visible': True},
+    {'key': 'margem_bruta', 'label': 'Margem Bruta', 'index': 17, 'default_visible': True},
+    {'key': 'margem_percentual', 'label': 'Margem %', 'index': 18, 'default_visible': True},
+    {'key': 'estoque', 'label': 'Estoque?', 'index': 19, 'default_visible': False},
+    {'key': 'duplicata', 'label': 'Duplicata?', 'index': 20, 'default_visible': False},
+    {'key': 'armazem', 'label': 'Armazém', 'index': 21, 'default_visible': False},
+    {'key': 'grp_amar_ctb', 'label': 'Gp. Amar. CTB', 'index': 22, 'default_visible': False},
+    {'key': 'uf', 'label': 'UF', 'index': 23, 'default_visible': False},
+    {'key': 'valor_unitario', 'label': 'Vl. Unit', 'index': 24, 'default_visible': False},
+    {'key': 'ipi', 'label': 'IPI', 'index': 25, 'default_visible': False},
+    {'key': 'imp5', 'label': 'Imp5', 'index': 26, 'default_visible': False},
+    {'key': 'imp6', 'label': 'Imp6', 'index': 27, 'default_visible': False},
+    {'key': 'difal', 'label': 'Difal', 'index': 28, 'default_visible': False},
+    {'key': 'icms', 'label': 'ICMS', 'index': 29, 'default_visible': False},
+    {'key': 'base_icms', 'label': 'Base ICMS', 'index': 30, 'default_visible': False},
+    {'key': 'aliq_icms', 'label': 'Aliq %', 'index': 31, 'default_visible': False},
+    {'key': 'justificativa', 'label': 'Justificativa', 'index': 32, 'default_visible': True},
+    {'key': 'comentario', 'label': 'Comentário', 'index': 33, 'default_visible': False},
 ]
 
 NOTA_GRID_COLUMN_KEYS = {column['key'] for column in NOTA_GRID_COLUMNS}
@@ -184,6 +185,15 @@ class NotasListView(LoginRequiredMixin, FilterView, ListView):
                 default=F('valor_icms'),                                     # ICMS cheio
                 output_field=DecimalField()
             ),
+            comissao_calculada=Case(
+                When(
+                    data_emissao__gte=datetime.date(2026, 6, 1),
+                    cod_produto__startswith='G0',
+                    then=F('valor_contabil') * Value(Decimal('0.004')),
+                ),
+                default=Value(Decimal('0.00')),
+                output_field=DecimalField(max_digits=18, decimal_places=2)
+            ),
             margem_bruta=ExpressionWrapper(
                 F('valor_contabil') 
                 - F('custo_mais_recente') 
@@ -191,7 +201,8 @@ class NotasListView(LoginRequiredMixin, FilterView, ListView):
                 - F('valor_imp5') 
                 - F('valor_imp6') 
                 - F('valor_icms_difal') 
-                - F('icms_calculado'),
+                - F('icms_calculado')
+                - F('comissao_calculada'),
                 output_field=DecimalField(max_digits=18, decimal_places=2)
             ),
             margem_percentual=ExpressionWrapper(
@@ -375,7 +386,16 @@ def atualizar_custo_api(request):
         else:
             val_icms = nota.valor_icms
 
-        # Cálculo: Valor Contábil - Custo Novo - Impostos
+        # Cálculo da comissão sobre vendas de geradores (a partir de 01/06/2026 para produtos G0)
+        comissao_valor = Decimal('0.00')
+        if nota.data_emissao >= datetime.date(2026, 6, 1) and nota.cod_produto.startswith('G0'):
+            comissao_valor = nota.valor_contabil * Decimal('0.004')
+
+        if nota.comissao != comissao_valor:
+            nota.comissao = comissao_valor
+            nota.save(update_fields=['comissao'])
+
+        # Cálculo: Valor Contábil - Custo Novo - Impostos - Comissão
         margem_bruta = (
             nota.valor_contabil 
             - valor_custo_decimal 
@@ -384,6 +404,7 @@ def atualizar_custo_api(request):
             - nota.valor_imp6 
             - nota.valor_icms_difal 
             - val_icms
+            - comissao_valor
         )
 
         # Cálculo da Margem Percentual (evitando divisão por zero)
@@ -657,6 +678,7 @@ def dados_vendas_api(request):
         total_vendas=Sum('valor_contabil'),
         margem_total=Sum(subquery_margem),
         custo_total=Sum(subquery_custo),
+        comissao_total=Coalesce(Sum('comissao'), Value(Decimal('0.00'))),
         qtd_notas=Count('chave')
     ).order_by('-total_vendas')
 
@@ -665,6 +687,7 @@ def dados_vendas_api(request):
         total_vendedor = item['total_vendas'] or Decimal('0.0')
         margem_vendedor = item['margem_total'] or Decimal('0.0')
         custo_vendedor = item['custo_total'] or Decimal('0.0')
+        comissao_vendedor = item['comissao_total'] or Decimal('0.0')
         margem_percentual_vendedor = 0
         if total_vendedor:
             margem_percentual_vendedor = (margem_vendedor / total_vendedor) * 100
@@ -674,6 +697,7 @@ def dados_vendas_api(request):
             'qtd_notas': item['qtd_notas'],
             'total_vendas': float(total_vendedor),
             'custo_total': float(custo_vendedor),
+            'comissao_total': float(comissao_vendedor),
             'margem_total': float(margem_vendedor),
             'margem_percentual': round(float(margem_percentual_vendedor), 2)
         })
@@ -705,29 +729,45 @@ def dados_vendas_api(request):
                 'margem_percentual': round(float(margem_percentual_periodo), 2)
             })
 
-    queryset = queryset.annotate(
+    queryset_periodo = queryset.annotate(
         mes=TruncMonth('data_emissao')
     ).values('mes').annotate(
         total_vendas=Sum('valor_contabil'),
         margem_percentual=Avg(subquery_margem_percentual)*100,
         margem_total=Sum(subquery_margem),
-        custo_total=Sum(subquery_custo)
+        custo_total=Sum(subquery_custo),
+        comissao_total=Coalesce(Sum('comissao'), Value(Decimal('0.00'))),
     ).order_by('mes')
     
-    labels = [item['mes'].strftime('%b/%Y') for item in queryset]
+    labels = [item['mes'].strftime('%b/%Y') for item in queryset_periodo]
     
-    total_vendas = [float(item['total_vendas']) for item in queryset]
-    margem_percentual = [float(item['margem_percentual']) for item in queryset]
-    margem_total = [float(item['margem_total']) for item in queryset]
-    custo_total = [float(item['custo_total']) for item in queryset] 
+    total_vendas = [float(item['total_vendas']) for item in queryset_periodo]
+    margem_percentual = [float(item['margem_percentual']) for item in queryset_periodo]
+    margem_total = [float(item['margem_total']) for item in queryset_periodo]
+    custo_total = [float(item['custo_total']) for item in queryset_periodo] 
+    comissao_total = [float(item['comissao_total']) for item in queryset_periodo]
+
+    total_faturamento_geral = sum(total_vendas)
+    total_custo_geral = sum(custo_total)
+    total_margem_geral = sum(margem_total)
+    total_comissao_geral = sum(comissao_total)
+    
+    total_margem_pct_geral = 0.0
+    if total_faturamento_geral > 0:
+        total_margem_pct_geral = (total_margem_geral / total_faturamento_geral) * 100
         
     return JsonResponse({
-        # 'margem': queryset['margem_total'],
         'labels': labels,
         'total_vendas': total_vendas,
         'margem_percentual': margem_percentual,
         'margem_total': margem_total,
         'custo_total': custo_total,
+        'comissao_total': comissao_total,
+        'total_faturamento_geral': total_faturamento_geral,
+        'total_custo_geral': total_custo_geral,
+        'total_margem_geral': total_margem_geral,
+        'total_comissao_geral': total_comissao_geral,
+        'total_margem_pct_geral': round(total_margem_pct_geral, 2),
         'estatisticas_justificativas': estatisticas_justificativas,
         'estatisticas_vendedores': estatisticas_vendedores,
         'estatisticas_vendedores_periodo': estatisticas_vendedores_periodo
@@ -791,6 +831,7 @@ def vendedor_notas_api(request):
         custo_val = float(nota.custo_val) if nota.custo_val is not None else 0.0
         margem_val = float(nota.margem_val) if nota.margem_val is not None else 0.0
         margem_pct = float(nota.margem_pct) * 100 if nota.margem_pct is not None else 0.0
+        comissao_val = float(nota.comissao) if nota.comissao is not None else 0.0
         
         notas_list.append({
             'chave': nota.chave,
@@ -799,6 +840,7 @@ def vendedor_notas_api(request):
             'cliente': nota.cliente,
             'valor_contabil': float(nota.valor_contabil),
             'custo': custo_val,
+            'comissao': comissao_val,
             'margem': margem_val,
             'margem_percentual': round(margem_pct, 2),
             'justificativa': nota.just_texto or '-'
@@ -1126,11 +1168,13 @@ def exportar_excel(request):
         'estado_destino', 'quantidade', 'tabela_preco', 'preco_tabela',
         'valor_contabil', 'custo_mais_recente', 'valor_unitario', 'valor_ipi', 'valor_imp5',
         'valor_imp6', 'valor_icms_difal', 'valor_icms', 'base_icms','aliq_icms',
-        'margem_bruta', 'margem_percentual'
+        'margem_bruta', 'margem_percentual', 'comissao_calculada'
     ]
 
     dados = list(queryset.values(*columns))
     df = pd.DataFrame(dados)
+    if 'comissao_calculada' in df.columns:
+        df = df.rename(columns={'comissao_calculada': 'comissao'})
 
     output = io.BytesIO()
     with pd.ExcelWriter(output, engine='xlsxwriter') as writer:
@@ -1146,7 +1190,8 @@ def exportar_excel(request):
             cols_to_float = [
                 'quantidade', 'preco_tabela', 'valor_contabil', 'custo_mais_recente', 
                 'valor_unitario', 'valor_ipi', 'valor_imp5', 'valor_imp6', 
-                'valor_icms_difal', 'valor_icms',  'base_icms', 'aliq_icms', 'margem_bruta', 'margem_percentual'
+                'valor_icms_difal', 'valor_icms',  'base_icms', 'aliq_icms', 'margem_bruta', 'margem_percentual',
+                'comissao'
             ]
             for col in cols_to_float:
                 if col in df.columns:
@@ -1220,6 +1265,7 @@ def exportar_excel(request):
             col_icms_difal = col_letters.get('valor_icms_difal', 'A')
             col_icms = col_letters.get('valor_icms', 'A')
             col_base_icms = col_letters.get('base_icms', 'A')
+            col_comissao = col_letters.get('comissao', 'A')
             
             idx_margem_bruta = df.columns.get_loc('margem_bruta') if 'margem_bruta' in df.columns else -1
             idx_margem_percentual = df.columns.get_loc('margem_percentual') if 'margem_percentual' in df.columns else -1
@@ -1261,7 +1307,8 @@ def exportar_excel(request):
                         f'{col_imp5}{row_idx+1}-{col_imp6}{row_idx+1}-{col_icms_difal}{row_idx+1}-'
                         f'IF(OR({col_cfop}{row_idx+1}="5101", {col_cfop}{row_idx+1}="6101", '
                         f'{col_cfop}{row_idx+1}="5116", {col_cfop}{row_idx+1}="6116", '
-                        f'{col_cfop}{row_idx+1}="6107"), {col_base_icms}{row_idx+1}*0.047, {col_icms}{row_idx+1})'
+                        f'{col_cfop}{row_idx+1}="6107"), {col_base_icms}{row_idx+1}*0.047, {col_icms}{row_idx+1})-'
+                        f'{col_comissao}{row_idx+1}'
                     )
                     worksheet.write_formula(row_idx, idx_margem_bruta, formula_margem, dict_formatos['money'])
                 
@@ -1315,12 +1362,13 @@ def exportar_estatisticas_excel(request):
         
 # Aba 2: Estatísticas Período
     ws2 = wb.create_sheet(title="Estatísticas Por Período")
-    cols2 = ['Mês', 'Faturamento (valor_)', 'Custo Total', 'Margem Bruta', 'Margem Percentual']
-    ws2.append(['Mês', 'Faturamento', 'Custo Total', 'Margem Total', 'Margem Percentual'])
+    cols2 = ['Mês', 'Faturamento', 'Custo Total', 'Comissão', 'Margem Total', 'Margem Percentual']
+    ws2.append(cols2)
     
     labels = dados_json.get('labels', [])
     vendas = dados_json.get('total_vendas', [])
     custos = dados_json.get('custo_total', [])
+    comissoes = dados_json.get('comissao_total', [])
     margens = dados_json.get('margem_total', [])
     margens_pct = dados_json.get('margem_percentual', [])
     
@@ -1329,13 +1377,14 @@ def exportar_estatisticas_excel(request):
             labels[i],
             vendas[i],
             custos[i],
+            comissoes[i] if i < len(comissoes) else 0,
             margens[i],
             (margens_pct[i] / 100.0) if margens_pct[i] is not None else 0
         ])
 
 # Aba 3: Estatísticas Vendedores
     ws3 = wb.create_sheet(title="Estatísticas Por Vendedor")
-    cols3 = ['Vendedor', 'Qtd Notas', 'Faturamento', 'Custo Total', 'Margem Total', 'Margem Percentual']
+    cols3 = ['Vendedor', 'Qtd Notas', 'Faturamento', 'Custo Total', 'Comissão', 'Margem Total', 'Margem Percentual']
     ws3.append(cols3)
 
     for item in dados_json.get('estatisticas_vendedores', []):
@@ -1344,6 +1393,7 @@ def exportar_estatisticas_excel(request):
             item['qtd_notas'],
             item['total_vendas'],
             item['custo_total'],
+            item['comissao_total'],
             item['margem_total'],
             item['margem_percentual'] / 100.0
         ])
@@ -1377,7 +1427,7 @@ def exportar_estatisticas_excel(request):
         for col_idx, col_name in enumerate(cols, 1):
             col_name_lower = str(col_name).lower()
             num_format = None
-            if any(x in col_name_lower for x in ['valor_', 'custo', 'vlr_', 'margem_bruta', 'margem total', 'faturamento']):
+            if any(x in col_name_lower for x in ['valor_', 'custo', 'vlr_', 'margem_bruta', 'margem total', 'faturamento', 'comissão', 'comissao']):
                 num_format = 'R$ #,##0.00'
             elif any(x in col_name_lower for x in ['percent', 'aliquota', 'diff_percentual', 'representatividade', 'abaixo margem']):
                 num_format = '0.00%'

@@ -11,6 +11,13 @@ from users.models import CustomUser
 from dbutils.pooled_db import PooledDB
 from setup import settings
 
+def to_decimal(val):
+    if val is None:
+        return Decimal('0.00')
+    if isinstance(val, Decimal):
+        return val
+    return Decimal(str(val))
+
 def setup_protheus_connection(conn):
     conn.setdecoding(pyodbc.SQL_CHAR, encoding='cp1252')
     conn.setdecoding(pyodbc.SQL_WCHAR, encoding='cp1252')
@@ -99,6 +106,29 @@ class Command(BaseCommand):
             for row in rows_notas:
                 chave, filial, nome_filial, nota, item, no_pedido, vendedor, data_emissao, lote, cfop, cfop_descri, atualiza_estoque, gera_duplicata, cod_produto, produto, tipo_produto, desc_tipo_produto, armazem, cod_cliente, loja, cliente, grp_amar_ctb, classificacao_produto, estado_destino, quantidade, tabela_preco, preco_tabela, valor_contabil, custo_valor, valor_unitario, valor_ipi, valor_imp5, valor_imp6, valor_icms_difal, valor_icms, base_icms,aliq_icms, recno, comentario, deletado = row
                 delete_marcado = protheus_delete_marcado(deletado)
+                
+                # Garantir que campos de texto não nulos no banco de dados local não recebam None
+                filial = filial or '-'
+                nome_filial = nome_filial or '-'
+                nota = nota or '-'
+                item = item or '-'
+                no_pedido = no_pedido or '-'
+                lote = lote or '-'
+                cfop = cfop or '-'
+                cfop_descri = cfop_descri or '-'
+                atualiza_estoque = atualiza_estoque or '-'
+                gera_duplicata = gera_duplicata or '-'
+                cod_produto = cod_produto or '-'
+                produto = produto or '-'
+                tipo_produto = tipo_produto or '-'
+                desc_tipo_produto = desc_tipo_produto or '-'
+                armazem = armazem or '-'
+                cod_cliente = cod_cliente or '-'
+                loja = loja or '-'
+                cliente = cliente or '-'
+                grp_amar_ctb = grp_amar_ctb or '-'
+                estado_destino = estado_destino or '-'
+                tabela_preco = tabela_preco or '-'
 
                 if not data_emissao:
                     notas_ignoradas_sem_data += 1
@@ -112,6 +142,9 @@ class Command(BaseCommand):
                 #     lotes_unicos.add(lote.strip())
                 #     relacao_lote_nota[lote.strip()] = lote.strip() # f"{filial}{nota}{item}{recno}"
 
+                # Calcula a comissão se data_emissao >= 2026-06-01 e cod_produto começa com 'G0'
+                comissao_calc = Decimal('0.004') * to_decimal(valor_contabil) if (data_emissao >= date(2026, 6, 1) and cod_produto.startswith('G0')) else Decimal('0.00')
+
                 nota_obj = Nota(
                     chave=chave, filial=filial, nome_filial=nome_filial, nota=nota, item=item,
                     no_pedido=no_pedido, vendedor=vendedor, data_emissao=data_emissao, lote=lote,
@@ -124,7 +157,7 @@ class Command(BaseCommand):
                     valor_contabil=valor_contabil, valor_unitario=valor_unitario, valor_ipi=valor_ipi,
                     valor_imp5=valor_imp5, valor_imp6=valor_imp6, valor_icms_difal=valor_icms_difal,
                     valor_icms=valor_icms, base_icms=base_icms, aliq_icms=aliq_icms, recno=recno, 
-                    comentario=comentario, delete=delete_marcado
+                    comentario=comentario, delete=delete_marcado, comissao=comissao_calc
                 )
 
                 if chave not in chaves_existentes:
@@ -134,17 +167,26 @@ class Command(BaseCommand):
                     custo_obj = Custo(chave_id=chave, valor=custo_valor, usuario=usuario_sistema)
                     custos_para_criar[chave] = custo_obj
                     
-                    pro_goias = 0.0477 if data_emissao >= data_corte else 0.02
+                    pro_goias = Decimal('0.0477') if data_emissao >= data_corte else Decimal('0.02')
                     
-                    icms_calc = base_icms * pro_goias if cfop in cfops_especiais else valor_icms
+                    icms_calc = to_decimal(base_icms) * pro_goias if cfop in cfops_especiais else to_decimal(valor_icms)
                     
-                    margem_bruta = valor_contabil - custo_valor - valor_ipi - valor_imp5 - valor_imp6 - valor_icms_difal - icms_calc
+                    margem_bruta = (
+                        to_decimal(valor_contabil) 
+                        - to_decimal(custo_valor) 
+                        - to_decimal(valor_ipi) 
+                        - to_decimal(valor_imp5) 
+                        - to_decimal(valor_imp6) 
+                        - to_decimal(valor_icms_difal) 
+                        - to_decimal(icms_calc) 
+                        - to_decimal(comissao_calc)
+                    )
                     
                     margem_obj = Margem(
                         chave_id=chave,
                         custo=custo_obj, # O Django lida com a chave estrangeira em bulk_create se a PK estiver explícita (depende do setup, ver nota abaixo)
                         margem_bruta=margem_bruta,
-                        margem_bruta_percentual=margem_bruta / valor_contabil if valor_contabil else 0
+                        margem_bruta_percentual=margem_bruta / to_decimal(valor_contabil) if to_decimal(valor_contabil) else Decimal('0.00')
                     )
                     margens_para_criar[chave] = margem_obj
                 else:
@@ -167,15 +209,25 @@ class Command(BaseCommand):
                         custo_obj = Custo(chave_id=chave, valor=custo_valor, usuario=usuario_sistema)
                         custos_para_criar[chave] = custo_obj
                         
-                        pro_goias = 0.0477 if data_emissao >= data_corte else 0.02
-                        icms_calc = base_icms * pro_goias if cfop in cfops_especiais else valor_icms
-                        margem_bruta = valor_contabil - custo_valor - valor_ipi - valor_imp5 - valor_imp6 - valor_icms_difal - icms_calc
+                        pro_goias = Decimal('0.0477') if data_emissao >= data_corte else Decimal('0.02')
+                        icms_calc = to_decimal(base_icms) * pro_goias if cfop in cfops_especiais else to_decimal(valor_icms)
+                        
+                        margem_bruta = (
+                            to_decimal(valor_contabil) 
+                            - to_decimal(custo_valor) 
+                            - to_decimal(valor_ipi) 
+                            - to_decimal(valor_imp5) 
+                            - to_decimal(valor_imp6) 
+                            - to_decimal(valor_icms_difal) 
+                            - to_decimal(icms_calc) 
+                            - to_decimal(comissao_calc)
+                        )
                         
                         margem_obj = Margem(
                             chave_id=chave,
                             custo=custo_obj,
                             margem_bruta=margem_bruta,
-                            margem_bruta_percentual=margem_bruta / valor_contabil if valor_contabil else 0
+                            margem_bruta_percentual=margem_bruta / to_decimal(valor_contabil) if to_decimal(valor_contabil) else Decimal('0.00')
                         )
                         margens_para_criar[chave] = margem_obj
 
@@ -198,7 +250,7 @@ class Command(BaseCommand):
                         'cfop', 'cfop_descri', 'estado_destino', 'quantidade', 'tabela_preco',
                         'valor_contabil', 'valor_unitario', 'valor_ipi', 'valor_imp5',
                         'valor_imp6', 'valor_icms_difal', 'valor_icms', 'base_icms','aliq_icms',
-                        'delete', 'preco_tabela'
+                        'delete', 'preco_tabela', 'comissao'
                     ] 
                     Nota.objects.bulk_update(notas_para_atualizar.values(), campos_update, batch_size=1000)
 

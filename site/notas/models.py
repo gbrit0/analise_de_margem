@@ -43,6 +43,7 @@ class Nota(models.Model):
     valor_icms = models.DecimalField(max_digits=18, decimal_places=2)
     base_icms = models.DecimalField(max_digits=18, decimal_places=2, default=None, blank=True)
     aliq_icms = models.DecimalField(max_digits=5, decimal_places=2)
+    comissao = models.DecimalField(max_digits=18, decimal_places=2, default=None, blank=True)
     recno = models.BigIntegerField()
     delete = models.BooleanField(default=False)
     comentario = models.TextField(default=None, blank=True, null=True)
@@ -102,6 +103,13 @@ class Nota(models.Model):
     @property
     def preco_tabela_formatado(self):
         return locale.currency(self.preco_tabela, grouping=True)
+    
+    @property
+    def comissao_formatada(self):
+        val = getattr(self, 'comissao_calculada', self.comissao)
+        if val is not None and val > 0:
+            return locale.currency(val, grouping=True)
+        return "-"
     
     # @property
     # def relacao_lote_nota(self):
