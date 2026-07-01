@@ -143,7 +143,24 @@ class Command(BaseCommand):
                 #     relacao_lote_nota[lote.strip()] = lote.strip() # f"{filial}{nota}{item}{recno}"
 
                 # Calcula a comissão se data_emissao >= 2026-06-01 e cod_produto começa com 'G0'
-                comissao_calc = Decimal('0.004') * to_decimal(valor_contabil) if (data_emissao >= date(2026, 6, 1) and cod_produto.startswith('G0')) else Decimal('0.00')
+                is_intercompany = (cod_cliente, loja) in {
+                    ('44592860', '0001'), # Agrogera BA
+                    ('04675878', '0001'), # BRG Matriz
+                    ('44592860', '0002'), # Agrogera BA Filial GO
+                    ('27379581', '0004'), # GRID MS - INOCENCIA
+                    ('27379581', '0001'), # GRID GO
+                    ('27379581', '0002'), # GRID MG
+                    ('27379581', '0003'), # GRID PA
+                }
+                vendedor_nome = (vendedor or '').strip()
+                vendedor_sem_comissao = (
+                    not vendedor_nome 
+                    or vendedor_nome in ['DAVID MARTINS DOS SANTOS', 'CLEITON PAULO DE MOURA']
+                )
+                if is_intercompany or vendedor_sem_comissao:
+                    comissao_calc = Decimal('0.00')
+                else:
+                    comissao_calc = Decimal('0.004') * to_decimal(valor_contabil) if (data_emissao >= date(2026, 6, 1) and cod_produto.startswith('G0')) else Decimal('0.00')
 
                 nota_obj = Nota(
                     chave=chave, filial=filial, nome_filial=nome_filial, nota=nota, item=item,
