@@ -1,0 +1,15 @@
+{% extends 'base.html' %}
+
+{% block page_title %}Página não encontrada{% endblock %}
+
+{% block content %}
+<div class="container text-center mt-5 pt-5">
+    <i class="fa-solid fa-triangle-exclamation text-warning" style="font-size: 5rem; margin-bottom: 20px;"></i>
+    <h1 class="display-4 font-weight-bold" style="color: var(--azul-escuro);">404</h1>
+    <h2 class="mb-4">Página não encontrada</h2>
+    <p class="lead mb-5 text-muted">A página que você está procurando pode ter sido removida, mudou de nome ou está temporariamente indisponível.</p>
+    <a href="{% url 'lista_notas' %}?data_emissao_month={% now 'Y-m' %}" class="btn" style="background-color: var(--verde-principal); color: var(--branco); font-weight: 500; padding: 10px 25px; text-decoration: none;">
+        <i class="fa-solid fa-house"></i> Voltar ao Início
+    </a>
+</div>
+{% endblock %}

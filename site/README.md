@@ -53,7 +53,7 @@ python manage.py migrate
 
 5. Rode o servidor de desenvolvimento:
 ```bash
-python manage.py runserver
+python manage.py runserver 0.0.0.0:30035
 ```
 
 ## 🔐 Integração e Acessos
