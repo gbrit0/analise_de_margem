@@ -220,6 +220,23 @@ class NotasListView( FilterView, ListView):
             ),
             comissao_calculada=Case(
                 When(
+                    Q(cod_cliente='44592860', loja='0001') |
+                    Q(cod_cliente='04675878', loja='0001') |
+                    Q(cod_cliente='44592860', loja='0002') |
+                    Q(cod_cliente='27379581', loja='0004') |
+                    Q(cod_cliente='27379581', loja='0001') |
+                    Q(cod_cliente='27379581', loja='0002') |
+                    Q(cod_cliente='27379581', loja='0003'),
+                    then=Value(Decimal('0.00'))
+                ),
+                When(
+                    Q(vendedor__isnull=True) |
+                    Q(vendedor='') |
+                    Q(vendedor='DAVID MARTINS DOS SANTOS') |
+                    Q(vendedor='CLEITON PAULO DE MOURA'),
+                    then=Value(Decimal('0.00'))
+                ),
+                When(
                     data_emissao__gte=datetime.date(2026, 6, 1),
                     cod_produto__startswith='G0',
                     then=F('valor_contabil') * Value(Decimal('0.004')),
@@ -421,8 +438,23 @@ def atualizar_custo_api(request):
 
         # Cálculo da comissão sobre vendas de geradores (a partir de 01/06/2026 para produtos G0)
         comissao_valor = Decimal('0.00')
-        if nota.data_emissao >= datetime.date(2026, 6, 1) and nota.cod_produto.startswith('G0'):
-            comissao_valor = nota.valor_contabil * Decimal('0.004')
+        is_intercompany = (nota.cod_cliente, nota.loja) in {
+            ('44592860', '0001'), # Agrogera BA
+            ('04675878', '0001'), # BRG Matriz
+            ('44592860', '0002'), # Agrogera BA Filial GO
+            ('27379581', '0004'), # GRID MS - INOCENCIA
+            ('27379581', '0001'), # GRID GO
+            ('27379581', '0002'), # GRID MG
+            ('27379581', '0003'), # GRID PA
+        }
+        vendedor_nome = (nota.vendedor or '').strip()
+        vendedor_sem_comissao = (
+            not vendedor_nome 
+            or vendedor_nome in ['DAVID MARTINS DOS SANTOS', 'CLEITON PAULO DE MOURA']
+        )
+        if not is_intercompany and not vendedor_sem_comissao:
+            if nota.data_emissao >= datetime.date(2026, 6, 1) and nota.cod_produto.startswith('G0'):
+                comissao_valor = nota.valor_contabil * Decimal('0.004')
 
         if nota.comissao != comissao_valor:
             nota.comissao = comissao_valor
@@ -711,7 +743,32 @@ def dados_vendas_api(request):
         total_vendas=Sum('valor_contabil'),
         margem_total=Sum(subquery_margem),
         custo_total=Sum(subquery_custo),
-        comissao_total=Coalesce(Sum('comissao'), Value(Decimal('0.00'))),
+        comissao_total=Coalesce(
+            Sum(
+                Case(
+                    When(
+                        Q(cod_cliente='44592860', loja='0001') |
+                        Q(cod_cliente='04675878', loja='0001') |
+                        Q(cod_cliente='44592860', loja='0002') |
+                        Q(cod_cliente='27379581', loja='0004') |
+                        Q(cod_cliente='27379581', loja='0001') |
+                        Q(cod_cliente='27379581', loja='0002') |
+                        Q(cod_cliente='27379581', loja='0003'),
+                        then=Value(Decimal('0.00'))
+                    ),
+                    When(
+                        Q(vendedor__isnull=True) |
+                        Q(vendedor='') |
+                        Q(vendedor='DAVID MARTINS DOS SANTOS') |
+                        Q(vendedor='CLEITON PAULO DE MOURA'),
+                        then=Value(Decimal('0.00'))
+                    ),
+                    default=F('comissao'),
+                    output_field=DecimalField()
+                )
+            ),
+            Value(Decimal('0.00'))
+        ),
         qtd_notas=Count('chave')
     ).order_by('-total_vendas')
 
@@ -769,7 +826,32 @@ def dados_vendas_api(request):
         margem_percentual=Avg(subquery_margem_percentual)*100,
         margem_total=Sum(subquery_margem),
         custo_total=Sum(subquery_custo),
-        comissao_total=Coalesce(Sum('comissao'), Value(Decimal('0.00'))),
+        comissao_total=Coalesce(
+            Sum(
+                Case(
+                    When(
+                        Q(cod_cliente='44592860', loja='0001') |
+                        Q(cod_cliente='04675878', loja='0001') |
+                        Q(cod_cliente='44592860', loja='0002') |
+                        Q(cod_cliente='27379581', loja='0004') |
+                        Q(cod_cliente='27379581', loja='0001') |
+                        Q(cod_cliente='27379581', loja='0002') |
+                        Q(cod_cliente='27379581', loja='0003'),
+                        then=Value(Decimal('0.00'))
+                    ),
+                    When(
+                        Q(vendedor__isnull=True) |
+                        Q(vendedor='') |
+                        Q(vendedor='DAVID MARTINS DOS SANTOS') |
+                        Q(vendedor='CLEITON PAULO DE MOURA'),
+                        then=Value(Decimal('0.00'))
+                    ),
+                    default=F('comissao'),
+                    output_field=DecimalField()
+                )
+            ),
+            Value(Decimal('0.00'))
+        ),
     ).order_by('mes')
     
     labels = [item['mes'].strftime('%b/%Y') for item in queryset_periodo]
@@ -864,7 +946,24 @@ def vendedor_notas_api(request):
         custo_val = float(nota.custo_val) if nota.custo_val is not None else 0.0
         margem_val = float(nota.margem_val) if nota.margem_val is not None else 0.0
         margem_pct = float(nota.margem_pct) * 100 if nota.margem_pct is not None else 0.0
-        comissao_val = float(nota.comissao) if nota.comissao is not None else 0.0
+        is_intercompany = (nota.cod_cliente, nota.loja) in {
+            ('44592860', '0001'), # Agrogera BA
+            ('04675878', '0001'), # BRG Matriz
+            ('44592860', '0002'), # Agrogera BA Filial GO
+            ('27379581', '0004'), # GRID MS - INOCENCIA
+            ('27379581', '0001'), # GRID GO
+            ('27379581', '0002'), # GRID MG
+            ('27379581', '0003'), # GRID PA
+        }
+        vendedor_nome = (nota.vendedor or '').strip()
+        vendedor_sem_comissao = (
+            not vendedor_nome 
+            or vendedor_nome in ['DAVID MARTINS DOS SANTOS', 'CLEITON PAULO DE MOURA']
+        )
+        if is_intercompany or vendedor_sem_comissao:
+            comissao_val = 0.0
+        else:
+            comissao_val = float(nota.comissao) if nota.comissao is not None else 0.0
         
         notas_list.append({
             'chave': nota.chave,

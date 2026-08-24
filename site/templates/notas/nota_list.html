@@ -507,6 +507,18 @@
                         style="max-height: 250px; overflow-y: auto; box-shadow: 0 4px 12px rgba(0,0,0,0.1);">
                         <li>
                             <div class="form-check">
+                                <input class="form-check-input" type="checkbox" id="just_todos">
+                                <label class="form-check-label" for="just_todos"
+                                    style="font-size: 0.85rem; cursor: pointer; font-weight: 600;">
+                                    Todos
+                                </label>
+                            </div>
+                        </li>
+                        <li>
+                            <hr class="dropdown-divider">
+                        </li>
+                        <li>
+                            <div class="form-check">
                                 <input class="form-check-input justificativa-checkbox" type="checkbox"
                                     name="justificativa_filtro" value="None" id="just_none" {% if 'None' in justificativas_selecionadas %}checked{% endif %}>
                                 <label class="form-check-label" for="just_none"
@@ -943,9 +955,19 @@
             } else {
                 btn.text(checked + ' selecionada(s)');
             }
+            // Reflete o estado das justificativas no checkbox "Todos"
+            var todos = $('#just_todos');
+            todos.prop('checked', checked === total && total > 0);
+            todos.prop('indeterminate', checked > 0 && checked < total);
         }
         $('.justificativa-checkbox').on('change', function () {
             justificativasChanged = true;
+            updateJustificativaButtonText();
+        });
+        // "Todos" marca/desmarca todas, permitindo desmarcar depois só as que serão excluídas
+        $('#just_todos').on('change', function () {
+            justificativasChanged = true;
+            $('.justificativa-checkbox').prop('checked', $(this).prop('checked'));
             updateJustificativaButtonText();
         });
         updateJustificativaButtonText();
