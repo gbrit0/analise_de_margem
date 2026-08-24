@@ -42,8 +42,8 @@ from django.db.models.functions import TruncMonth
 from django.http import HttpResponse, JsonResponse
 from django.views.decorators.cache import cache_page
 from django.shortcuts import render, get_object_or_404
-from django.contrib.auth.decorators import login_required
-from django.contrib.auth.mixins import LoginRequiredMixin
+
+
 from django.db.models.functions import Coalesce, ExtractYear, ExtractMonth
 from django.views.decorators.http import require_http_methods, require_POST
 from django.db.models import OuterRef, Subquery, DecimalField, Case, When, F, Value, ExpressionWrapper
@@ -116,41 +116,74 @@ def get_nota_grid_visible_columns():
     ]
     return colunas or NOTA_GRID_DEFAULT_VISIBLE
 
-pool = PooledDB(
-    creator=pyodbc,
-    maxconnections=10, # Como vamos usar lotes, não precisamos de tantas conexões simultâneas
-    mincached=2,
-    blocking=True,
-    driver='{ODBC Driver 17 for SQL Server}',
-    server=f'{os.getenv("PROTHEUS_DB_HOST")}',
-    database=f'{os.getenv("PROTHEUS_DB_DATABASE")}',
-    uid=f'{os.getenv("PROTHEUS_DB_USER")}',
-    pwd=f'{os.getenv("PROTHEUS_DB_PASSWORD")}'
+pyodbc.pooling = False 
+
+conn_str = (
+    f"DRIVER={os.getenv('PROTHEUS_ODBC_DRIVER', 'ODBC Driver 17 for SQL Server')};"
+    f"SERVER={os.getenv('PROTHEUS_DB_HOST')},{os.getenv('PROTHEUS_DB_PORT')};"
+    f"DATABASE={os.getenv('PROTHEUS_DB_DATABASE')};"
+    f"UID={os.getenv('PROTHEUS_DB_USER')};"
+    f"PWD={os.getenv('PROTHEUS_DB_PASSWORD')};"
+    f"Encrypt=yes;"
+    f"TrustServerCertificate=yes;"
 )
+
+class _ProtheusDBAPI:
+    """Fachada DB-API 2 para o dbutils.
+
+    O pool precisa de um "modulo" para descobrir o threadsafety e as excecoes
+    de falha (OperationalError etc.). Uma funcao solta nao expoe nada disso e o
+    dbutils tambem nao consegue deduzir pela conexao do pyodbc, que e um tipo C
+    sem __module__ - dai o "Could not determine failure exceptions".
+    """
+
+    threadsafety = pyodbc.threadsafety
+    OperationalError = pyodbc.OperationalError
+    InterfaceError = pyodbc.InterfaceError
+    InternalError = pyodbc.InternalError
+
+    @staticmethod
+    def connect():
+        # Posicionada: como keyword (dsn=...) o pyodbc embute a string inteira
+        # dentro de DSN={...} e o unixODBC responde IM012.
+        return pyodbc.connect(conn_str)
+
+
+pool = PooledDB(creator=_ProtheusDBAPI(), maxconnections=10, mincached=0, maxcached=5, blocking=True)
+
 
 pool_mysql = PooledDB(
     creator=pymysql,
     maxconnections=10, # Como vamos usar lotes, não precisamos de tantas conexões simultâneas
-    mincached=2,
+    mincached=0,
     blocking=True,
-    host=f'{os.getenv("DB_HOST")}',
-    port=int(os.getenv("DB_PORT")),
-    user=f'{os.getenv("DB_USER")}',
-    password=f'{os.getenv("DB_PASSWORD")}',
-    database=f'{os.getenv("DB_NAME")}'
+    host=f'{os.getenv("DB_HOST", "localhost")}',
+    port=int(os.getenv("DB_PORT", "3306") or 3306),
+    user=f'{os.getenv("DB_USER", "")}',
+    password=f'{os.getenv("DB_PASSWORD", "")}',
+    database=f'{os.getenv("DB_NAME", "")}'
 )
 
-class NotasListView(LoginRequiredMixin, FilterView, ListView):
+class NotasListView( FilterView, ListView):
     mes_anterior = datetime.date.today() - relativedelta(month=1)
     mes_anterior = mes_anterior.strftime("%Y-%m")
     model = Nota
     # paginate_by = 25
     filterset_class = NotaFilter
     ordering = ['-data_emissao']
-    login_url = 'login/' 
     context_object_name = 'nota_list'
     template_name = 'notas/nota_list.html'
     redirect_field_name = f'/?data_emissao_month={mes_anterior}' # Filtrar as notas do mes anterior depois do login
+
+    def dispatch(self, request, *args, **kwargs):
+        if not request.GET.get('data_emissao_month'):
+            from django.shortcuts import redirect
+            import datetime
+            hoje = datetime.date.today().strftime("%Y-%m")
+            query_params = request.GET.copy()
+            query_params['data_emissao_month'] = hoje
+            return redirect(f"{request.path}?{query_params.urlencode()}")
+        return super().dispatch(request, *args, **kwargs)
         
     def get_queryset(self):
         cfops_especiais = ['5101', '6101', '5116', '6116', '6107']
@@ -343,7 +376,7 @@ class NotasListView(LoginRequiredMixin, FilterView, ListView):
 
         return context
     
-@login_required
+
 @require_POST
 def atualizar_custo_api(request):
     try:
@@ -430,7 +463,7 @@ def atualizar_custo_api(request):
         raise e
         # return JsonResponse({'error': str(e)}, status=500)
 
-@login_required
+
 @require_POST
 def atualizar_custo2_op_api(request):
     try:
@@ -463,7 +496,7 @@ def atualizar_custo2_op_api(request):
     except Exception as e:
         return JsonResponse({'error': str(e)}, status=500)
     
-@login_required
+
 @require_POST
 def atualizar_comentario_api(request):
     try:
@@ -487,7 +520,7 @@ def atualizar_comentario_api(request):
         return JsonResponse({'success': False, 'error': str(e)}, status=500)
 
 
-@login_required
+
 @require_POST
 def atualizar_justificativa_api(request):
     try:
@@ -531,7 +564,7 @@ def atualizar_justificativa_api(request):
     except Exception as e:
         return JsonResponse({'success': False, 'error': str(e)}, status=500)
 
-@login_required
+
 def dashboard_view(request):
     selected = request.GET.get('data_emissao_month', '')
     
@@ -570,7 +603,7 @@ def dashboard_view(request):
     
     return render(request, 'notas/estatisticas.html', context)
 
-@login_required
+
 def dados_vendas_api(request):
     
     meses_str = request.GET.get('meses')
@@ -773,7 +806,7 @@ def dados_vendas_api(request):
         'estatisticas_vendedores_periodo': estatisticas_vendedores_periodo
     })
 
-@login_required
+
 def vendedor_notas_api(request):
     vendedor = request.GET.get('vendedor')
     meses_str = request.GET.get('meses')
@@ -850,7 +883,7 @@ def vendedor_notas_api(request):
 
     
 
-# class OPListView(LoginRequiredMixin, FilterView, ListView):
+# class OPListView( FilterView, ListView):
 #     model = OP
 #        = ['-ord_producao', '-sequencial']
 #     context_object_name = 'op_list'
@@ -878,7 +911,7 @@ def vendedor_notas_api(request):
 #         context['nota'] = get_object_or_404(Nota, chave=chave)
 #         return context
 
-@login_required
+
 # @cache_page(60 * 15)
 def op_list_view(request, lote, cod_produto):
     with open(f'{settings.BASE_DIR}/notas/management/commands/querys/buscaOPs.sql', 'r') as f:
@@ -982,12 +1015,11 @@ def op_list_view(request, lote, cod_produto):
     
     return render(request, 'notas/op_list.html', {'linhas_op': linhas_op, 'lote': lote, 'cod_produto': cod_produto, 'arvore_json': arvore_json})
 
-class JustificativaListView(LoginRequiredMixin, FilterView, ListView):
-    login_url = 'login/'
+class JustificativaListView( FilterView, ListView):
     context_object_name = 'justificativas'
     template_name = 'notas/justificativas.html'
 
-@login_required
+
 def justificativa_admin_view(request):
     if not request.user.is_superuser:
         return render(request, '403.html', status=403) # Caso haja página de erro
@@ -1042,7 +1074,7 @@ def justificativa_admin_view(request):
         'nota_grid_visible_columns': get_nota_grid_visible_columns(),
     })
 
-@login_required
+
 @require_POST
 def salvar_preferencia_colunas_nota(request):
     try:
@@ -1071,7 +1103,7 @@ def salvar_preferencia_colunas_nota(request):
     except Exception as e:
         return JsonResponse({'success': False, 'error': str(e)}, status=500)
 
-@login_required
+
 @require_POST
 def justificativa_save(request):
     if not request.user.is_superuser:
@@ -1096,7 +1128,7 @@ def justificativa_save(request):
     except Exception as e:
         return JsonResponse({'success': False, 'error': str(e)}, status=500)
 
-@login_required
+
 @require_POST
 def justificativa_toggle_status(request):
     if not request.user.is_superuser:
@@ -1114,7 +1146,7 @@ def justificativa_toggle_status(request):
         return JsonResponse({'success': False, 'error': str(e)}, status=500)
    
 
-@login_required
+
 @require_POST
 def toggle_bloqueio_mes_api(request):
     """Nova View para gerenciar o bloqueio de meses"""
@@ -1145,7 +1177,7 @@ def toggle_bloqueio_mes_api(request):
         return JsonResponse({'success': False, 'error': str(e)}, status=500)
  
 
-@login_required
+
 def exportar_excel(request):
     import pandas as pd
     import io
@@ -1329,7 +1361,7 @@ def exportar_excel(request):
     return response
 
 
-@login_required
+
 def exportar_estatisticas_excel(request):
     import json
     from openpyxl import Workbook
@@ -1453,7 +1485,7 @@ def exportar_estatisticas_excel(request):
     return response
 
 
-@login_required
+
 def exportar_op_excel(request, lote):
     from openpyxl import Workbook
     from openpyxl.styles import Font, PatternFill, Border, Side

@@ -1,0 +1,15 @@
+services:
+  analise_de_margem:
+    build:
+      context: .
+    container_name: unificacao_analise_de_margem
+    restart: always
+    ports:
+      - "0.0.0.0:30117:30117"
+    env_file:
+      - .env
+    volumes:
+      - ./:/analise_de_margem
+      - /etc/localtime:/etc/localtime:ro
+    extra_hosts:
+      - "host.docker.internal:host-gateway"

@@ -990,7 +990,7 @@
 
         inputElement.style.backgroundColor = "var(--cinza-fundo)";
 
-        fetch('/api/atualizar-custo/', {
+        fetch('{% url "api_atualizar_custo" %}', {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
@@ -1038,7 +1038,7 @@
 
         inputElement.disabled = true;
 
-        fetch('/api/atualizar-justificativa/', {
+        fetch('{% url "api_atualizar_justificativa" %}', {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
@@ -1087,7 +1087,7 @@
         }
         if (status) status.textContent = '';
 
-        fetch('/api/atualizar-comentario/', {
+        fetch('{% url "api_atualizar_comentario" %}', {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',

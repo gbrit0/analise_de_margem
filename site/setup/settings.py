@@ -30,17 +30,25 @@ SECRET_KEY = 'django-insecure-ch!@ntcoyc$y3(d4mt_pf=8h_=u7z%_bcld+8jcu@!dzea%&%!
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = os.getenv('DEBUG')
 
-ALLOWED_HOSTS = [
-    'brg.datasetsolucoes.com.br',
-    '172.49.49.6',
-    'margem.brggeradores.com.br',
-    "https://margem.brggeradores.com.br",
+# Define a subrota raiz da aplicação (gerenciada dinamicamente via ProxyPrefixMiddleware)
+FORCE_SCRIPT_NAME = None
+
+ALLOWED_HOSTS = os.getenv('ALLOWED_HOSTS', 'brg.datasetsolucoes.com.br,172.49.49.6,margem.brggeradores.com.br,portal.brggeradores.com.br,187.32.127.170,localhost,127.0.0.1').split(',')
+
+CSRF_TRUSTED_ORIGINS = [
+    origin.strip() for origin in os.getenv(
+        'CSRF_TRUSTED_ORIGINS',
+        'https://portal.brggeradores.com.br,https://margem.brggeradores.com.br,http://brg.datasetsolucoes.com.br:30035,http://187.32.127.170:30113,http://172.49.49.6:8000'
+    ).split(',') if origin.strip()
 ]
 
 CORS_ALLOWED_ORIGINS = [
     'http://brg.datasetsolucoes.com.br:30035',
+    "https://portal.brggeradores.com.br",
     'http://172.49.49.6:8000',
+    'http://187.32.127.170:30113',
     "https://margem.brggeradores.com.br",
+    "localhost:30117",
 ]
 
 # Application definition
@@ -52,6 +60,7 @@ INSTALLED_APPS = [
     'django.contrib.sessions',
     'django.contrib.messages',
     'django.contrib.staticfiles',
+    'mozilla_django_oidc',
     'django_extensions',
     'django_filters',
     'users',
@@ -59,13 +68,23 @@ INSTALLED_APPS = [
 ]
 
 MIDDLEWARE = [
+    'setup.middleware.ProxyPrefixMiddleware',
     'django.middleware.security.SecurityMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
     'django.middleware.common.CommonMiddleware',
     'django.middleware.csrf.CsrfViewMiddleware',
     'django.contrib.auth.middleware.AuthenticationMiddleware',
+    # Autentica pelo token do portal unificado. Precisa vir depois do
+    # AuthenticationMiddleware (usa request.user) e antes do ForceSSOMiddleware.
+    'setup.middleware.KeycloakPortalAuthMiddleware',
+    # Sem sessão nenhuma, a pessoa vai para o PORTAL — nunca para o Keycloak.
+    'setup.middleware.ForceSSOMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
+    # mozilla_django_oidc.middleware.SessionRefresh REMOVIDO (17/08/2026): a
+    # única função dele é renovar a sessão contra o Keycloak (redirect para o
+    # /auth com prompt=none) — exatamente o que não deve mais acontecer. Quem
+    # mantém o acesso vivo agora é o ping em /auth/refresh, servido pelo portal.
 ]
 
 ROOT_URLCONF = 'setup.urls'
@@ -80,6 +99,8 @@ TEMPLATES = [
                 'django.template.context_processors.request',
                 'django.contrib.auth.context_processors.auth',
                 'django.contrib.messages.context_processors.messages',
+                # Alimenta o ping de renovação do cookie do portal no base.html.
+                'setup.context.portal',
             ],
         },
     },
@@ -109,7 +130,83 @@ DATABASES = {
         'PORT':     f"{os.getenv('PROTHEUS_DB_PORT')}",
     },
 }
+AUTHENTICATION_BACKENDS = (
+    # Sessão vinda do portal unificado (token JWT já emitido pelo Keycloak).
+    'notas.auth_backend.KeycloakPortalBackend',
+    # Fluxo OIDC tradicional, para acesso direto ao sistema.
+    'notas.auth_backend.KeycloakOIDCBackend',
+    'django.contrib.auth.backends.ModelBackend',
+)
 
+# ---------------------------------------------------------------------------
+# Keycloak / OIDC
+# ---------------------------------------------------------------------------
+
+# O client_id precisa ser idêntico ao prefixo da rota no portal
+# (padrão exigido pelo auth_validador: /analise_de_margem -> analise_de_margem).
+OIDC_RP_CLIENT_ID = os.getenv('OIDC_RP_CLIENT_ID', 'analise_de_margem')
+OIDC_RP_CLIENT_SECRET = os.getenv('OIDC_RP_CLIENT_SECRET', 'NzHM2sLuFOtSx3rP1QNkRSc8atvGqwZc')
+
+KEYCLOAK_SERVER_URL = os.getenv('KEYCLOAK_SERVER_URL', 'https://keycloak.brggeradores.com.br')
+KEYCLOAK_REALM = os.getenv('KEYCLOAK_REALM', 'brg-brasil-geradores')
+
+KEYCLOAK_ISSUER = f'{KEYCLOAK_SERVER_URL}/realms/{KEYCLOAK_REALM}'
+OIDC_OP_BASE_URL = f'{KEYCLOAK_ISSUER}/protocol/openid-connect'
+
+OIDC_OP_AUTHORIZATION_ENDPOINT = f'{OIDC_OP_BASE_URL}/auth'
+OIDC_OP_TOKEN_ENDPOINT = f'{OIDC_OP_BASE_URL}/token'
+OIDC_OP_USER_ENDPOINT = f'{OIDC_OP_BASE_URL}/userinfo'
+OIDC_OP_JWKS_ENDPOINT = f'{OIDC_OP_BASE_URL}/certs'
+
+OIDC_RP_SIGN_ALGO = 'RS256'
+OIDC_RP_SCOPES = os.getenv('OIDC_RP_SCOPES', 'openid email profile roles')
+
+# "Sair" precisa encerrar a sessão na origem certa (portal ou Keycloak).
+OIDC_OP_LOGOUT_URL_METHOD = 'notas.auth_backend.provider_logout'
+
+# ---------------------------------------------------------------------------
+# SSO com o portal unificado
+# ---------------------------------------------------------------------------
+# O portal grava o access token do Keycloak no cookie abaixo. Como a aplicação
+# é servida sob a mesma origem (portal.brggeradores.com.br/analise_de_margem/),
+# o cookie chega até aqui e dispensa um segundo login.
+
+KEYCLOAK_PORTAL_SSO_ENABLED = os.getenv('KEYCLOAK_PORTAL_SSO_ENABLED', 'True').lower() in ('true', '1')
+KEYCLOAK_PORTAL_COOKIE_NAME = os.getenv('KEYCLOAK_PORTAL_COOKIE_NAME', 'brg_access_token')
+
+# Validações do JWT. Só desabilite a checagem de audiência se o audience mapper
+# do client ainda não estiver configurado no Keycloak.
+KEYCLOAK_VERIFY_AUDIENCE = os.getenv('KEYCLOAK_VERIFY_AUDIENCE', 'True').lower() in ('true', '1')
+KEYCLOAK_VERIFY_ISSUER = os.getenv('KEYCLOAK_VERIFY_ISSUER', 'True').lower() in ('true', '1')
+KEYCLOAK_JWKS_CACHE_SECONDS = int(os.getenv('KEYCLOAK_JWKS_CACHE_SECONDS', '3600'))
+KEYCLOAK_LEEWAY = int(os.getenv('KEYCLOAK_LEEWAY', '30'))
+KEYCLOAK_JWKS_TIMEOUT = int(os.getenv('KEYCLOAK_JWKS_TIMEOUT', '10'))
+# O Cloudflare, na frente do Keycloak, devolve 403 para o User-Agent padrão do
+# urllib ("Python-urllib/3.x") — testado de dentro do container. Sem UA próprio,
+# o JWKS não é baixado e NENHUM token é validado.
+KEYCLOAK_JWKS_USER_AGENT = os.getenv('KEYCLOAK_JWKS_USER_AGENT', 'analise_de_margem/1.0')
+
+# False (padrão): as roles do Keycloak só PROMOVEM (não rebaixam o superusuário
+# local, que é quem administra as justificativas). True: o Keycloak é a única
+# fonte de verdade e revogar a role lá revoga o acesso aqui. Ver notas/keycloak.py.
+KEYCLOAK_ESPELHA_PERMISSOES = os.getenv('KEYCLOAK_ESPELHA_PERMISSOES', 'False').lower() in ('true', '1')
+
+# Chaves gravadas na sessão para identificar o token que a originou.
+KEYCLOAK_PORTAL_SESSION_KEY = 'portal_sso'
+KEYCLOAK_PORTAL_TOKEN_KEY = 'portal_token_id'
+
+# URL INICIAL do portal: é para cá que vai quem chega sem sessão ou com o token
+# vencido. Nunca para a tela do Keycloak.
+PORTAL_URL = os.getenv('PORTAL_URL', 'https://portal.brggeradores.com.br').rstrip('/') + '/'
+PORTAL_LOGOUT_URL = os.getenv('PORTAL_LOGOUT_URL', f'{PORTAL_URL}logout')
+
+# Renovação do cookie do token, servida pelo portal (mesma origem, por isso um
+# caminho relativo basta). Sem ela o access token vence em 5 minutos e o nginx
+# barra quem está trabalhando aqui, mesmo com a sessão do Django de pé.
+# O intervalo tem de ser confortavelmente menor que a validade do token; o ping
+# é barato, porque o portal só troca o token quando falta pouco para vencer.
+PORTAL_REFRESH_URL = os.getenv('PORTAL_REFRESH_URL', '/auth/refresh')
+PORTAL_REFRESH_INTERVALO_SEGUNDOS = int(os.getenv('PORTAL_REFRESH_INTERVALO_SEGUNDOS', '60'))
 
 # Password validation
 # https://docs.djangoproject.com/en/5.2/ref/settings/#auth-password-validators
@@ -144,11 +241,11 @@ USE_TZ = True
 # Static files (CSS, JavaScript, Images)
 # https://docs.djangoproject.com/en/5.2/howto/static-files/
 
-STATIC_URL = 'static/'
-STATIC_ROOT = BASE_DIR / 'static'
-# STATICFILES_DIRS = [
-#     BASE_DIR / "static",
-# ]
+STATIC_URL = '/analise_de_margem/static/'
+STATIC_ROOT = BASE_DIR / 'staticfiles'
+STATICFILES_DIRS = [
+    BASE_DIR / "static",
+]
 
 # Default primary key field type
 # https://docs.djangoproject.com/en/5.2/ref/settings/#default-auto-field
@@ -166,9 +263,37 @@ PASS_ADMIN=os.getenv("PASS_ADMIN")
 
 hoje = date.today().strftime("%Y-%m")
 
-LOGIN_REDIRECT_URL = f'/notas/?data_emissao_month={hoje}'
-LOGOUT_REDIRECT_URL = '/login'
-LOGIN_URL = '/login/' 
+LOGIN_REDIRECT_URL = '/analise_de_margem/estatisticas/'
+LOGOUT_REDIRECT_URL = PORTAL_URL
+# @login_required também precisa cair no PORTAL, e não no Keycloak: era este
+# LOGIN_URL (antes /analise_de_margem/oidc/authenticate/) que produzia o segundo
+# login. Na prática o ForceSSOMiddleware intercepta antes, mas deixar o valor
+# antigo aqui reabriria o caminho para o Keycloak em qualquer view nova.
+LOGIN_URL = PORTAL_URL
+LOGIN_REDIRECT_URL_FAILURE = PORTAL_URL
+
+LOGGING = {
+    'version': 1,
+    'disable_existing_loggers': False,
+    'formatters': {
+        'padrao': {
+            'format': '[{asctime}] {levelname} {name}: {message}',
+            'style': '{',
+        },
+    },
+    'handlers': {
+        'console': {
+            'class': 'logging.StreamHandler',
+            'formatter': 'padrao',
+        },
+    },
+    'loggers': {
+        # Autenticação: registra tokens rejeitados, acessos negados e logins.
+        'notas': {'handlers': ['console'], 'level': os.getenv('LOG_LEVEL', 'INFO')},
+        'setup': {'handlers': ['console'], 'level': os.getenv('LOG_LEVEL', 'INFO')},
+        'mozilla_django_oidc': {'handlers': ['console'], 'level': 'WARNING'},
+    },
+}
 
 CACHES = {
     "default": {
@@ -177,6 +302,14 @@ CACHES = {
     }
 }
 
-# SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
-# CSRF_COOKIE_SECURE = os.getenv('CSRF_COOKIE_SECURE', 'False')
-# SESSION_COOKIE_SECURE = os.getenv('SESSION_COOKIE_SECURE', 'False')
+SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
+USE_X_FORWARDED_HOST = True
+USE_X_FORWARDED_PORT = True
+
+CSRF_COOKIE_SECURE = os.getenv('CSRF_COOKIE_SECURE', 'False').lower() in ('true', '1')
+SESSION_COOKIE_SECURE = os.getenv('SESSION_COOKIE_SECURE', 'False').lower() in ('true', '1')
+
+SESSION_COOKIE_NAME = 'analise_margem_sessionid'
+SESSION_COOKIE_PATH = '/analise_de_margem/'
+CSRF_COOKIE_NAME = 'analise_margem_csrftoken'
+CSRF_COOKIE_PATH = '/analise_de_margem/'
