@@ -582,7 +582,7 @@
                         const filiaisChecadas = Array.from(document.querySelectorAll('.filial-checkbox:checked')).map(cb => cb.value);
                         const filiaisStr = filiaisChecadas.join(',');
                         
-                        const url = `/api/estatisticas/vendedor/notas/?vendedor=${encodeURIComponent(item.vendedor || 'Sem vendedor')}&meses=${mesesStr}&filiais=${filiaisStr}`;
+                        const url = `{% url "vendedor_notas_api" %}?vendedor=${encodeURIComponent(item.vendedor || 'Sem vendedor')}&meses=${mesesStr}&filiais=${filiaisStr}`;
                         
                         fetch(url)
                             .then(res => res.json())
@@ -677,7 +677,7 @@
         const filiaisChecadas = Array.from(document.querySelectorAll('.filial-checkbox:checked')).map(cb => cb.value);
         const filiaisStr = filiaisChecadas.join(',');
 
-        const url = `/api/estatisticas/?meses=${mesesStr}&filiais=${filiaisStr}`;
+        const url = `{% url "dados_vendas_api" %}?meses=${mesesStr}&filiais=${filiaisStr}`;
 
 
         fetch(url)
@@ -1267,7 +1267,7 @@
         const filiaisChecadas = Array.from(document.querySelectorAll('.filial-checkbox:checked')).map(cb => cb.value);
         const filiaisStr = filiaisChecadas.join(',');
 
-        const url = `/exportar-estatisticas/?meses=${mesesStr}&filiais=${filiaisStr}`;
+        const url = `{% url "exportar_estatisticas_excel" %}?meses=${mesesStr}&filiais=${filiaisStr}`;
         window.location.href = url;
     }
 

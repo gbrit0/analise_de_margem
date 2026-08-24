@@ -177,3 +177,7 @@ pyrightconfig.json
 .vscode/
 
 formula_excel.py
+
+.env.meu
+
+site/staticfiles/

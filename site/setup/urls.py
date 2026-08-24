@@ -19,8 +19,11 @@ from django.urls import path, include
 import notas
 
 
+from django.views.generic import RedirectView
+
 urlpatterns = [
     path('admin/', admin.site.urls),
+    path('', RedirectView.as_view(pattern_name='estatisticas', permanent=False)),
     path('', include('notas.urls')),
-    path('', include('users.urls'))
+    path('oidc/', include('mozilla_django_oidc.urls')),
 ]

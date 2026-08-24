@@ -11,5 +11,12 @@ services:
     volumes:
       - ./:/analise_de_margem
       - /etc/localtime:/etc/localtime:ro
+      # CAs publicas + CA do Cloudflare Origin (valida o cert do nginx local)
+      - /DESENVOLVEDORES/certificates/ca-bundle-interno.pem:/etc/ssl/certs/ca-bundle-interno.pem:ro
     extra_hosts:
       - "host.docker.internal:host-gateway"
+      - "keycloak.brggeradores.com.br:host-gateway"
+    environment:
+      REQUESTS_CA_BUNDLE: /etc/ssl/certs/ca-bundle-interno.pem
+      SSL_CERT_FILE: /etc/ssl/certs/ca-bundle-interno.pem
+      CURL_CA_BUNDLE: /etc/ssl/certs/ca-bundle-interno.pem

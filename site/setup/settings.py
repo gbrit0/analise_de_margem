@@ -28,7 +28,7 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 SECRET_KEY = 'django-insecure-ch!@ntcoyc$y3(d4mt_pf=8h_=u7z%_bcld+8jcu@!dzea%&%!'
 
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = os.getenv('DEBUG')
+DEBUG = os.getenv('DEBUG', 'False').lower() in ('true', '1')
 
 # Define a subrota raiz da aplicação (gerenciada dinamicamente via ProxyPrefixMiddleware)
 FORCE_SCRIPT_NAME = None

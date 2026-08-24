@@ -8,7 +8,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
     <title>{% block page_title %}Sistema Integrado{% endblock %}</title>
 
-    <link rel="icon" type="image/png" href="/static/img/logo.png">
+    <link rel="icon" type="image/png" href="{% static 'img/logo.png' %}">
 
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -138,7 +138,14 @@
             flex: 1 1 auto;
         }
 
-        /* BOTÃO DE SAIR */
+        /* BOTÃO DE VOLTAR AO PORTAL
+           Sobre a cor: não é vermelho porque o botão deixou de derrubar a
+           sessão do hub — alerta prometeria uma consequência que não existe
+           mais. Também não é verde: --verde-principal é o preenchimento do
+           .app-nav__link.active, e reusá-lo aqui faria o botão ser lido como
+           "página atual". O que sobra na nav escura é o contorno branco, que
+           ainda o destaca dos links (branco cheio contra o rgba(255,255,255,.7)
+           deles) sem disputar significado. */
         .app-nav__logout {
             margin: 0;
             display: flex;
@@ -147,8 +154,8 @@
 
         .app-nav__logout button {
             background: transparent;
-            border: 1px solid var(--vermelho-alerta);
-            color: var(--vermelho-alerta);
+            border: 1px solid rgba(255, 255, 255, 0.55);
+            color: var(--branco);
             padding: 8px 16px;
             border-radius: 6px;
             font-weight: 600;
@@ -160,10 +167,26 @@
             gap: 8px;
         }
 
+        /* a seta desliza para a esquerda no hover: reforça "voltar" */
+        .app-nav__logout button i {
+            transition: transform 0.3s ease;
+        }
+
         .app-nav__logout button:hover {
-            background: var(--vermelho-alerta);
-            color: var(--branco);
-            box-shadow: 0 2px 8px rgba(230, 71, 89, 0.3);
+            background: var(--branco);
+            color: var(--azul-escuro);
+            border-color: var(--branco);
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.28);
+        }
+
+        .app-nav__logout button:hover i {
+            transform: translateX(-3px);
+        }
+
+        /* teclado: sem isto o botão fica sem indicação visível de foco */
+        .app-nav__logout button:focus-visible {
+            outline: 2px solid var(--verde-claro);
+            outline-offset: 2px;
         }
 
         /* CONTAINER PRINCIPAL */
@@ -278,12 +301,20 @@
 
             <span class="app-nav__spacer" aria-hidden="true"></span>
 
-            <form class="app-nav__logout" action="{% url 'logout' %}" method="post">
+            {% if request.user.is_authenticated %}
+            {% comment %}
+              Encerra a sessão daqui e devolve a pessoa ao portal; os outros
+              sistemas do hub seguem logados. Ver provider_logout em
+              notas/auth_backend.py e o SSO_PORTAL.md.
+            {% endcomment %}
+            <form class="app-nav__logout" action="{% url 'oidc_logout' %}" method="post">
                 {% csrf_token %}
-                <button type="submit">
-                    <i class="fa-solid fa-arrow-right-from-bracket"></i> Sair
+                <button type="submit" title="Fecha a Análise de Margem e volta ao portal. Os demais sistemas continuam abertos.">
+                    <i class="fa-solid fa-arrow-left"></i> Voltar ao portal
                 </button>
             </form>
+            {% endif %}
+
         </nav>
     </header>
 
@@ -291,6 +322,52 @@
         {% block content %}{% endblock %}
     </main>
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+
+    {% if portal_renovacao_url %}
+    {% comment %}
+      Mantém vivo o cookie do portal (brg_access_token) enquanto a tela está
+      aberta. Sem isto: o access token do Keycloak vale 5 MINUTOS e o nginx
+      (auth_request -> auth_validador) barra a requisição ANTES de o Django ser
+      chamado — a pessoa estava conferindo margem e do nada levava "acesso
+      negado" mesmo tendo permissão. A sessão do Django de pé não ajuda, porque
+      a barreira é anterior a ela.
+
+      O /auth/refresh é do portal, na mesma origem: troca o refresh_token pelo
+      access token novo e regrava o cookie. 401 dali significa que a sessão
+      acabou de verdade (o Keycloak recusou o refresh) — aí a pessoa volta para
+      o portal, nunca para a tela do Keycloak.
+
+      Inline de propósito: não depende de arquivo estático versionado, então
+      navegador com JS antigo em cache não fica sem renovação.
+    {% endcomment %}
+    <script>
+        (function () {
+            var url = "{{ portal_renovacao_url }}";
+            var intervalo = {{ portal_renovacao_intervalo }} * 1000;
+            var renovando = false;
+
+            function renovar() {
+                if (renovando || document.visibilityState === 'hidden') return;
+                renovando = true;
+                fetch(url, { credentials: 'same-origin', cache: 'no-store' })
+                    .then(function (r) {
+                        if (r.status === 401) {
+                            // sessão encerrada no portal (ou refresh recusado pelo Keycloak)
+                            window.location.href = "{{ portal_url }}";
+                        }
+                    })
+                    .catch(function () { /* rede oscilando: tenta no próximo ciclo */ })
+                    .finally(function () { renovando = false; });
+            }
+
+            setInterval(renovar, intervalo);
+            // aba que voltou do sono pode ter o cookie já vencido: renova antes do clique
+            document.addEventListener('visibilitychange', function () {
+                if (document.visibilityState === 'visible') renovar();
+            });
+        })();
+    </script>
+    {% endif %}
 </body>
 
 </html>
